@@ -1,4 +1,5 @@
-import { BadRequestException, HttpStatus, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { DatabaseService } from 'src/database/database.service';
 import { AuthDTO } from './validators';
 import * as argon from 'argon2';
@@ -9,7 +10,7 @@ import { ResponseMessages } from 'src/utils/messages';
 
 @Injectable()
 export class AuthService {
-    constructor(private databaseService: DatabaseService) {
+    constructor(private databaseService: DatabaseService, private jwtService: JwtService) {
 
     }
 
@@ -23,7 +24,9 @@ export class AuthService {
                 }
             });
             delete user.hash;
-            return user;
+            const payload = { sub: user.id };
+            const access_token = await this.jwtService.signAsync(payload);
+            return { user, access_token };
         } catch (ex) {
             // Database Exceptions
             if (ex instanceof PrismaClientKnownRequestError) {
@@ -33,6 +36,7 @@ export class AuthService {
                     console.log(ex.code);
                 }
             }
+            console.log(ex);
             throw new InternalServerErrorException()
         }
     }
@@ -47,7 +51,9 @@ export class AuthService {
             })
             if (await argon.verify(user.hash, body.password)) {
                 delete user.hash;
-                return user;
+                const payload = { sub: user.id };
+                const access_token = await this.jwtService.signAsync(payload);
+                return { user, access_token };
 
             } else {
                 throw new NotFoundException(ResponseMessages.INVALID_CREDENTIALS);
