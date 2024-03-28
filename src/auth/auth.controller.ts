@@ -1,5 +1,5 @@
 import { Body, Controller, NotFoundException, Post } from '@nestjs/common';
-import { AuthDTO } from './validators';
+import { SignUpDTO, SignInDTO } from './validators';
 import { AuthService } from './auth.service';
 
 
@@ -10,12 +10,12 @@ export class AuthController {
   }
 
   @Post('signup')
-  signup(@Body() body: AuthDTO) {
+  signup(@Body() body: SignUpDTO) {
     return this.authService.signup(body);
     }
 
   @Post('login')
-  async login(@Body() body: AuthDTO){
+  async login(@Body() body: SignInDTO){
     return await this.authService.login(body);
   }
 

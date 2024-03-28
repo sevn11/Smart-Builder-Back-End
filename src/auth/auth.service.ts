@@ -1,11 +1,12 @@
 import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { DatabaseService } from 'src/database/database.service';
-import { AuthDTO } from './validators';
+import { SignUpDTO, SignInDTO } from './validators';
 import * as argon from 'argon2';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { PrismaErrorCodes } from 'src/utils';
 import { ResponseMessages } from 'src/utils/messages';
+import { UserTypes } from 'src/utils/user-types';
 
 
 @Injectable()
@@ -13,17 +14,34 @@ export class AuthService {
     constructor(private databaseService: DatabaseService, private jwtService: JwtService) {
     }
 
-    async signup(body: AuthDTO) {
+    async signup(body: SignUpDTO) {
         try {
             const hash = await argon.hash(body.password);
             const user = await this.databaseService.user.create({
                 data: {
                     email: body.email,
                     hash,
+                    name: body.name,
+                    userType: UserTypes.BUILDER,
+                    company: {
+                        create: {
+                            name: body.companyName
+                        }
+                    },
+                    PermissionSet: {
+                        create: {
+                            fullAccess: true,
+                            view_only: false
+                        }
+                    }
+                },
+                include: {
+                    company: true,
+                    PermissionSet: true
                 }
             });
             delete user.hash;
-            const payload = { sub: user.id, email: user.email };
+            const payload = { sub: user.id, email: user.email, companyId: user.company.id };
             const access_token = await this.jwtService.signAsync(payload);
             return { user, access_token };
         } catch (ex) {
@@ -40,20 +58,23 @@ export class AuthService {
         }
     }
 
-    async login(body: AuthDTO) {
+    async login(body: SignInDTO) {
         console.log(body);
         try {
             const user = await this.databaseService.user.findUniqueOrThrow({
                 where: {
                     email: body.email
+                },
+                include: {
+                    company: true,
+                    PermissionSet: true
                 }
             })
             if (await argon.verify(user.hash, body.password)) {
                 delete user.hash;
-                const payload = { sub: user.id, email: user.email };
+                const payload = { sub: user.id, email: user.email, companyId: user.company.id };
                 const access_token = await this.jwtService.signAsync(payload);
                 return { user, access_token };
-
             } else {
                 throw new NotFoundException(ResponseMessages.INVALID_CREDENTIALS);
             }

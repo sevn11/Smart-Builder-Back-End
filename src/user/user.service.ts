@@ -9,7 +9,21 @@ export class UserService {
     }
 
     async me(user: User) {
-        return user;
+        try {
+            const userObj = await this.databaseService.user.findUnique({
+                where: {
+                    id: user.id,
+                },
+                include: {
+                    company: true,
+                    PermissionSet: true
+                }
+            });
+            delete userObj.hash;
+            return userObj;
+        } catch (error) {
+            throw new InternalServerErrorException()
+        }
     }
 }
 
