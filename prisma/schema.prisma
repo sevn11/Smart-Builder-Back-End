@@ -13,15 +13,51 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-
 model User {
-  id Int @id @default(autoincrement())
-  email String @unique
-  hash String
-  name String?
+  id        Int     @id @default(autoincrement())
+  email     String  @unique
+  hash      String
+  name      String?
+  userType  String  @map("user_type")
+  companyId Int     @map("company_id")
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+  PermissionSet PermissionSet?
 
   @@map("users")
+}
+
+model Company {
+  id          Int     @id @default(autoincrement())
+  name        String?
+  address     String?
+  contact     String?
+  phoneNumber String? @map("phone_number")
+  email       String?
+  website     String?
+  logo        String?
+  users       User[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("companies")
+}
+
+model PermissionSet {
+  id             Int     @id @default(autoincrement())
+  userId         Int     @unique @map("user_id")
+  user           User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullAccess     Boolean @default(false) @map("full_access")
+  specifications Boolean @default(false)
+  selection      Boolean @default(false)
+  schedule       Boolean @default(false)
+  view_only      Boolean @default(true)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("permission_sets")
 }
