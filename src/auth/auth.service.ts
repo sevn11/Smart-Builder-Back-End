@@ -11,7 +11,6 @@ import { ResponseMessages } from 'src/utils/messages';
 @Injectable()
 export class AuthService {
     constructor(private databaseService: DatabaseService, private jwtService: JwtService) {
-
     }
 
     async signup(body: AuthDTO) {
@@ -24,7 +23,7 @@ export class AuthService {
                 }
             });
             delete user.hash;
-            const payload = { sub: user.id };
+            const payload = { sub: user.id, email: user.email };
             const access_token = await this.jwtService.signAsync(payload);
             return { user, access_token };
         } catch (ex) {
@@ -51,7 +50,7 @@ export class AuthService {
             })
             if (await argon.verify(user.hash, body.password)) {
                 delete user.hash;
-                const payload = { sub: user.id };
+                const payload = { sub: user.id, email: user.email };
                 const access_token = await this.jwtService.signAsync(payload);
                 return { user, access_token };
 
@@ -60,6 +59,7 @@ export class AuthService {
             }
         } catch (ex) {
             // Database Exceptions
+            console.log(ex);
             if (ex instanceof PrismaClientKnownRequestError) {
                 if (ex.code == PrismaErrorCodes.NOT_FOUND)
                     throw new NotFoundException(ResponseMessages.INVALID_CREDENTIALS);

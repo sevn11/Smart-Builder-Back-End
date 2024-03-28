@@ -1,4 +1,5 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, UseGuards } from '@nestjs/common';
+import { User } from '@prisma/client';
 import { DatabaseService } from 'src/database/database.service';
 
 @Injectable()
@@ -7,14 +8,8 @@ export class UserService {
 
     }
 
-    async me() {
-        try {
-            const user = await this.databaseService.user.findFirst();
-            delete user.hash;
-            return user;
-        } catch (error) {
-            throw new InternalServerErrorException()
-        }
+    async me(user: User) {
+        return user;
     }
 }
 
