@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { DatabaseService } from 'src/database/database.service';
-import { SignUpDTO, SignInDTO, ForgotPasswordDTO } from './validators';
+import { SignUpDTO, SignInDTO, ForgotPasswordDTO, PasswordResetDTO } from './validators';
 import * as argon from 'argon2';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { PrismaErrorCodes } from 'src/core/utils';
@@ -118,18 +118,43 @@ export class AuthService {
             })
             // Todo: Send Email
             // send Response
-            return { code: code }
+            return { code: code, message: ResponseMessages.PASSWORD_RESET_CODE_SENT }
 
         } catch (error) {
             // Database Exceptions
             console.log(error);
             if (error instanceof PrismaClientKnownRequestError) {
                 if (error.code == PrismaErrorCodes.NOT_FOUND)
-                    throw new NotFoundException(ResponseMessages.INVALID_CREDENTIALS);
+                    return { message: ResponseMessages.PASSWORD_RESET_CODE_SENT }
                 throw new InternalServerErrorException();
             } else {
                 throw new InternalServerErrorException();
             }
         }
+    }
+
+    async resetMyPassword(body: PasswordResetDTO) {
+        try {
+            let user = await this.databaseService.user.findFirstOrThrow({
+                where: {
+                    passwordResetCode: body.code
+                }
+            });
+            let hash = await argon.hash(body.password);
+            await this.databaseService.user.update({
+                where: {
+                    id: user.id
+                },
+                data: {
+                    hash: hash,
+                    passwordResetCode: null
+                }
+            })
+            return { message: ResponseMessages.SUCCESSFUL }
+        } catch (error) {
+            console.log(error)
+            throw new BadRequestException({ message: ResponseMessages.INVALID_RESET_CODE })
+        }
+
     }
 }

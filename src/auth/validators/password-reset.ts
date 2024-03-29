@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, IsNumber } from 'class-validator'
+import { IsEmail, IsNotEmpty, IsNumber, IsString } from 'class-validator'
 
 export class ForgotPasswordDTO {
 
@@ -10,13 +10,13 @@ export class ForgotPasswordDTO {
 
 export class PasswordResetDTO {
 
-    @IsEmail()
+    @IsString()
     @IsNotEmpty()
-    email: string;
+    password: string;
 
 
     @IsNumber()
     @IsNotEmpty()
     code: number;
-    
+
 }
