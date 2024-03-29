@@ -1,5 +1,5 @@
 import { Controller, Get, HttpCode } from '@nestjs/common';
-import { ResponseMessages } from 'src/utils/messages';
+import { ResponseMessages } from 'src/core/utils/messages';
 
 @Controller('devops')
 export class DevopsController {

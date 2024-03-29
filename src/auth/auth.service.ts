@@ -4,9 +4,9 @@ import { DatabaseService } from 'src/database/database.service';
 import { SignUpDTO, SignInDTO } from './validators';
 import * as argon from 'argon2';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
-import { PrismaErrorCodes } from 'src/utils';
-import { ResponseMessages } from 'src/utils/messages';
-import { UserTypes } from 'src/utils/user-types';
+import { PrismaErrorCodes } from 'src/core/utils';
+import { ResponseMessages } from 'src/core/utils/messages';
+import { UserTypes } from 'src/core/utils/user-types';
 
 
 @Injectable()
