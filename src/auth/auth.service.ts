@@ -1,10 +1,11 @@
 import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { DatabaseService } from 'src/database/database.service';
-import { SignUpDTO, SignInDTO } from './validators';
+import { SignUpDTO, SignInDTO, ForgotPasswordDTO } from './validators';
 import * as argon from 'argon2';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { PrismaErrorCodes } from 'src/core/utils';
+import { HelperFunctions } from 'src/core/utils/helpers';
 import { ResponseMessages } from 'src/core/utils/messages';
 import { UserTypes } from 'src/core/utils/user-types';
 
@@ -93,5 +94,35 @@ export class AuthService {
         }
 
 
+    }
+
+    async forgotMyPassword(body: ForgotPasswordDTO) {
+
+        try {
+
+            // Get if email exist
+            let user = await this.databaseService.user.findUniqueOrThrow({
+                where: {
+                    email: body.email
+                }
+            });
+            // Generate Code
+            let code = HelperFunctions.generateCode();
+            // let user = await this.databaseService.user.update
+            // Todo: Send Email
+            // send Response
+            return { code: code }
+
+        } catch (error) {
+            // Database Exceptions
+            console.log(error);
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code == PrismaErrorCodes.NOT_FOUND)
+                    throw new NotFoundException(ResponseMessages.INVALID_CREDENTIALS);
+                throw new InternalServerErrorException();
+            } else {
+                throw new InternalServerErrorException();
+            }
+        }
     }
 }
