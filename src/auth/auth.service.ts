@@ -108,7 +108,14 @@ export class AuthService {
             });
             // Generate Code
             let code = HelperFunctions.generateCode();
-            // let user = await this.databaseService.user.update
+            await this.databaseService.user.update({
+                where: {
+                    id: user.id
+                },
+                data: {
+                    passwordResetCode: code
+                }
+            })
             // Todo: Send Email
             // send Response
             return { code: code }

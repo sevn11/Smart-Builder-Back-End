@@ -25,6 +25,7 @@ model User {
   createdAt     DateTime       @default(now()) @map("created_at")
   updatedAt     DateTime       @updatedAt @map("updated_at")
   PermissionSet PermissionSet?
+  passwordResetCode Int? @map("password_reset_code")
 
   @@map("users")
 }
@@ -38,7 +39,6 @@ model Company {
   email       String?
   website     String?
   logo        String?
-  passwordResetCode Int? @map("password_reset_code")
   users       User[]
 
   createdAt DateTime @default(now()) @map("created_at")
