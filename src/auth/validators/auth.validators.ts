@@ -1,5 +1,4 @@
-import { Optional } from '@nestjs/common';
-import { IsEmail, IsNotEmpty, IsString } from 'class-validator'
+import { IsEmail, IsNotEmpty, IsString, IsOptional } from 'class-validator'
 
 export class SignUpDTO {
 
@@ -12,7 +11,7 @@ export class SignUpDTO {
   password: string;
 
   @IsString()
-  @Optional()
+  @IsOptional()
   name?: string;
 
   @IsString()

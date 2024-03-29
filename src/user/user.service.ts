@@ -4,6 +4,7 @@ import * as argon from 'argon2';
 import { DatabaseService } from 'src/database/database.service';
 import { ChangePasswordDTO } from './validators/change-password';
 import { ResponseMessages } from 'src/core/utils/messages';
+import { UpdateMyProfileDTO } from './validators';
 
 @Injectable()
 export class UserService {
@@ -54,6 +55,23 @@ export class UserService {
         }
 
 
+    }
+
+    async updateMyProfile(user: User, body: UpdateMyProfileDTO) {
+        try {
+            await this.databaseService.user.update({
+                where: {
+                    id: user.id
+                },
+                data: {
+                    name: body.name
+                }
+            });
+            return { message: ResponseMessages.PROFILE_UPDATED }
+        } catch (error) {
+            console.log(error);
+            throw new InternalServerErrorException();
+        }
     }
 }
 

@@ -7,4 +7,5 @@ export class ResponseMessages {
     static INVALID_RESET_CODE = 'Reset code is invalid or expired.'
     static PASSWORD_IS_INVALID = 'Password is incorrect. Please enter correct password.'
     static PASSWORD_UPDATED = 'Password changed successfully.'
+    static PROFILE_UPDATED = 'Profile updated successfully.'
 }

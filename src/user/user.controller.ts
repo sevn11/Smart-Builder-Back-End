@@ -1,9 +1,10 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Patch, Post, UseGuards } from '@nestjs/common';
 import { JwtGuard } from 'src/core/utils/guards';
 import { UserService } from './user.service';
 import { GetUser } from 'src/core/decorators';
 import { User } from '@prisma/client';
 import { ChangePasswordDTO } from './validators/change-password';
+import { UpdateMyProfileDTO } from './validators';
 
 @UseGuards(JwtGuard)
 @Controller('users')
@@ -22,5 +23,11 @@ export class UserController {
     @Post('/me/changepassword')
     changePassword(@GetUser() user: User, @Body() body: ChangePasswordDTO) {
         return this.userService.changePassword(user, body);
+    }
+
+    @HttpCode(HttpStatus.OK)
+    @Patch('/me/profile')
+    updateMyProfile(@GetUser() user: User, @Body() body: UpdateMyProfileDTO) {
+        return this.userService.updateMyProfile(user, body)
     }
 }
