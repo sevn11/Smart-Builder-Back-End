@@ -6,6 +6,7 @@ export class ResponseMessages {
     static UNIQUE_EMAIL_ERROR = 'User with same email address exist.'
     static PASSWORD_RESET_CODE_SENT = 'Password reset code has been sent to the email address.'
     static INVALID_RESET_CODE = 'Reset code is invalid or expired.'
+    static INVALID_INVITE_TOKEN = 'Invite token is invalid or expired.'
     static PASSWORD_IS_INVALID = 'Password is incorrect. Please enter correct password.'
     static PASSWORD_UPDATED = 'Password changed successfully.'
     static PROFILE_UPDATED = 'Profile updated successfully.'

@@ -5,6 +5,7 @@ import { SignUpDTO, SignInDTO, ForgotPasswordDTO, PasswordResetDTO } from './val
 import * as argon from 'argon2';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { PrismaErrorCodes, HelperFunctions, ResponseMessages, UserTypes } from 'src/core/utils';
+import { SetPasswordDTO } from './validators/set-password';
 
 
 @Injectable()
@@ -151,6 +152,33 @@ export class AuthService {
         } catch (error) {
             console.log(error)
             throw new BadRequestException({ message: ResponseMessages.INVALID_RESET_CODE })
+        }
+
+    }
+
+    async completeUserProfile(token: string, body: SetPasswordDTO) {
+        try {
+            console.log(token)
+            let user = await this.databaseService.user.findFirstOrThrow({
+                where: {
+                    invitationToken: token
+                }
+            });
+            console.log(user);
+            let hash = await argon.hash(body.password);
+            await this.databaseService.user.update({
+                where: {
+                    id: user.id
+                },
+                data: {
+                    hash: hash,
+                    invitationToken: null
+                }
+            });
+            return { message: ResponseMessages.SUCCESSFUL }
+        } catch (error) {
+            console.log(error)
+            throw new BadRequestException({ message: ResponseMessages.INVALID_INVITE_TOKEN })
         }
 
     }
