@@ -2,9 +2,8 @@ import { BadRequestException, Injectable, InternalServerErrorException } from '@
 import { User } from '@prisma/client';
 import * as argon from 'argon2';
 import { DatabaseService } from 'src/database/database.service';
-import { ChangePasswordDTO } from './validators/change-password';
-import { ResponseMessages } from 'src/core/utils/messages';
-import { UpdateMyProfileDTO } from './validators';
+import { ChangePasswordDTO, UpdateMyProfileDTO } from './validators';
+import { ResponseMessages } from 'src/core/utils';
 
 @Injectable()
 export class UserService {

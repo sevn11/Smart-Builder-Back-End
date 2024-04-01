@@ -1,10 +1,9 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Patch, Post, UseGuards } from '@nestjs/common';
-import { JwtGuard } from 'src/core/utils/guards';
+import { JwtGuard } from 'src/core/guards';
 import { UserService } from './user.service';
 import { GetUser } from 'src/core/decorators';
 import { User } from '@prisma/client';
-import { ChangePasswordDTO } from './validators/change-password';
-import { UpdateMyProfileDTO } from './validators';
+import { UpdateMyProfileDTO, ChangePasswordDTO } from './validators';
 
 @UseGuards(JwtGuard)
 @Controller('users')

@@ -4,10 +4,7 @@ import { DatabaseService } from 'src/database/database.service';
 import { SignUpDTO, SignInDTO, ForgotPasswordDTO, PasswordResetDTO } from './validators';
 import * as argon from 'argon2';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
-import { PrismaErrorCodes } from 'src/core/utils';
-import { HelperFunctions } from 'src/core/utils/helpers';
-import { ResponseMessages } from 'src/core/utils/messages';
-import { UserTypes } from 'src/core/utils/user-types';
+import { PrismaErrorCodes, HelperFunctions, ResponseMessages, UserTypes } from 'src/core/utils';
 
 
 @Injectable()
