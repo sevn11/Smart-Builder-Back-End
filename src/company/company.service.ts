@@ -4,11 +4,17 @@ import { DatabaseService } from 'src/database/database.service';
 import { AddUserDTO } from './validators';
 import { HelperFunctions, PrismaErrorCodes, ResponseMessages, UserTypes } from 'src/core/utils';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
+import { ConfigService } from '@nestjs/config';
+import { SendgridService } from 'src/core/services';
 
 @Injectable()
 export class CompanyService {
 
-    constructor(private databaseService: DatabaseService) {
+    constructor(
+        private databaseService: DatabaseService,
+        private readonly config: ConfigService,
+        private sendgridService: SendgridService
+    ) {
 
     }
 
@@ -28,13 +34,14 @@ export class CompanyService {
                     throw new ForbiddenException("Action Not Allowed");
                 }
                 // Add User (Put precautions for email uniqueness)
+                const invitationToken = HelperFunctions.generateRandomString(16);
                 const employee = await this.databaseService.user.create({
                     data: {
                         email: body.email,
                         name: body.name,
                         userType: UserTypes.EMPLOYEE,
                         companyId: companyId,
-                        invitationToken: HelperFunctions.generateRandomString(16), // Generate Invitation Token
+                        invitationToken, // Generate Invitation Token
                         PermissionSet: {
                             create: {
                                 fullAccess: body.permissionSet.fullaccess,
@@ -46,14 +53,21 @@ export class CompanyService {
                         }
                     },
                     include: {
-                        PermissionSet: true
+                        PermissionSet: true,
+                        company: true
                     }
                 });
+                //  Send Email
+                const templateData = {
+                    user_name: employee.name,
+                    company_name: employee.company.name,
+                    password_link: `${this.config.get("FRONTEND_BASEURL")}/auth/users/${invitationToken}`
+                }
+                this.sendgridService.sendEmailWithTemplate(employee.email, this.config.get('EMPLOYEE_PASSWORD_SET_TEMPLATE_ID'), templateData)
                 return { "message": ResponseMessages.USER_INVITATION_SENT }
             } else {
                 throw new ForbiddenException("Action Not Allowed");
             }
-            //  Send Email
         } catch (error) {
             console.log(error);
             // Database Exceptions
