@@ -22,7 +22,7 @@ import { CoreModule } from 'src/core/core.module';
     }),
     CoreModule,
   ],
-  providers: [AuthService, ConfigService, JwtStrategy],
+  providers: [AuthService, ConfigService, JwtStrategy, SendgridService],
   controllers: [AuthController],
 })
 

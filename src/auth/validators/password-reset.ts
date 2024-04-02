@@ -14,9 +14,4 @@ export class PasswordResetDTO {
     @IsNotEmpty()
     password: string;
 
-
-    @IsNumber()
-    @IsNotEmpty()
-    code: number;
-
 }

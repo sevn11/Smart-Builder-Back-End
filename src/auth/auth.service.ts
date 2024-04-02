@@ -6,11 +6,17 @@ import * as argon from 'argon2';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { PrismaErrorCodes, HelperFunctions, ResponseMessages, UserTypes } from 'src/core/utils';
 import { SetPasswordDTO } from './validators/set-password';
+import { SendgridService } from 'src/core/services';
+import { ConfigService } from '@nestjs/config';
 
 
 @Injectable()
 export class AuthService {
-    constructor(private databaseService: DatabaseService, private jwtService: JwtService) {
+    constructor(
+        private databaseService: DatabaseService,
+        private jwtService: JwtService,
+        private sendgridService: SendgridService,
+        private config: ConfigService) {
     }
 
     async signup(body: SignUpDTO) {
@@ -97,7 +103,6 @@ export class AuthService {
     async forgotMyPassword(body: ForgotPasswordDTO) {
 
         try {
-
             // Get if email exist
             let user = await this.databaseService.user.findUniqueOrThrow({
                 where: {
@@ -115,8 +120,13 @@ export class AuthService {
                 }
             })
             // Todo: Send Email
+            const templateData = {
+                name: user.name,
+                reset_link: `${this.config.get('FRONTEND_BASE_URL')} /auth/resetpassword/${code}`
+            }
+            this.sendgridService.sendEmailWithTemplate(user.email, this.config.get('USER_PASSWORD_RESET_TEMPLATE_ID'), templateData);
             // send Response
-            return { code: code, message: ResponseMessages.PASSWORD_RESET_CODE_SENT }
+            return { message: ResponseMessages.PASSWORD_RESET_CODE_SENT }
 
         } catch (error) {
             // Database Exceptions
@@ -131,11 +141,11 @@ export class AuthService {
         }
     }
 
-    async resetMyPassword(body: PasswordResetDTO) {
+    async resetMyPassword(code: number, body: PasswordResetDTO) {
         try {
             let user = await this.databaseService.user.findFirstOrThrow({
                 where: {
-                    passwordResetCode: body.code
+                    passwordResetCode: code
                 }
             });
             let hash = await argon.hash(body.password);

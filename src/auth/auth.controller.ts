@@ -29,9 +29,9 @@ export class AuthController {
   }
 
   @HttpCode(HttpStatus.OK)
-  @Post('/resetpassword')
-  async resetMyPassword(@Body() body: PasswordResetDTO) {
-    return this.authService.resetMyPassword(body)
+  @Post('/resetpassword/:code')
+  async resetMyPassword(@Param('code') code: number, @Body() body: PasswordResetDTO,) {
+    return this.authService.resetMyPassword(code, body)
   }
 
   @HttpCode(HttpStatus.OK)
