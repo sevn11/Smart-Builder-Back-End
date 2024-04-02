@@ -4,6 +4,7 @@ import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { ConfigService, ConfigModule } from '@nestjs/config';
 import { JwtStrategy } from './strategies';
+import { SendgridService } from 'src/core/services';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { JwtStrategy } from './strategies';
       }),
       inject: [ConfigService],
     }),
+    SendgridService
   ],
   providers: [AuthService, ConfigService, JwtStrategy],
   controllers: [AuthController],
