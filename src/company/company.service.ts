@@ -1,11 +1,11 @@
-import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { User } from '@prisma/client';
 import { DatabaseService } from 'src/database/database.service';
-import { AddUserDTO } from './validators';
+import { AddUserDTO, UploadLogoDTO } from './validators';
 import { HelperFunctions, PrismaErrorCodes, ResponseMessages, UserTypes } from 'src/core/utils';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { ConfigService } from '@nestjs/config';
-import { SendgridService } from 'src/core/services';
+import { AWSService, SendgridService } from 'src/core/services';
 
 @Injectable()
 export class CompanyService {
@@ -13,7 +13,8 @@ export class CompanyService {
     constructor(
         private databaseService: DatabaseService,
         private readonly config: ConfigService,
-        private sendgridService: SendgridService
+        private sendgridService: SendgridService,
+        private awsService: AWSService,
     ) {
 
     }
@@ -77,8 +78,41 @@ export class CompanyService {
                 else {
                     console.log(error.code);
                 }
+            } else if (error instanceof ForbiddenException) {
+                throw error;
+            } else {
+                throw new InternalServerErrorException();
             }
-            throw error;
+        }
+    }
+
+    async getUploadLogoSignedUrl(user: User, companyId: number, body: UploadLogoDTO) {
+        try {
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
+                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
+                    throw new ForbiddenException("Action Not Allowed");
+                }
+                let company = await this.databaseService.company.findUnique({
+                    where: {
+                        id: companyId
+                    }
+                });
+                if (!company) {
+                    throw new ForbiddenException("Action Not Allowed");
+                }
+                let key: string = `companies/${companyId}/${body.filename}`;
+                let url = await this.awsService.generateS3PresignedUrl(key, body.contentType);
+                return { url, message: ResponseMessages.SUCCESSFUL };
+
+            } else {
+                throw new ForbiddenException("Action Not Allowed");
+            }
+        } catch (error) {
+            console.log(error)
+            if (error instanceof ForbiddenException) {
+                throw error;
+            }
+            throw new InternalServerErrorException();
         }
     }
 }
