@@ -1,7 +1,7 @@
 import { BadRequestException, ForbiddenException, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { User } from '@prisma/client';
 import { DatabaseService } from 'src/database/database.service';
-import { AddUserDTO, UploadLogoDTO } from './validators';
+import { AddUserDTO, UpdateCompanyDTO, UploadLogoDTO } from './validators';
 import { HelperFunctions, PrismaErrorCodes, ResponseMessages, UserTypes } from 'src/core/utils';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { ConfigService } from '@nestjs/config';
@@ -104,6 +104,42 @@ export class CompanyService {
                 let url = await this.awsService.generateS3PresignedUrl(key, body.contentType);
                 return { url, message: ResponseMessages.SUCCESSFUL };
 
+            } else {
+                throw new ForbiddenException("Action Not Allowed");
+            }
+        } catch (error) {
+            console.log(error)
+            if (error instanceof ForbiddenException) {
+                throw error;
+            }
+            throw new InternalServerErrorException();
+        }
+    }
+
+    async updateCompany(user: User, companyId: number, body: UpdateCompanyDTO) {
+
+        try {
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
+                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
+                    throw new ForbiddenException("Action Not Allowed");
+                }
+                let company = await this.databaseService.company.findUnique({
+                    where: {
+                        id: companyId
+                    }
+                });
+                if (!company) {
+                    throw new ForbiddenException("Action Not Allowed");
+                }
+                company = await this.databaseService.company.update({
+                    where: {
+                        id: companyId
+                    },
+                    data: {
+                        ...body
+                    }
+                });
+                return { company }
             } else {
                 throw new ForbiddenException("Action Not Allowed");
             }

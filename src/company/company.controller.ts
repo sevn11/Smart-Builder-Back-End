@@ -1,9 +1,9 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Patch, Post, UseGuards } from '@nestjs/common';
 import { JwtGuard } from 'src/core/guards';
 import { CompanyService } from './company.service';
 import { GetUser } from 'src/core/decorators';
 import { User } from '@prisma/client';
-import { AddUserDTO, UploadLogoDTO } from './validators';
+import { AddUserDTO, UploadLogoDTO, UpdateCompanyDTO } from './validators';
 
 
 @UseGuards(JwtGuard)
@@ -23,6 +23,13 @@ export class CompanyController {
     @Post(':id/uploadLogo')
     getUploadLogoSignedUrl(@GetUser() user: User, @Param('id', ParseIntPipe) companyId: number, @Body() body: UploadLogoDTO) {
         return this.companyService.getUploadLogoSignedUrl(user, companyId, body);
+    }
+
+    @HttpCode(HttpStatus.OK)
+    @Patch(':id')
+    updateCompany(@GetUser() user: User, @Param('id', ParseIntPipe) companyId: number, @Body() body: UpdateCompanyDTO) {
+        return this.companyService.updateCompany(user, companyId, body);
+
     }
 
 }
