@@ -100,7 +100,7 @@ export class CompanyService {
                 if (!company) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
-                let key: string = `companies/${companyId}/${body.filename}`;
+                let key: string = `companies/${companyId}/logos/${body.filename}`;
                 let url = await this.awsService.generateS3PresignedUrl(key, body.contentType);
                 return { url, message: ResponseMessages.SUCCESSFUL };
 

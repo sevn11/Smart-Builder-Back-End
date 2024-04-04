@@ -6,6 +6,7 @@ import { CompanyModule } from './company/company.module';
 import { DatabaseModule } from './database/database.module';
 import { DevopsModule } from './devops/devops.module';
 import { CoreModule } from './core/core.module';
+import { WebhooksModule } from './webhooks/webhooks.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { CoreModule } from './core/core.module';
     DatabaseModule,
     DevopsModule,
     CoreModule,
+    WebhooksModule,
   ],
 })
 export class AppModule { }

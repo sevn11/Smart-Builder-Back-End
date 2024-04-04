@@ -10,4 +10,5 @@ export class ResponseMessages {
     static PASSWORD_IS_INVALID = 'Password is incorrect. Please enter correct password.'
     static PASSWORD_UPDATED = 'Password changed successfully.'
     static PROFILE_UPDATED = 'Profile updated successfully.'
+    static COMPANY_NOT_FOUND = 'Company not found.'
 }
