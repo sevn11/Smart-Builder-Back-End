@@ -11,4 +11,5 @@ export class ResponseMessages {
     static PASSWORD_UPDATED = 'Password changed successfully.'
     static PROFILE_UPDATED = 'Profile updated successfully.'
     static COMPANY_NOT_FOUND = 'Company not found.'
+    static USER_REMOVED = 'User removed successfully.'
 }
