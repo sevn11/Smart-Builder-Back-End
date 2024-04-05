@@ -26,8 +26,14 @@ export class CompanyController {
 
     @HttpCode(HttpStatus.OK)
     @Get(':id/')
-    getUser(@GetUser() user: User, @Param('id', ParseIntPipe) companyId: number) {
+    getCompanyDetails(@GetUser() user: User, @Param('id', ParseIntPipe) companyId: number) {
         return this.companyService.getCompanyDetails(user, companyId);
+    }
+
+    @HttpCode(HttpStatus.OK)
+    @Get(':id/users')
+    getUserList(@GetUser() user: User, @Param('id', ParseIntPipe) companyId: number) {
+        return this.companyService.getUserList(user, companyId);
     }
 
 

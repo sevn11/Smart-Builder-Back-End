@@ -19,6 +19,40 @@ export class CompanyService {
 
     }
 
+    async getUserList(user: User, companyId: number) {
+        try {
+            if (user.userType == UserTypes.BUILDER || user.userType === UserTypes.ADMIN) {
+                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
+                    throw new ForbiddenException("Action Not Allowed");
+                }
+                let userList = await this.databaseService.user.findMany({
+                    where: {
+                        companyId,
+                    },
+                    include: {
+                        PermissionSet: true
+                    }
+                });
+                return { users: userList }
+            } else {
+                throw new ForbiddenException("Action Not Allowed");
+            }
+        } catch (error) {
+            console.log(error);
+            // Database Exceptions
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code == PrismaErrorCodes.NOT_FOUND)
+                    throw new BadRequestException(ResponseMessages.COMPANY_NOT_FOUND);
+                else {
+                    console.log(error.code);
+                }
+            } else if (error instanceof ForbiddenException) {
+                throw error;
+            }
+            throw new InternalServerErrorException();
+        }
+    }
+
     async addUsers(user: User, companyId: number, body: AddUserDTO) {
         try {
             // Check if User is Admin of the Company.
@@ -156,7 +190,6 @@ export class CompanyService {
             throw new InternalServerErrorException();
         }
     }
-
 
     async getUploadLogoSignedUrl(user: User, companyId: number, body: UploadLogoDTO) {
         try {
