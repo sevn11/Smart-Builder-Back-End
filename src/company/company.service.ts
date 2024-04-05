@@ -86,6 +86,36 @@ export class CompanyService {
         }
     }
 
+
+    async getCompanyDetails(user: User, companyId: number) {
+        try {
+            if (user.companyId === companyId || user.userType === UserTypes.ADMIN) {
+                let company = await this.databaseService.company.findUniqueOrThrow({
+                    where: {
+                        id: companyId
+                    }
+                });
+                return { company }
+            } else {
+                throw new ForbiddenException("Action Not Allowed");
+            }
+        } catch (error) {
+            console.log(error);
+            // Database Exceptions
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code == PrismaErrorCodes.NOT_FOUND)
+                    throw new BadRequestException(ResponseMessages.UNIQUE_EMAIL_ERROR);
+                else {
+                    console.log(error.code);
+                }
+            } else if (error instanceof ForbiddenException) {
+                throw error;
+            }
+            throw new InternalServerErrorException();
+        }
+    }
+
+
     async getUploadLogoSignedUrl(user: User, companyId: number, body: UploadLogoDTO) {
         try {
             if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {

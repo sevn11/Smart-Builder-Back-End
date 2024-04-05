@@ -20,6 +20,13 @@ export class CompanyController {
     }
 
     @HttpCode(HttpStatus.OK)
+    @Get(':id/')
+    getUser(@GetUser() user: User, @Param('id', ParseIntPipe) companyId: number) {
+        return this.companyService.getCompanyDetails(user, companyId);
+    }
+
+
+    @HttpCode(HttpStatus.OK)
     @Post(':id/uploadLogo')
     getUploadLogoSignedUrl(@GetUser() user: User, @Param('id', ParseIntPipe) companyId: number, @Body() body: UploadLogoDTO) {
         return this.companyService.getUploadLogoSignedUrl(user, companyId, body);
