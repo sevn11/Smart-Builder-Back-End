@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Patch, Post, UseGuards } from '@nestjs/common';
 import { JwtGuard } from 'src/core/guards';
 import { CompanyService } from './company.service';
 import { GetUser } from 'src/core/decorators';
@@ -17,6 +17,11 @@ export class CompanyController {
     @Post(':id/users')
     addUsers(@GetUser() user: User, @Param('id', ParseIntPipe) companyId: number, @Body() body: AddUserDTO) {
         return this.companyService.addUsers(user, companyId, body);
+    }
+
+    @Delete(':id/users/:userId')
+    removeUser(@GetUser() user: User, @Param('id', ParseIntPipe) companyId: number, @Param('userId', ParseIntPipe) userId: number) {
+        return this.companyService.removeUser(user, companyId, userId)
     }
 
     @HttpCode(HttpStatus.OK)

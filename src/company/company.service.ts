@@ -86,6 +86,48 @@ export class CompanyService {
         }
     }
 
+    async removeUser(user: User, companyId: number, userId: number) {
+        try {
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
+                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
+                    throw new ForbiddenException("Action Not Allowed");
+                }
+
+                let employee = await this.databaseService.user.findUniqueOrThrow({
+                    where: {
+                        id: userId
+                    }
+                });
+                if (employee.companyId !== user.companyId) {
+                    throw new ForbiddenException("Action Not Allowed");
+                }
+                await this.databaseService.user.delete({
+                    where: {
+                        id: userId
+                    }
+                })
+                return { "message": ResponseMessages.USER_REMOVED }
+
+            } else {
+                throw new ForbiddenException("Action Not Allowed");
+            }
+
+
+        } catch (error) {
+            console.log(error);
+            // Database Exceptions
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code == PrismaErrorCodes.NOT_FOUND)
+                    throw new BadRequestException(ResponseMessages.USER_NOT_FOUND);
+                else {
+                    console.log(error.code);
+                }
+            } else if (error instanceof ForbiddenException) {
+                throw error;
+            }
+            throw new InternalServerErrorException();
+        }
+    }
 
     async getCompanyDetails(user: User, companyId: number) {
         try {
@@ -104,7 +146,7 @@ export class CompanyService {
             // Database Exceptions
             if (error instanceof PrismaClientKnownRequestError) {
                 if (error.code == PrismaErrorCodes.NOT_FOUND)
-                    throw new BadRequestException(ResponseMessages.UNIQUE_EMAIL_ERROR);
+                    throw new BadRequestException(ResponseMessages.COMPANY_NOT_FOUND);
                 else {
                     console.log(error.code);
                 }

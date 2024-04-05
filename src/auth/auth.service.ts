@@ -168,13 +168,11 @@ export class AuthService {
 
     async completeUserProfile(token: string, body: SetPasswordDTO) {
         try {
-            console.log(token)
             let user = await this.databaseService.user.findFirstOrThrow({
                 where: {
                     invitationToken: token
                 }
             });
-            console.log(user);
             let hash = await argon.hash(body.password);
             await this.databaseService.user.update({
                 where: {
