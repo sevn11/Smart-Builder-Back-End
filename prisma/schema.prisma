@@ -70,18 +70,20 @@ model Customer {
   name           String
   address        String?
   telephone      String?
-  mobileNumber1  String   @map("mobile_number_1")
-  mobileNumber2  String   @map("mobile_number_2")
-  emailAddress1  String   @map("email_address_1")
-  emailAddress2  String   @map("email_address_2")
-  employer1      String   @map("employer_1")
-  employer2      String   @map("employer_2")
-  workTelephone1 String   @map("work_telephone_1")
-  workTelephone2 String   @map("work_telephone_2")
+  mobileNumber1  String?   @map("mobile_number_1")
+  mobileNumber2  String?   @map("mobile_number_2")
+  emailAddress1  String?   @map("email_address_1")
+  emailAddress2  String?   @map("email_address_2")
+  employer1      String?   @map("employer_1")
+  employer2      String?   @map("employer_2")
+  workTelephone1 String?   @map("work_telephone_1")
+  workTelephone2 String?   @map("work_telephone_2")
   isDeleted      Boolean  @map("is_deleted")
-  companyId      Int?     @map("company_id")
-  company        Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId      Int     @map("company_id")
+  company        Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("customers")
 }
