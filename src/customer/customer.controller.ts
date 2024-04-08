@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Post, UseGuards } from '@nestjs/common';
 import { CustomerService } from './customer.service';
 import { JwtGuard } from 'src/core/guards';
 import { GetUser } from 'src/core/decorators';
@@ -33,6 +33,10 @@ export class CustomerController {
         return this.customerService.getCustomerDetails(user, companyId, customerId);
     }
 
-
+    @Delete(':customerId')
+    @HttpCode(HttpStatus.OK)
+    deleteCustomer(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number, @Param('customerId', ParseIntPipe) customerId: number) {
+        return this.customerService.deleteCustomer(user, companyId, customerId);
+    }
 
 }

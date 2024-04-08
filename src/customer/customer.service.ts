@@ -20,7 +20,8 @@ export class CustomerService {
                 }
                 let customers = await this.databaseService.customer.findMany({
                     where: {
-                        companyId
+                        companyId,
+                        isDeleted: false
                     }
                 });
                 return { customers }
@@ -55,6 +56,7 @@ export class CustomerService {
                     where: {
                         id: customerId,
                         companyId,
+                        isDeleted: false
                     }
                 });
                 return { customer }
@@ -95,6 +97,51 @@ export class CustomerService {
             } else {
                 throw new ForbiddenException("Action Not Allowed");
             }
+        } catch (error) {
+            console.log(error);
+            // Database Exceptions
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code == PrismaErrorCodes.NOT_FOUND)
+                    throw new BadRequestException(ResponseMessages.USER_NOT_FOUND);
+                else {
+                    console.log(error.code);
+                }
+            } else if (error instanceof ForbiddenException) {
+                throw error;
+            }
+            throw new InternalServerErrorException();
+        }
+    }
+
+    async deleteCustomer(user: User, companyId: number, customerId: number) {
+        try {
+            // Check if User is Admin of the Company.
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
+                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
+                    throw new ForbiddenException("Action Not Allowed");
+                }
+                let customer = await this.databaseService.customer.findFirstOrThrow({
+                    where: {
+                        id: customerId,
+                        companyId,
+                        isDeleted: false
+                    }
+                });
+                await this.databaseService.customer.update({
+                    where: {
+                        id: customerId,
+                        companyId,
+                    },
+                    data: {
+                        isDeleted: true
+                    }
+
+                })
+                return { message: ResponseMessages.SUCCESSFUL }
+            } else {
+                throw new ForbiddenException("Action Not Allowed");
+            }
+
         } catch (error) {
             console.log(error);
             // Database Exceptions
