@@ -1,7 +1,7 @@
 import { BadRequestException, ForbiddenException, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { User } from '@prisma/client';
 import { DatabaseService } from 'src/database/database.service';
-import { AddUserDTO, UpdateCompanyDTO, UploadLogoDTO } from './validators';
+import { AddUserDTO, UpdateCompanyDTO, UpdateUserDTO, UploadLogoDTO } from './validators';
 import { HelperFunctions, PrismaErrorCodes, ResponseMessages, UserTypes } from 'src/core/utils';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { ConfigService } from '@nestjs/config';
@@ -43,6 +43,50 @@ export class CompanyService {
             if (error instanceof PrismaClientKnownRequestError) {
                 if (error.code == PrismaErrorCodes.NOT_FOUND)
                     throw new BadRequestException(ResponseMessages.COMPANY_NOT_FOUND);
+                else {
+                    console.log(error.code);
+                }
+            } else if (error instanceof ForbiddenException) {
+                throw error;
+            }
+            throw new InternalServerErrorException();
+        }
+    }
+
+    async updateUser(user: User, companyId: number, userId: number, body: UpdateUserDTO) {
+        try {
+            // Check if User is Admin of the Company.
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
+                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
+                    throw new ForbiddenException("Action Not Allowed");
+                }
+
+                let employee = await this.databaseService.user.findFirstOrThrow({
+                    where: {
+                        id: userId,
+                        companyId: companyId
+                    }
+                });
+                await this.databaseService.user.update({
+                    where: {
+                        id: userId,
+                        companyId: companyId
+                    },
+                    data: {
+                        name: body.name
+                    }
+                });
+                return { message: ResponseMessages.SUCCESSFUL }
+            } else {
+                throw new ForbiddenException("Action Not Allowed");
+            }
+
+        } catch (error) {
+            console.log(error);
+            // Database Exceptions
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code == PrismaErrorCodes.NOT_FOUND)
+                    throw new BadRequestException(ResponseMessages.USER_NOT_FOUND);
                 else {
                     console.log(error.code);
                 }
@@ -127,14 +171,12 @@ export class CompanyService {
                     throw new ForbiddenException("Action Not Allowed");
                 }
 
-                let employee = await this.databaseService.user.findUniqueOrThrow({
+                let employee = await this.databaseService.user.findFirstOrThrow({
                     where: {
-                        id: userId
+                        id: userId,
+                        companyId: companyId
                     }
                 });
-                if (employee.companyId !== user.companyId) {
-                    throw new ForbiddenException("Action Not Allowed");
-                }
                 await this.databaseService.user.delete({
                     where: {
                         id: userId

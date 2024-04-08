@@ -3,7 +3,7 @@ import { JwtGuard } from 'src/core/guards';
 import { CompanyService } from './company.service';
 import { GetUser } from 'src/core/decorators';
 import { User } from '@prisma/client';
-import { AddUserDTO, UploadLogoDTO, UpdateCompanyDTO } from './validators';
+import { AddUserDTO, UploadLogoDTO, UpdateCompanyDTO, UpdateUserDTO } from './validators';
 
 
 @UseGuards(JwtGuard)
@@ -22,6 +22,11 @@ export class CompanyController {
     @Delete(':id/users/:userId')
     removeUser(@GetUser() user: User, @Param('id', ParseIntPipe) companyId: number, @Param('userId', ParseIntPipe) userId: number) {
         return this.companyService.removeUser(user, companyId, userId)
+    }
+
+    @Patch(':id/users/:userId')
+    updateUser(@GetUser() user: User, @Param('id', ParseIntPipe) companyId: number, @Param('userId', ParseIntPipe) userId: number, @Body() body: UpdateUserDTO) {
+        return this.companyService.updateUser(user, companyId, userId, body)
     }
 
     @HttpCode(HttpStatus.OK)
