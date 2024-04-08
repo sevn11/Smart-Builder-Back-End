@@ -1,8 +1,9 @@
-import { Controller, Get, HttpCode, HttpStatus, Param, ParseIntPipe, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Post, UseGuards } from '@nestjs/common';
 import { CustomerService } from './customer.service';
 import { JwtGuard } from 'src/core/guards';
 import { GetUser } from 'src/core/decorators';
 import { User } from '@prisma/client';
+import { AddCustomerDTO } from './validators';
 
 
 @UseGuards(JwtGuard)
@@ -17,6 +18,12 @@ export class CustomerController {
     @HttpCode(HttpStatus.OK)
     getCustomerList(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number) {
         return this.customerService.getCustomerList(user, companyId);
+    }
+
+
+    @Post()
+    createCustomer(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number, @Body() body: AddCustomerDTO) {
+        return this.customerService.createCustomer(user, companyId, body);
     }
 
 

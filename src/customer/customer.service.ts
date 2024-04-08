@@ -3,6 +3,7 @@ import { User } from '@prisma/client';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { PrismaErrorCodes, ResponseMessages, UserTypes } from 'src/core/utils';
 import { DatabaseService } from 'src/database/database.service';
+import { AddCustomerDTO } from './validators';
 
 @Injectable()
 export class CustomerService {
@@ -61,6 +62,39 @@ export class CustomerService {
                 throw new ForbiddenException("Action Not Allowed");
             }
 
+        } catch (error) {
+            console.log(error);
+            // Database Exceptions
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code == PrismaErrorCodes.NOT_FOUND)
+                    throw new BadRequestException(ResponseMessages.USER_NOT_FOUND);
+                else {
+                    console.log(error.code);
+                }
+            } else if (error instanceof ForbiddenException) {
+                throw error;
+            }
+            throw new InternalServerErrorException();
+        }
+    }
+
+    async createCustomer(user: User, companyId: number, body: AddCustomerDTO) {
+        try {
+            // Check if User is Admin of the Company.
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
+                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
+                    throw new ForbiddenException("Action Not Allowed");
+                }
+                let customer = await this.databaseService.customer.create({
+                    data: {
+                        companyId,
+                        ...body,
+                    }
+                });
+                return { customer }
+            } else {
+                throw new ForbiddenException("Action Not Allowed");
+            }
         } catch (error) {
             console.log(error);
             // Database Exceptions

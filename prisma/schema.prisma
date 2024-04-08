@@ -66,7 +66,7 @@ model PermissionSet {
 }
 
 model Customer {
-  id             Int      @id @default(autoincrement())
+  id             Int       @id @default(autoincrement())
   name           String
   address        String?
   telephone      String?
@@ -78,9 +78,10 @@ model Customer {
   employer2      String?   @map("employer_2")
   workTelephone1 String?   @map("work_telephone_1")
   workTelephone2 String?   @map("work_telephone_2")
-  isDeleted      Boolean  @map("is_deleted")
-  companyId      Int     @map("company_id")
-  company        Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  isDeleted      Boolean?  @default(false) @map("is_deleted")
+  meetDate       DateTime? @default(now()) @map("meet_date")
+  companyId      Int       @map("company_id")
+  company        Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
