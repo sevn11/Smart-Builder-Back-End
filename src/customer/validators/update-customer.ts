@@ -1,17 +1,19 @@
-import { IsDateString, IsEmail, IsMobilePhone, IsNotEmpty, IsOptional, IsPhoneNumber, IsString } from "class-validator";
+import { IsDateString, IsEmail, IsMobilePhone, IsNotEmpty, IsOptional, IsPhoneNumber, IsString } from "class-validator"
 
-export class AddCustomerDTO {
-
+export class UpdateCustomerDTO {
     @IsString()
+    @IsOptional()
     @IsNotEmpty()
     name: string
 
     @IsString()
+    @IsNotEmpty()
     @IsOptional()
     address: string
 
 
     @IsString()
+    @IsNotEmpty()
     @IsOptional()
     telephone: string
 
@@ -40,20 +42,24 @@ export class AddCustomerDTO {
 
 
     @IsString()
+    @IsNotEmpty()
     @IsOptional()
     employer1: string
 
 
     @IsString()
+    @IsNotEmpty()
     @IsOptional()
     employer2: string
 
 
     @IsString()
+    @IsNotEmpty()
     @IsOptional()
     workTelephone1: string
 
     @IsString()
+    @IsNotEmpty()
     @IsOptional()
     workTelephone2: string
 

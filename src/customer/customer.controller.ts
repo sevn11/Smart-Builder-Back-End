@@ -1,9 +1,9 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Patch, Post, UseGuards } from '@nestjs/common';
 import { CustomerService } from './customer.service';
 import { JwtGuard } from 'src/core/guards';
 import { GetUser } from 'src/core/decorators';
 import { User } from '@prisma/client';
-import { AddCustomerDTO } from './validators';
+import { AddCustomerDTO, UpdateCustomerDTO } from './validators';
 
 
 @UseGuards(JwtGuard)
@@ -31,6 +31,12 @@ export class CustomerController {
     @HttpCode(HttpStatus.OK)
     getCustomerDetails(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number, @Param('customerId', ParseIntPipe) customerId: number) {
         return this.customerService.getCustomerDetails(user, companyId, customerId);
+    }
+
+    @Patch(':customerId')
+    @HttpCode(HttpStatus.OK)
+    updateCustomerDetails(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number, @Param('customerId', ParseIntPipe) customerId: number, @Body() body: UpdateCustomerDTO) {
+        return this.customerService.updateCustomerDetails(user, companyId, customerId, body);
     }
 
     @Delete(':customerId')
