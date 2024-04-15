@@ -3,7 +3,7 @@ import { CustomerService } from './customer.service';
 import { JwtGuard } from 'src/core/guards';
 import { GetUser } from 'src/core/decorators';
 import { User } from '@prisma/client';
-import { AddCustomerDTO, UpdateCustomerDTO } from './validators';
+import { AddCustomerDTO, SearchCustomerDTO, UpdateCustomerDTO } from './validators';
 
 
 @UseGuards(JwtGuard)
@@ -27,19 +27,26 @@ export class CustomerController {
     }
 
 
-    @Get(':customerId')
+    @Post('/search')
+    search(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number, @Body() body: SearchCustomerDTO) {
+        return this.customerService.search(user, companyId, body);
+    }
+
+
+
+    @Get('/:customerId')
     @HttpCode(HttpStatus.OK)
     getCustomerDetails(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number, @Param('customerId', ParseIntPipe) customerId: number) {
         return this.customerService.getCustomerDetails(user, companyId, customerId);
     }
 
-    @Patch(':customerId')
+    @Patch('/:customerId')
     @HttpCode(HttpStatus.OK)
     updateCustomerDetails(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number, @Param('customerId', ParseIntPipe) customerId: number, @Body() body: UpdateCustomerDTO) {
         return this.customerService.updateCustomerDetails(user, companyId, customerId, body);
     }
 
-    @Delete(':customerId')
+    @Delete('/:customerId')
     @HttpCode(HttpStatus.OK)
     deleteCustomer(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number, @Param('customerId', ParseIntPipe) customerId: number) {
         return this.customerService.deleteCustomer(user, companyId, customerId);

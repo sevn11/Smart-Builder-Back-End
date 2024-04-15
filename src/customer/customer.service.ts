@@ -3,7 +3,7 @@ import { User } from '@prisma/client';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { PrismaErrorCodes, ResponseMessages, UserTypes } from 'src/core/utils';
 import { DatabaseService } from 'src/database/database.service';
-import { AddCustomerDTO, UpdateCustomerDTO } from './validators';
+import { AddCustomerDTO, SearchCustomerDTO, UpdateCustomerDTO } from './validators';
 
 @Injectable()
 export class CustomerService {
@@ -94,6 +94,43 @@ export class CustomerService {
                     }
                 });
                 return { customer }
+            } else {
+                throw new ForbiddenException("Action Not Allowed");
+            }
+        } catch (error) {
+            console.log(error);
+            // Database Exceptions
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code == PrismaErrorCodes.NOT_FOUND)
+                    throw new BadRequestException(ResponseMessages.USER_NOT_FOUND);
+                else {
+                    console.log(error.code);
+                }
+            } else if (error instanceof ForbiddenException) {
+                throw error;
+            }
+            throw new InternalServerErrorException();
+        }
+    }
+
+    async search(user: User, companyId: number, body: SearchCustomerDTO) {
+        try {
+            // Check if User is Admin of the Company.
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
+                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
+                    throw new ForbiddenException("Action Not Allowed");
+                }
+                let customers = await this.databaseService.customer.findMany({
+                    where: {
+                        companyId,
+                        name: {
+                            contains: body.name,
+                            mode: 'insensitive'
+                        },
+                        isDeleted: false
+                    }
+                });
+                return { customers }
             } else {
                 throw new ForbiddenException("Action Not Allowed");
             }
