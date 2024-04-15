@@ -8,6 +8,7 @@ import { DevopsModule } from './devops/devops.module';
 import { CoreModule } from './core/core.module';
 import { WebhooksModule } from './webhooks/webhooks.module';
 import { CustomerModule } from './customer/customer.module';
+import { JobsModule } from './jobs/jobs.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { CustomerModule } from './customer/customer.module';
     CoreModule,
     WebhooksModule,
     CustomerModule,
+    JobsModule,
   ],
 })
 export class AppModule { }
