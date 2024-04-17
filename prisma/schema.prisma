@@ -32,17 +32,19 @@ model User {
 }
 
 model Company {
-  id          Int        @id @default(autoincrement())
-  name        String?
-  address     String?
-  contact     String?
-  phoneNumber String?    @map("phone_number")
-  email       String?
-  website     String?
-  logo        String?
-  users       User[]
-  customers   Customer[]
-  jobs        Job[]
+  id                     Int                     @id @default(autoincrement())
+  name                   String?
+  address                String?
+  contact                String?
+  phoneNumber            String?                 @map("phone_number")
+  email                  String?
+  website                String?
+  logo                   String?
+  users                  User[]
+  customers              Customer[]
+  jobs                   Job[]
+  categories             Category[]
+  questionnaireTemplates QuestionnaireTemplate[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -83,7 +85,7 @@ model Customer {
   meetDate       DateTime? @default(now()) @map("meet_date")
   companyId      Int       @map("company_id")
   company        Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  jobs Job[]
+  jobs           Job[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -99,8 +101,8 @@ model Job {
   lotBudget   String? @map("lot_budget")
   totalBudget String? @map("total_budget")
   financing   String?
-  timeFrame   String?  @map("time_frame")
-  aboutUs     String?  @map("about_us")
+  timeFrame   String? @map("time_frame")
+  aboutUs     String? @map("about_us")
 
   isClosed           Boolean @map("is_closed")
   isDeleted          Boolean @map("is_deleted")
@@ -109,11 +111,11 @@ model Job {
   isElectricityAtLot Boolean @map("is_electricity_at_lot")
   isSewerAtLot       Boolean @map("is_sewer_at_lot")
 
-  companyId      Int       @map("company_id")
-  company        Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId Int     @map("company_id")
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
-  customerId      Int       @map("customer_id")
-  customer        Customer   @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  customerId Int      @map("customer_id")
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
 
   startDate DateTime? @map("start_date")
   endDate   DateTime? @map("end_date")
@@ -122,4 +124,30 @@ model Job {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("jobs")
+}
+
+model Category {
+  id        Int      @id @default(autoincrement())
+  name      String
+  isDeleted Boolean  @map("is_deleted")
+  companyId Int?     @map("company_id")
+  company   Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("categories")
+}
+
+model QuestionnaireTemplate {
+  id        Int      @id @default(autoincrement())
+  name      String
+  isDeleted Boolean  @map("is_deleted")
+  companyId Int?     @map("company_id")
+  company   Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("questionnaire_template")
 }
