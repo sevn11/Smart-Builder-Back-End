@@ -8,6 +8,7 @@ async function bootstrap() {
   app.useGlobalPipes(new ValidationPipe({
     whitelist: true
   }));
+  app.enableCors();
   const configService = app.get(ConfigService)
   await app.listen(configService.get('PORT') || 3000);
 }

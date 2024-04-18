@@ -125,7 +125,7 @@ export class AuthService {
                 reset_link: `${this.config.get('FRONTEND_BASEURL')} /auth/resetpassword/${code}`
             }
             this.sendgridService.sendEmailWithTemplate(user.email, this.config.get('USER_PASSWORD_RESET_TEMPLATE_ID'), templateData);
-            // send Response
+            // send Responsea
             return { message: ResponseMessages.PASSWORD_RESET_CODE_SENT }
 
         } catch (error) {
