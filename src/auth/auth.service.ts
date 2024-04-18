@@ -122,7 +122,7 @@ export class AuthService {
             // Todo: Send Email
             const templateData = {
                 name: user.name,
-                reset_link: `${this.config.get('FRONTEND_BASEURL')} /auth/resetpassword/${code}`
+                reset_link: `${this.config.get('FRONTEND_BASEURL')}/auth/reset-password?code=${code}`
             }
             this.sendgridService.sendEmailWithTemplate(user.email, this.config.get('USER_PASSWORD_RESET_TEMPLATE_ID'), templateData);
             // send Responsea
@@ -143,6 +143,7 @@ export class AuthService {
 
     async resetMyPassword(code: number, body: PasswordResetDTO) {
         try {
+            console.log(code);
             let user = await this.databaseService.user.findFirstOrThrow({
                 where: {
                     passwordResetCode: code

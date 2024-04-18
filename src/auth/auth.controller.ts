@@ -1,4 +1,4 @@
-import { Body, Controller, HttpCode, HttpStatus, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, HttpCode, HttpStatus, Param, ParseIntPipe, Patch, Post } from '@nestjs/common';
 import { SignUpDTO, SignInDTO, ForgotPasswordDTO, PasswordResetDTO } from './validators';
 import { AuthService } from './auth.service';
 import { SetPasswordDTO } from './validators/set-password';
@@ -30,7 +30,7 @@ export class AuthController {
 
   @HttpCode(HttpStatus.OK)
   @Post('/resetpassword/:code')
-  async resetMyPassword(@Param('code') code: number, @Body() body: PasswordResetDTO,) {
+  async resetMyPassword(@Param('code', ParseIntPipe) code: number, @Body() body: PasswordResetDTO,) {
     return this.authService.resetMyPassword(code, body)
   }
 
