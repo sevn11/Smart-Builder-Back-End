@@ -27,7 +27,7 @@ export class AuthService {
                     hash,
                     name: body.name,
                     userType: UserTypes.BUILDER,
-                    tosAcceptanceTime: Date(),
+                    tosAcceptanceTime: new Date().toISOString(),
                     isTosAccepted: true,
                     tosVersion: HelperFunctions.getTosVersion(),
                     company: {

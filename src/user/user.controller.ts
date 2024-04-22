@@ -29,4 +29,10 @@ export class UserController {
     updateMyProfile(@GetUser() user: User, @Body() body: UpdateMyProfileDTO) {
         return this.userService.updateMyProfile(user, body)
     }
+
+    @HttpCode(HttpStatus.OK)
+    @Get('/me/tos')
+    tos(@GetUser() user: User) {
+        return this.userService.tos(user);
+    }
 }

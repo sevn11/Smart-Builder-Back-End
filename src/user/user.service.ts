@@ -3,7 +3,7 @@ import { User } from '@prisma/client';
 import * as argon from 'argon2';
 import { DatabaseService } from 'src/database/database.service';
 import { ChangePasswordDTO, UpdateMyProfileDTO } from './validators';
-import { ResponseMessages } from 'src/core/utils';
+import { HelperFunctions, ResponseMessages } from 'src/core/utils';
 
 @Injectable()
 export class UserService {
@@ -70,6 +70,25 @@ export class UserService {
         } catch (error) {
             console.log(error);
             throw new InternalServerErrorException();
+        }
+    }
+
+    async tos(user: User) {
+        try {
+            await this.databaseService.user.update({
+                where: {
+                    id: user.id
+                },
+                data: {
+                    isTosAccepted: true,
+                    tosAcceptanceTime: new Date().toISOString(),
+                    tosVersion: HelperFunctions.getTosVersion()
+                }
+            });
+            return { message: ResponseMessages.SUCCESSFUL };
+        } catch (error) {
+            console.log(error);
+            throw new InternalServerErrorException()
         }
     }
 }
