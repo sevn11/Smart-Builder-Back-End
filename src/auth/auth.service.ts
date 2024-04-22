@@ -1,11 +1,10 @@
 import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { DatabaseService } from 'src/database/database.service';
-import { SignUpDTO, SignInDTO, ForgotPasswordDTO, PasswordResetDTO } from './validators';
+import { SignUpDTO, SignInDTO, ForgotPasswordDTO, PasswordResetDTO, SetPasswordDTO } from './validators';
 import * as argon from 'argon2';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { PrismaErrorCodes, HelperFunctions, ResponseMessages, UserTypes } from 'src/core/utils';
-import { SetPasswordDTO } from './validators/set-password';
 import { SendgridService } from 'src/core/services';
 import { ConfigService } from '@nestjs/config';
 
@@ -28,6 +27,9 @@ export class AuthService {
                     hash,
                     name: body.name,
                     userType: UserTypes.BUILDER,
+                    tosAcceptanceTime: Date(),
+                    isTosAccepted: true,
+                    tosVersion: HelperFunctions.getTosVersion(),
                     company: {
                         create: {
                             name: body.companyName

@@ -16,4 +16,8 @@ export class HelperFunctions {
         return result;
     }
 
+    static getTosVersion(): string {
+        return 'v1'
+    }
+
 }

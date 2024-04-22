@@ -19,6 +19,9 @@ model User {
   hash      String?
   name      String?
   userType  String   @map("user_type")
+  isTosAccepted          Boolean                 @default(false) @map("is_tos_accepted")
+  tosAcceptanceTime      DateTime                @default(now()) @map("tos_acceptance_time")
+  tosVersion             String?                 @default("v1")@map("tos_version")
   companyId Int?     @map("company_id")
   company   Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
