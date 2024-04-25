@@ -14,16 +14,16 @@ datasource db {
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  hash      String?
-  name      String?
-  userType  String   @map("user_type")
-  isTosAccepted          Boolean                 @default(false) @map("is_tos_accepted")
-  tosAcceptanceTime      DateTime                @default(now()) @map("tos_acceptance_time")
-  tosVersion             String?                 @default("v1")@map("tos_version")
-  companyId Int?     @map("company_id")
-  company   Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  id                Int      @id @default(autoincrement())
+  email             String   @unique
+  hash              String?
+  name              String?
+  userType          String   @map("user_type")
+  isTosAccepted     Boolean  @default(false) @map("is_tos_accepted")
+  tosAcceptanceTime DateTime @default(now()) @map("tos_acceptance_time")
+  tosVersion        String?  @default("v1") @map("tos_version")
+  companyId         Int?     @map("company_id")
+  company           Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   createdAt         DateTime       @default(now()) @map("created_at")
   updatedAt         DateTime       @updatedAt @map("updated_at")
@@ -43,6 +43,7 @@ model Company {
   email                  String?
   website                String?
   logo                   String?
+  saleTaxRate            Int?                    @map("sale_tax_rate")
   users                  User[]
   customers              Customer[]
   jobs                   Job[]
