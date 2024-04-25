@@ -23,7 +23,7 @@ export class AuthService {
             const hash = await argon.hash(body.password);
             const user = await this.databaseService.user.create({
                 data: {
-                    email: body.email,
+                    email: body.email.toLowerCase(),
                     hash,
                     name: body.name,
                     userType: UserTypes.BUILDER,
@@ -70,7 +70,7 @@ export class AuthService {
         try {
             const user = await this.databaseService.user.findUniqueOrThrow({
                 where: {
-                    email: body.email
+                    email: body.email.toLowerCase()
                 },
                 include: {
                     company: true,
@@ -108,7 +108,7 @@ export class AuthService {
             // Get if email exist
             let user = await this.databaseService.user.findUniqueOrThrow({
                 where: {
-                    email: body.email
+                    email: body.email.toLowerCase()
                 }
             });
             // Generate Code

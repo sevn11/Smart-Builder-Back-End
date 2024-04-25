@@ -116,7 +116,7 @@ export class CompanyService {
                 const invitationToken = HelperFunctions.generateRandomString(16);
                 const employee = await this.databaseService.user.create({
                     data: {
-                        email: body.email,
+                        email: body.email.toLowerCase(),
                         name: body.name,
                         userType: UserTypes.EMPLOYEE,
                         companyId: companyId,
