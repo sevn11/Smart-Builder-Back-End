@@ -24,11 +24,10 @@ export class AWSService {
         let putObjectParams: PutObjectCommandInput = {
             Bucket: this.config.get('ASSET_BUCKET'),
             Key: key,
-            Expires: expiry,
             ContentType: contentType
         }
         const command = new PutObjectCommand(putObjectParams);
-        return getSignedUrl(this.s3client, command, { expiresIn: 3600 });
+        return getSignedUrl(this.s3client, command);
     }
 
 }
