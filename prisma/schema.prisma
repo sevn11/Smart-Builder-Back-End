@@ -62,6 +62,7 @@ model PermissionSet {
   user           User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   fullAccess     Boolean @default(false) @map("full_access")
   specifications Boolean @default(false)
+  questionnaire  Boolean @default(false)
   selection      Boolean @default(false)
   schedule       Boolean @default(false)
   view_only      Boolean @default(true)

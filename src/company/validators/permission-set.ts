@@ -13,6 +13,10 @@ export class PermissionSetDTO {
 
     @IsBoolean()
     @IsNotEmpty()
+    questionnaire: boolean
+
+    @IsBoolean()
+    @IsNotEmpty()
     selection: boolean
 
     @IsBoolean()
