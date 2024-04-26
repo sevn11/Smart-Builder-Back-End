@@ -43,7 +43,7 @@ model Company {
   email                  String?
   website                String?
   logo                   String?
-  saleTaxRate            Int?                    @map("sale_tax_rate")
+  saleTaxRate            Float?                @map("sale_tax_rate")
   users                  User[]
   customers              Customer[]
   jobs                   Job[]
