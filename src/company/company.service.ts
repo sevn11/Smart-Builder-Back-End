@@ -123,11 +123,11 @@ export class CompanyService {
                         invitationToken, // Generate Invitation Token
                         PermissionSet: {
                             create: {
-                                fullAccess: body.permissionSet.fullaccess,
+                                fullAccess: body.permissionSet.fullAccess,
                                 specifications: body.permissionSet.specifications,
                                 schedule: body.permissionSet.schedule,
                                 selection: body.permissionSet.selection,
-                                view_only: body.permissionSet.view_only
+                                viewOnly: body.permissionSet.viewOnly
                             }
                         }
                     },

@@ -5,7 +5,7 @@ export class PermissionSetDTO {
 
     @IsBoolean()
     @IsNotEmpty()
-    fullaccess: boolean
+    fullAccess: boolean
 
     @IsBoolean()
     @IsNotEmpty()
@@ -25,6 +25,6 @@ export class PermissionSetDTO {
 
     @IsBoolean()
     @IsNotEmpty()
-    view_only: boolean
+    viewOnly: boolean
 
 }

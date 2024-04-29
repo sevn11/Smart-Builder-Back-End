@@ -43,7 +43,7 @@ model Company {
   email                  String?
   website                String?
   logo                   String?
-  saleTaxRate            Float?                @map("sale_tax_rate")
+  saleTaxRate            Float?                  @map("sale_tax_rate")
   users                  User[]
   customers              Customer[]
   jobs                   Job[]
@@ -65,7 +65,7 @@ model PermissionSet {
   questionnaire  Boolean @default(false)
   selection      Boolean @default(false)
   schedule       Boolean @default(false)
-  view_only      Boolean @default(true)
+  viewOnly       Boolean @default(true) @map("view_only")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

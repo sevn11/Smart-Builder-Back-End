@@ -38,7 +38,7 @@ export class AuthService {
                     PermissionSet: {
                         create: {
                             fullAccess: true,
-                            view_only: false
+                            viewOnly: false
                         }
                     }
                 },
