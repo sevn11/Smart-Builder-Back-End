@@ -42,12 +42,20 @@ export class AuthService {
                         }
                     }
                 },
+                omit: {
+                    hash: true,
+                    invitationToken: true,
+                    passwordResetCode: true
+                },
                 include: {
                     company: true,
-                    PermissionSet: true
+                    PermissionSet: {
+                        omit: {
+                            userId: true
+                        }
+                    }
                 }
             });
-            delete user.hash;
             const payload = { sub: user.id, email: user.email, companyId: user.company.id };
             const access_token = await this.jwtService.signAsync(payload);
             return { user, access_token };
@@ -72,9 +80,17 @@ export class AuthService {
                 where: {
                     email: body.email.toLowerCase()
                 },
+                omit: {
+                    invitationToken: true,
+                    passwordResetCode: true
+                },
                 include: {
                     company: true,
-                    PermissionSet: true
+                    PermissionSet: {
+                        omit: {
+                            userId: true
+                        }
+                    }
                 }
             })
             if (await argon.verify(user.hash, body.password)) {
@@ -145,7 +161,6 @@ export class AuthService {
 
     async resetMyPassword(code: number, body: PasswordResetDTO) {
         try {
-            console.log(code);
             let user = await this.databaseService.user.findFirstOrThrow({
                 where: {
                     passwordResetCode: code
@@ -174,19 +189,39 @@ export class AuthService {
             let user = await this.databaseService.user.findFirstOrThrow({
                 where: {
                     invitationToken: token
-                }
+                },
+                omit: {
+                    hash: true,
+                    invitationToken: true,
+                    passwordResetCode: true
+                },
             });
             let hash = await argon.hash(body.password);
-            await this.databaseService.user.update({
+            let updatedUser = await this.databaseService.user.update({
                 where: {
                     id: user.id
                 },
                 data: {
                     hash: hash,
                     invitationToken: null
+                },
+                omit: {
+                    hash: true,
+                    invitationToken: true,
+                    passwordResetCode: true
+                },
+                include: {
+                    company: true,
+                    PermissionSet: {
+                        omit: {
+                            userId: true
+                        }
+                    }
                 }
             });
-            return { message: ResponseMessages.SUCCESSFUL }
+            const payload = { sub: user.id, email: user.email, companyId: updatedUser.company.id };
+            const access_token = await this.jwtService.signAsync(payload);
+            return { message: ResponseMessages.SUCCESSFUL, user, access_token }
         } catch (error) {
             console.log(error)
             throw new BadRequestException({ message: ResponseMessages.INVALID_INVITE_TOKEN })

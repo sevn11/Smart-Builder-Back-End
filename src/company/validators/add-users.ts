@@ -16,6 +16,6 @@ export class AddUserDTO {
     @IsObject()
     @IsNotEmpty()
     @Type(() => PermissionSetDTO)
-    permissionSet: PermissionSetDTO
+    PermissionSet: PermissionSetDTO
 
 }

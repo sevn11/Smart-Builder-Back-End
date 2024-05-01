@@ -16,7 +16,6 @@ export class CompanyService {
         private sendgridService: SendgridService,
         private awsService: AWSService,
     ) {
-
     }
 
     async getUserList(user: User, companyId: number) {
@@ -29,10 +28,21 @@ export class CompanyService {
                     where: {
                         companyId,
                     },
+                    omit: {
+                        hash: true,
+                        invitationToken: true,
+                        passwordResetCode: true
+                    },
                     include: {
-                        PermissionSet: true
+                        company: true,
+                        PermissionSet: {
+                            omit: {
+                                userId: true
+                            }
+                        }
                     }
-                });
+                }
+                );
                 return { users: userList }
             } else {
                 throw new ForbiddenException("Action Not Allowed");
@@ -73,10 +83,33 @@ export class CompanyService {
                         companyId: companyId
                     },
                     data: {
-                        name: body.name
+                        name: body.name,
+                        PermissionSet: {
+                            update: {
+                                fullAccess: body.PermissionSet.fullAccess,
+                                questionnaire: body.PermissionSet.questionnaire,
+                                specifications: body.PermissionSet.specifications,
+                                schedule: body.PermissionSet.schedule,
+                                selection: body.PermissionSet.selection,
+                                viewOnly: body.PermissionSet.viewOnly
+                            }
+                        }
+                    },
+                    omit: {
+                        hash: true,
+                        invitationToken: true,
+                        passwordResetCode: true
+                    },
+                    include: {
+                        company: true,
+                        PermissionSet: {
+                            omit: {
+                                userId: true
+                            }
+                        }
                     }
                 });
-                return { message: ResponseMessages.SUCCESSFUL }
+                return { message: ResponseMessages.SUCCESSFUL, user }
             } else {
                 throw new ForbiddenException("Action Not Allowed");
             }
@@ -123,16 +156,16 @@ export class CompanyService {
                         invitationToken, // Generate Invitation Token
                         PermissionSet: {
                             create: {
-                                fullAccess: body.permissionSet.fullAccess,
-                                specifications: body.permissionSet.specifications,
-                                schedule: body.permissionSet.schedule,
-                                selection: body.permissionSet.selection,
-                                viewOnly: body.permissionSet.viewOnly
+                                fullAccess: body.PermissionSet.fullAccess,
+                                questionnaire: body.PermissionSet.questionnaire,
+                                specifications: body.PermissionSet.specifications,
+                                schedule: body.PermissionSet.schedule,
+                                selection: body.PermissionSet.selection,
+                                viewOnly: body.PermissionSet.viewOnly
                             }
                         }
                     },
                     include: {
-                        PermissionSet: true,
                         company: true
                     }
                 });
@@ -140,7 +173,7 @@ export class CompanyService {
                 const templateData = {
                     user_name: employee.name,
                     company_name: employee.company.name,
-                    password_link: `${this.config.get("FRONTEND_BASEURL")}/auth/users/${invitationToken}`
+                    password_link: `${this.config.get("FRONTEND_BASEURL")}/auth/create-password?=${invitationToken}`
                 }
                 this.sendgridService.sendEmailWithTemplate(employee.email, this.config.get('EMPLOYEE_PASSWORD_SET_TEMPLATE_ID'), templateData)
                 return { "message": ResponseMessages.USER_INVITATION_SENT }

@@ -17,12 +17,20 @@ export class UserService {
                 where: {
                     id: user.id,
                 },
+                omit: {
+                    hash: true,
+                    invitationToken: true,
+                    passwordResetCode: true
+                },
                 include: {
                     company: true,
-                    PermissionSet: true
+                    PermissionSet: {
+                        omit: {
+                            userId: true
+                        }
+                    }
                 }
             });
-            delete userObj.hash;
             return userObj;
         } catch (error) {
             throw new InternalServerErrorException()
@@ -58,15 +66,28 @@ export class UserService {
 
     async updateMyProfile(user: User, body: UpdateMyProfileDTO) {
         try {
-            await this.databaseService.user.update({
+            let updatedUser = await this.databaseService.user.update({
                 where: {
                     id: user.id
                 },
                 data: {
                     name: body.name
+                },
+                omit: {
+                    hash: true,
+                    invitationToken: true,
+                    passwordResetCode: true
+                },
+                include: {
+                    company: true,
+                    PermissionSet: {
+                        omit: {
+                            userId: true
+                        }
+                    }
                 }
             });
-            return { message: ResponseMessages.PROFILE_UPDATED }
+            return { message: ResponseMessages.PROFILE_UPDATED, updatedUser }
         } catch (error) {
             console.log(error);
             throw new InternalServerErrorException();
