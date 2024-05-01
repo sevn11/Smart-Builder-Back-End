@@ -165,18 +165,28 @@ export class CompanyService {
                             }
                         }
                     },
+                    omit: {
+                        hash: true,
+                        invitationToken: true,
+                        passwordResetCode: true
+                    },
                     include: {
-                        company: true
+                        company: true,
+                        PermissionSet: {
+                            omit: {
+                                userId: true
+                            }
+                        }
                     }
                 });
                 //  Send Email
                 const templateData = {
                     user_name: employee.name,
                     company_name: employee.company.name,
-                    password_link: `${this.config.get("FRONTEND_BASEURL")}/auth/create-password?=${invitationToken}`
+                    password_link: `${this.config.get("FRONTEND_BASEURL")}/auth/create-password?token=${invitationToken}`
                 }
                 this.sendgridService.sendEmailWithTemplate(employee.email, this.config.get('EMPLOYEE_PASSWORD_SET_TEMPLATE_ID'), templateData)
-                return { "message": ResponseMessages.USER_INVITATION_SENT }
+                return { "message": ResponseMessages.USER_INVITATION_SENT, employee }
             } else {
                 throw new ForbiddenException("Action Not Allowed");
             }
