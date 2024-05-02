@@ -9,6 +9,8 @@ import { CoreModule } from './core/core.module';
 import { WebhooksModule } from './webhooks/webhooks.module';
 import { CustomerModule } from './customer/customer.module';
 import { JobsModule } from './jobs/jobs.module';
+import { AdminModule } from './admin/admin.module';
+import { QuestionnaireTemplateModule } from './questionnaire-template/questionnaire-template.module';
 
 @Module({
   imports: [
@@ -22,6 +24,8 @@ import { JobsModule } from './jobs/jobs.module';
     WebhooksModule,
     CustomerModule,
     JobsModule,
+    AdminModule,
+    QuestionnaireTemplateModule,
   ],
 })
 export class AppModule { }
