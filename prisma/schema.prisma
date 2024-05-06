@@ -110,12 +110,12 @@ model Job {
   timeFrame   String? @map("time_frame")
   aboutUs     String? @map("about_us")
 
-  isClosed           Boolean @map("is_closed")
-  isDeleted          Boolean @map("is_deleted")
-  isGasAtLot         Boolean @map("is_gas_at_lot")
-  isWaterAtLot       Boolean @map("is_water_at_lot")
-  isElectricityAtLot Boolean @map("is_electricity_at_lot")
-  isSewerAtLot       Boolean @map("is_sewer_at_lot")
+  isClosed           Boolean @map("is_closed") @default(false)
+  isDeleted          Boolean @map("is_deleted") @default(false)
+  isGasAtLot         Boolean @map("is_gas_at_lot") @default(false)
+  isWaterAtLot       Boolean @map("is_water_at_lot") @default(false)
+  isElectricityAtLot Boolean @map("is_electricity_at_lot") @default(false)
+  isSewerAtLot       Boolean @map("is_sewer_at_lot") @default(false)
 
   companyId Int     @map("company_id")
   company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
