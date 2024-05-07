@@ -1,7 +1,7 @@
 import { BadRequestException, ForbiddenException, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { User } from '@prisma/client';
 import { DatabaseService } from 'src/database/database.service';
-import { AddUserDTO, UpdateCompanyDTO, UpdateUserDTO, UploadLogoDTO } from './validators';
+import { AddUserDTO, UpdateCompanyDTO, UpdateUserDTO, UploadLogoDTO, ChangeEmailDTO } from './validators';
 import { HelperFunctions, PrismaErrorCodes, ResponseMessages, UserTypes } from 'src/core/utils';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { ConfigService } from '@nestjs/config';
@@ -70,14 +70,14 @@ export class CompanyService {
                 if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
-
-                let employee = await this.databaseService.user.findFirstOrThrow({
+                let employee = null;
+                employee = await this.databaseService.user.findFirstOrThrow({
                     where: {
                         id: userId,
                         companyId: companyId
                     }
                 });
-                await this.databaseService.user.update({
+                employee = await this.databaseService.user.update({
                     where: {
                         id: userId,
                         companyId: companyId
@@ -109,7 +109,64 @@ export class CompanyService {
                         }
                     }
                 });
-                return { message: ResponseMessages.SUCCESSFUL, user }
+                return { message: ResponseMessages.SUCCESSFUL, employee }
+            } else {
+                throw new ForbiddenException("Action Not Allowed");
+            }
+
+        } catch (error) {
+            console.log(error);
+            // Database Exceptions
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code == PrismaErrorCodes.NOT_FOUND)
+                    throw new BadRequestException(ResponseMessages.USER_NOT_FOUND);
+                else {
+                    console.log(error.code);
+                }
+            } else if (error instanceof ForbiddenException) {
+                throw error;
+            }
+            throw new InternalServerErrorException();
+        }
+    }
+
+    async changeUserEmail(user: User, companyId: number, userId: number, body: ChangeEmailDTO) {
+        try {
+            // Check if User is Admin of the Company.
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
+                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
+                    throw new ForbiddenException("Action Not Allowed");
+                }
+                let employee = null;
+                employee = await this.databaseService.user.findFirstOrThrow({
+                    where: {
+                        id: userId,
+                        companyId: companyId
+                    }
+                });
+                employee = await this.databaseService.user.update({
+                    where: {
+                        id: userId,
+                        companyId: companyId
+                    },
+                    data: {
+                        email: body.email,
+                    },
+                    omit: {
+                        hash: true,
+                        invitationToken: true,
+                        passwordResetCode: true
+                    },
+                    include: {
+                        company: true,
+                        PermissionSet: {
+                            omit: {
+                                userId: true
+                            }
+                        }
+                    }
+                });
+                return { message: ResponseMessages.SUCCESSFUL, employee }
             } else {
                 throw new ForbiddenException("Action Not Allowed");
             }
