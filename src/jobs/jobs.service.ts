@@ -81,14 +81,14 @@ export class JobsService {
                 }
                 let where = {
                     companyId,
-                    isClosed: false,
+                    isClosed: query.closed || false,
                     isDeleted: false
                 }
-                if (query.closed) {
-                    delete where.isClosed
-                }
+                console.log(query);
                 let jobs = await this.databaseService.job.findMany({
                     where,
+                    skip: query.page * query.limit,
+                    take: query.limit,
                     include: {
                         customer: true
                     }
