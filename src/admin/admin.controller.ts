@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Patch, Post, UseGuards } from '@nestjs/common';
 import { JwtGuard } from 'src/core/guards';
 import { AdminService } from './admin.service';
 import { CreateQuestionnaireTemplateDTO, UpdateQuestionnaireTemplateDTO } from './validators';
@@ -33,6 +33,12 @@ export class AdminController {
     @HttpCode(HttpStatus.OK)
     updateQuestionnaireTemplate(@Param('templateId', ParseIntPipe) templateId: number, @Body() body: UpdateQuestionnaireTemplateDTO) {
         return this.adminService.updateQuestionnaireTemplate(templateId, body)
+    }
+
+    @Delete('questionnairetemplate/:templateId')
+    @HttpCode(HttpStatus.OK)
+    deleteQuestionnaireTemplate(@Param('templateId', ParseIntPipe) templateId: number) {
+        return this.adminService.deleteQuestionnaireTemplate(templateId)
     }
 
 }

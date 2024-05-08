@@ -37,7 +37,8 @@ export class AdminService {
         try {
             let templates = await this.databaseService.questionnaireTemplate.findMany({
                 where: {
-                    isCompanyTemplate: false
+                    isCompanyTemplate: false,
+                    isDeleted: false,
                 },
                 omit: {
                     companyId: true
@@ -69,6 +70,7 @@ export class AdminService {
             let template = await this.databaseService.questionnaireTemplate.findUniqueOrThrow({
                 where: {
                     id: templateId,
+                    isDeleted: false,
                     isCompanyTemplate: false
                 },
                 omit: {
@@ -101,6 +103,7 @@ export class AdminService {
             let template = await this.databaseService.questionnaireTemplate.update({
                 where: {
                     id: templateId,
+                    isDeleted: false,
                     isCompanyTemplate: false
                 },
                 data: {
@@ -117,7 +120,7 @@ export class AdminService {
                     }
                 }
             });
-            return { template }
+            return { template, message: ResponseMessages.QUESTIONNAIRE_TEMPLATE_UPDATED }
         } catch (error) {
             console.log(error);
             // Database Exceptions
@@ -128,7 +131,33 @@ export class AdminService {
                     console.log(error.code);
                 }
             }
-            throw new InternalServerErrorException()
+            throw new InternalServerErrorException();
+        }
+    }
+    async deleteQuestionnaireTemplate(templateId: number) {
+        try {
+            await this.databaseService.questionnaireTemplate.update({
+                where: {
+                    id: templateId,
+                    isDeleted: false,
+                    isCompanyTemplate: false
+                },
+                data: {
+                    isDeleted: true
+                }
+            });
+            return { message: ResponseMessages.QUESTIONNAIRE_TEMPLATE_DELETED }
+        } catch (error) {
+            console.log(error);
+            // Database Exceptions
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code == PrismaErrorCodes.NOT_FOUND)
+                    throw new BadRequestException(ResponseMessages.USER_NOT_FOUND);
+                else {
+                    console.log(error.code);
+                }
+            }
+            throw new InternalServerErrorException();
         }
     }
 }

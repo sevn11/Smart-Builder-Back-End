@@ -13,4 +13,6 @@ export class ResponseMessages {
     static COMPANY_NOT_FOUND = 'Company not found.'
     static USER_REMOVED = 'User removed successfully.'
     static CUSTOMER_NOT_FOUND = 'Customer not found.'
+    static QUESTIONNAIRE_TEMPLATE_DELETED = 'Questionnaire template successfully deleted.'
+    static QUESTIONNAIRE_TEMPLATE_UPDATED = 'Questionnaire template successfully updated.'
 }
