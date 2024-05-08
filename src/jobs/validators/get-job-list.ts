@@ -1,5 +1,5 @@
 import { Transform, Type } from "class-transformer";
-import { IsOptional, IsBoolean, IsNumber } from "class-validator";
+import { IsOptional, IsBoolean, IsNumber, IsString } from "class-validator";
 
 export class GetJobListDTO {
 
@@ -17,6 +17,10 @@ export class GetJobListDTO {
     @Type(() => Number)
     @IsOptional()
     limit?: number = 10;
+
+    @IsString()
+    @IsOptional()
+    search?: string
 
 
 }

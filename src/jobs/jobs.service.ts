@@ -79,14 +79,21 @@ export class JobsService {
                 if (!company) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
-                let where = {
-                    companyId,
-                    isClosed: query.closed || false,
-                    isDeleted: false
-                }
                 console.log(query);
+                query.page = query.page === 0 ? 0 : query.page - 1
                 let jobs = await this.databaseService.job.findMany({
-                    where,
+                    where: {
+                        companyId,
+                        isClosed: query.closed || false,
+                        isDeleted: false,
+                        customer: {
+                            name: {
+                                contains: query.search,
+                                mode: 'insensitive'
+                            }
+                        }
+
+                    },
                     skip: query.page * query.limit,
                     take: query.limit,
                     include: {
