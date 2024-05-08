@@ -17,12 +17,22 @@ export class AdminQuestionnaireTemplateService {
                     isCompanyTemplate: false
                 },
                 omit: {
-                    companyId: true
+                    companyId: true,
+                    isDeleted: true,
+                    isCompanyTemplate: true
                 },
                 include: {
                     categories: {
+                        omit: {
+                            isDeleted: true,
+                            isCompanyCategory: true,
+                            companyId: true
+                        },
                         include: {
                             questions: true
+                        },
+                        orderBy: {
+                            questionnaireOrder: 'asc'
                         }
                     }
                 }
@@ -41,12 +51,22 @@ export class AdminQuestionnaireTemplateService {
                     isDeleted: false,
                 },
                 omit: {
-                    companyId: true
+                    companyId: true,
+                    isDeleted: true,
+                    isCompanyTemplate: true
                 },
                 include: {
                     categories: {
+                        omit: {
+                            isDeleted: true,
+                            isCompanyCategory: true,
+                            companyId: true
+                        },
                         include: {
                             questions: true
+                        },
+                        orderBy: {
+                            questionnaireOrder: 'asc'
                         }
                     }
                 }
@@ -74,12 +94,22 @@ export class AdminQuestionnaireTemplateService {
                     isCompanyTemplate: false
                 },
                 omit: {
-                    companyId: true
+                    companyId: true,
+                    isDeleted: true,
+                    isCompanyTemplate: true
                 },
                 include: {
                     categories: {
+                        omit: {
+                            isDeleted: true,
+                            isCompanyCategory: true,
+                            companyId: true
+                        },
                         include: {
                             questions: true
+                        },
+                        orderBy: {
+                            questionnaireOrder: 'asc'
                         }
                     }
                 }
@@ -110,12 +140,22 @@ export class AdminQuestionnaireTemplateService {
                     name: body.name
                 },
                 omit: {
-                    companyId: true
+                    companyId: true,
+                    isDeleted: true,
+                    isCompanyTemplate: true
                 },
                 include: {
                     categories: {
+                        omit: {
+                            isDeleted: true,
+                            isCompanyCategory: true,
+                            companyId: true
+                        },
                         include: {
                             questions: true
+                        },
+                        orderBy: {
+                            questionnaireOrder: 'asc'
                         }
                     }
                 }

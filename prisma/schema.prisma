@@ -139,8 +139,10 @@ model Category {
   linkToPhase             Boolean                         @default(false) @map("link_to_phase")
   linkToSelection         Boolean                         @default(false) @map("link_to_selection")
   linkToQuestionnaire     Boolean                         @default(true) @map("link_to_questionnaire")
+  isCompanyCategory       Boolean                         @default(false) @map("is_company_category")
   companyId               Int?                            @map("company_id")
   company                 Company?                        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  questionnaireOrder      Int                             @map("questionnaire_order")
   questionnaireTemplateId Int?                            @map("questionnaire_template_id")
   questionnaireTemplate   QuestionnaireTemplate?          @relation(fields: [questionnaireTemplateId], references: [id], onDelete: Cascade)
   questions               QuestionnaireTemplateQuestion[]
