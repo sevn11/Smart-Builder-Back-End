@@ -5,7 +5,7 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
   previewFeatures = ["omitApi"]
 }
 
@@ -110,12 +110,12 @@ model Job {
   timeFrame   String? @map("time_frame")
   aboutUs     String? @map("about_us")
 
-  isClosed           Boolean @map("is_closed") @default(false)
-  isDeleted          Boolean @map("is_deleted") @default(false)
-  isGasAtLot         Boolean @map("is_gas_at_lot") @default(false)
-  isWaterAtLot       Boolean @map("is_water_at_lot") @default(false)
-  isElectricityAtLot Boolean @map("is_electricity_at_lot") @default(false)
-  isSewerAtLot       Boolean @map("is_sewer_at_lot") @default(false)
+  isClosed           Boolean @default(false) @map("is_closed")
+  isDeleted          Boolean @default(false) @map("is_deleted")
+  isGasAtLot         Boolean @default(false) @map("is_gas_at_lot")
+  isWaterAtLot       Boolean @default(false) @map("is_water_at_lot")
+  isElectricityAtLot Boolean @default(false) @map("is_electricity_at_lot")
+  isSewerAtLot       Boolean @default(false) @map("is_sewer_at_lot")
 
   companyId Int     @map("company_id")
   company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
@@ -133,15 +133,17 @@ model Job {
 }
 
 model Category {
-  id                  Int                             @id @default(autoincrement())
-  name                String
-  isDeleted           Boolean                         @default(false) @map("is_deleted")
-  linkToPhase         Boolean                         @default(false) @map("link_to_phase")
-  linkToSelection     Boolean                         @default(false) @map("link_to_selection")
-  linkToQuestionnaire Boolean                         @default(true) @map("link_to_questionnaire")
-  companyId           Int?                            @map("company_id")
-  company             Company?                        @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  questions           QuestionnaireTemplateQuestion[]
+  id                      Int                             @id @default(autoincrement())
+  name                    String
+  isDeleted               Boolean                         @default(false) @map("is_deleted")
+  linkToPhase             Boolean                         @default(false) @map("link_to_phase")
+  linkToSelection         Boolean                         @default(false) @map("link_to_selection")
+  linkToQuestionnaire     Boolean                         @default(true) @map("link_to_questionnaire")
+  companyId               Int?                            @map("company_id")
+  company                 Company?                        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  questionnaireTemplateId Int?                            @map("questionnaire_template_id")
+  questionnaireTemplate   QuestionnaireTemplate?          @relation(fields: [questionnaireTemplateId], references: [id], onDelete: Cascade)
+  questions               QuestionnaireTemplateQuestion[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -152,12 +154,13 @@ model Category {
 model QuestionnaireTemplate {
   id                Int      @id @default(autoincrement())
   name              String
-  isDeleted         Boolean  @map("is_deleted")
+  isDeleted         Boolean  @default(false) @map("is_deleted")
   isCompanyTemplate Boolean  @default(true) @map("is_company_template")
   companyId         Int?     @map("company_id")
   company           Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
-  questions QuestionnaireTemplateQuestion[]
+  questions  QuestionnaireTemplateQuestion[]
+  categories Category[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
