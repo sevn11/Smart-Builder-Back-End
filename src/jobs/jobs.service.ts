@@ -100,7 +100,21 @@ export class JobsService {
                         customer: true
                     }
                 });
-                return { jobs }
+                let totalCount = await this.databaseService.job.count({
+                    where: {
+                        companyId,
+                        isClosed: query.closed || false,
+                        isDeleted: false,
+                        customer: {
+                            name: {
+                                contains: query.search,
+                                mode: 'insensitive'
+                            }
+                        }
+
+                    }
+                });
+                return { jobs, totalCount }
             } else {
                 throw new ForbiddenException("Action Not Allowed");
             }
