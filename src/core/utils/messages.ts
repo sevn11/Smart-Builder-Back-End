@@ -15,4 +15,5 @@ export class ResponseMessages {
     static CUSTOMER_NOT_FOUND = 'Customer not found.'
     static QUESTIONNAIRE_TEMPLATE_DELETED = 'Questionnaire template successfully deleted.'
     static QUESTIONNAIRE_TEMPLATE_UPDATED = 'Questionnaire template successfully updated.'
+    static QUESTIONNAIRE_TEMPLATE_NOT_FOUND = 'Questionnaire template not found.'
 }

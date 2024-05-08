@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
-import { AdminService } from './admin.service';
-import { AdminController } from './admin.controller';
+import { AdminQuestionnaireTemplateService } from './services';
+import { AdminQuestionnaireTemplateController } from './controllers';
 
 @Module({
-  providers: [AdminService],
-  controllers: [AdminController]
+  providers: [AdminQuestionnaireTemplateService],
+  controllers: [AdminQuestionnaireTemplateController]
 })
-export class AdminModule {}
+export class AdminModule { }
