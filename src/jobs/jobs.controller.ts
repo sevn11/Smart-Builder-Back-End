@@ -21,4 +21,9 @@ export class JobsController {
     getJobList(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number, @Query() query: GetJobListDTO) {
         return this.jobService.getJobList(user, companyId, query);
     }
+    @HttpCode(HttpStatus.OK)
+    @Get(':jobId')
+    getJobDetails(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number, @Param('jobId', ParseIntPipe) jobId: number) {
+        return this.jobService.getJobDetails(user, companyId, jobId);
+    }
 }

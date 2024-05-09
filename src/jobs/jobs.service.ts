@@ -41,8 +41,15 @@ export class JobsService {
                         status: JobStatus.OPEN,
                         companyId: company.id
                     },
+                    omit: {
+                        isDeleted: true
+                    },
                     include: {
-                        customer: true
+                        customer: {
+                            omit: {
+                                isDeleted: true
+                            },
+                        }
                     }
                 });
                 return { job }
@@ -66,7 +73,6 @@ export class JobsService {
             }
         }
     }
-
     async getJobList(user: User, companyId: number, query: GetJobListDTO) {
         try {
             // Check if User is Admin of the Company.
@@ -96,8 +102,15 @@ export class JobsService {
                     },
                     skip: query.page * query.limit,
                     take: query.limit,
+                    omit: {
+                        isDeleted: true
+                    },
                     include: {
-                        customer: true
+                        customer: {
+                            omit: {
+                                isDeleted: true
+                            },
+                        }
                     }
                 });
                 let totalCount = await this.databaseService.job.count({
@@ -115,6 +128,55 @@ export class JobsService {
                     }
                 });
                 return { jobs, totalCount }
+            } else {
+                throw new ForbiddenException("Action Not Allowed");
+            }
+        } catch (error) {
+            console.log(error);
+            // Database Exceptions
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code == PrismaErrorCodes.UNIQUE_CONSTRAINT_ERROR)
+                    throw new BadRequestException(ResponseMessages.UNIQUE_EMAIL_ERROR);
+                else {
+                    console.log(error.code);
+                }
+            } else if (error instanceof ForbiddenException) {
+                throw error;
+            } else {
+                throw new InternalServerErrorException();
+            }
+        }
+    }
+    async getJobDetails(user: User, companyId: number, jobId: number) {
+        try {
+            // Check if User is Admin of the Company.
+            if (user.userType == UserTypes.ADMIN || (user.userType == UserTypes.BUILDER && user.companyId === companyId)) {
+                let company = await this.databaseService.company.findUnique({
+                    where: {
+                        id: companyId
+                    }
+                });
+                if (!company) {
+                    throw new ForbiddenException("Action Not Allowed");
+                }
+                let jobs = await this.databaseService.job.findUniqueOrThrow({
+                    where: {
+                        id: jobId,
+                        companyId,
+                        isDeleted: false,
+                    },
+                    omit: {
+                        isDeleted: true
+                    },
+                    include: {
+                        customer: {
+                            omit: {
+                                isDeleted: true
+                            },
+                        }
+                    }
+                });
+                return { jobs }
             } else {
                 throw new ForbiddenException("Action Not Allowed");
             }
