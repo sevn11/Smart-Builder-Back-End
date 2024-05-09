@@ -133,19 +133,19 @@ model Job {
 }
 
 model Category {
-  id                      Int                             @id @default(autoincrement())
+  id                      Int                    @id @default(autoincrement())
   name                    String
-  isDeleted               Boolean                         @default(false) @map("is_deleted")
-  linkToPhase             Boolean                         @default(false) @map("link_to_phase")
-  linkToSelection         Boolean                         @default(false) @map("link_to_selection")
-  linkToQuestionnaire     Boolean                         @default(true) @map("link_to_questionnaire")
-  isCompanyCategory       Boolean                         @default(false) @map("is_company_category")
-  companyId               Int?                            @map("company_id")
-  company                 Company?                        @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  questionnaireOrder      Int                             @map("questionnaire_order")
-  questionnaireTemplateId Int?                            @map("questionnaire_template_id")
-  questionnaireTemplate   QuestionnaireTemplate?          @relation(fields: [questionnaireTemplateId], references: [id], onDelete: Cascade)
-  questions               QuestionnaireTemplateQuestion[]
+  isDeleted               Boolean                @default(false) @map("is_deleted")
+  linkToPhase             Boolean                @default(false) @map("link_to_phase")
+  linkToSelection         Boolean                @default(false) @map("link_to_selection")
+  linkToQuestionnaire     Boolean                @default(true) @map("link_to_questionnaire")
+  isCompanyCategory       Boolean                @default(false) @map("is_company_category")
+  companyId               Int?                   @map("company_id")
+  company                 Company?               @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  questionnaireOrder      Int                    @map("questionnaire_order")
+  questionnaireTemplateId Int?                   @map("questionnaire_template_id")
+  questionnaireTemplate   QuestionnaireTemplate? @relation(fields: [questionnaireTemplateId], references: [id], onDelete: Cascade)
+  questions               TemplateQuestion[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -161,7 +161,7 @@ model QuestionnaireTemplate {
   companyId         Int?     @map("company_id")
   company           Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
-  questions  QuestionnaireTemplateQuestion[]
+  questions  TemplateQuestion[]
   categories Category[]
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -170,7 +170,7 @@ model QuestionnaireTemplate {
   @@map("questionnaire_template")
 }
 
-model QuestionnaireTemplateQuestion {
+model TemplateQuestion {
   id                  Int     @id @default(autoincrement())
   isDeleted           Boolean @map("is_deleted")
   linkToPhase         Boolean @default(false) @map("link_to_phase")
@@ -187,5 +187,5 @@ model QuestionnaireTemplateQuestion {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  @@map("questionnaire_template_question")
+  @@map("template_question")
 }
