@@ -23,6 +23,10 @@ export class AdminQuestionnaireTemplateService {
                 },
                 include: {
                     categories: {
+                        where: {
+                            isDeleted: false,
+                            isCompanyCategory: false,
+                        },
                         omit: {
                             isDeleted: true,
                             isCompanyCategory: true,
@@ -57,6 +61,10 @@ export class AdminQuestionnaireTemplateService {
                 },
                 include: {
                     categories: {
+                        where: {
+                            isDeleted: false,
+                            isCompanyCategory: false,
+                        },
                         omit: {
                             isDeleted: true,
                             isCompanyCategory: true,
@@ -100,6 +108,10 @@ export class AdminQuestionnaireTemplateService {
                 },
                 include: {
                     categories: {
+                        where: {
+                            isDeleted: false,
+                            isCompanyCategory: false,
+                        },
                         omit: {
                             isDeleted: true,
                             isCompanyCategory: true,
@@ -146,6 +158,10 @@ export class AdminQuestionnaireTemplateService {
                 },
                 include: {
                     categories: {
+                        where: {
+                            isDeleted: false,
+                            isCompanyCategory: false,
+                        },
                         omit: {
                             isDeleted: true,
                             isCompanyCategory: true,
@@ -186,6 +202,8 @@ export class AdminQuestionnaireTemplateService {
                     isDeleted: true
                 }
             });
+            // Todo: Delete all the category
+            // Todo: Delete all the questions
             return { message: ResponseMessages.QUESTIONNAIRE_TEMPLATE_DELETED }
         } catch (error) {
             console.log(error);

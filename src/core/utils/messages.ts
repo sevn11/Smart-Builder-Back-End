@@ -16,4 +16,8 @@ export class ResponseMessages {
     static QUESTIONNAIRE_TEMPLATE_DELETED = 'Questionnaire template successfully deleted.'
     static QUESTIONNAIRE_TEMPLATE_UPDATED = 'Questionnaire template successfully updated.'
     static QUESTIONNAIRE_TEMPLATE_NOT_FOUND = 'Questionnaire template not found.'
+    static CATEGORY_DELETED = 'Category successfully deleted.'
+    static CATEGORY_UPDATED = 'Category successfully updated.'
+    static CATEGORY_NOT_FOUND = 'Category not found.'
+    static CATEGORY_ORDER_UPDATED = 'Category order updated.'
 }
