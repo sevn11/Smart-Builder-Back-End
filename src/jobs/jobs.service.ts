@@ -85,7 +85,6 @@ export class JobsService {
                 if (!company) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
-                console.log(query);
                 query.page = query.page === 0 ? 0 : query.page - 1
                 let jobs = await this.databaseService.job.findMany({
                     where: {

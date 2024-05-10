@@ -26,11 +26,14 @@ model User {
   companyId         Int?     @map("company_id")
   company           Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
-  createdAt         DateTime       @default(now()) @map("created_at")
-  updatedAt         DateTime       @updatedAt @map("updated_at")
-  PermissionSet     PermissionSet?
-  passwordResetCode Int?           @map("password_reset_code")
-  invitationToken   String?        @map("invitation_token")
+  isActive      Boolean        @default(true) @map("is_active")
+  PermissionSet PermissionSet?
+
+  passwordResetCode Int?    @map("password_reset_code")
+  invitationToken   String? @map("invitation_token")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("users")
 }
