@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { DatabaseService } from 'src/database/database.service';
 import { SignUpDTO, SignInDTO, ForgotPasswordDTO, PasswordResetDTO, SetPasswordDTO } from './validators';
@@ -78,7 +78,7 @@ export class AuthService {
         try {
             const user = await this.databaseService.user.findUniqueOrThrow({
                 where: {
-                    email: body.email.toLowerCase()
+                    email: body.email.toLowerCase(),
                 },
                 omit: {
                     invitationToken: true,
@@ -92,7 +92,10 @@ export class AuthService {
                         }
                     }
                 }
-            })
+            });
+            if (!user.isActive || !user.company.isActive) {
+                throw new ForbiddenException(ResponseMessages.ACCOUNT_SUSPENDED);
+            }
             if (await argon.verify(user.hash, body.password)) {
                 delete user.hash;
                 const payload = { sub: user.id, email: user.email, companyId: user.company.id };
@@ -108,6 +111,8 @@ export class AuthService {
                 if (ex.code == PrismaErrorCodes.NOT_FOUND)
                     throw new NotFoundException(ResponseMessages.INVALID_CREDENTIALS);
             } else if (ex instanceof NotFoundException) {
+                throw ex;
+            } else if (ex instanceof ForbiddenException) {
                 throw ex;
             } else {
                 throw new InternalServerErrorException();

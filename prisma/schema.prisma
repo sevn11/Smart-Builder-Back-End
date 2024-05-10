@@ -53,6 +53,7 @@ model Company {
   jobs                   Job[]
   categories             Category[]
   questionnaireTemplates QuestionnaireTemplate[]
+  isActive               Boolean        @default(true) @map("is_active")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

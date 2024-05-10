@@ -20,4 +20,5 @@ export class ResponseMessages {
     static CATEGORY_UPDATED = 'Category successfully updated.'
     static CATEGORY_NOT_FOUND = 'Category not found.'
     static CATEGORY_ORDER_UPDATED = 'Category order updated.'
+    static ACCOUNT_SUSPENDED = 'Account suspended. Please contact administrator.'
 }
