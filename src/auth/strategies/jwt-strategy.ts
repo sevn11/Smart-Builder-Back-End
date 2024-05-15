@@ -19,6 +19,8 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
             const user = await this.databaseService.user.findUniqueOrThrow({
                 where: {
                     id: payload.sub,
+                    isDeleted: false,
+                    isActive: true,
                     email: payload.email
                 }
             });

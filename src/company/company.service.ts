@@ -27,14 +27,20 @@ export class CompanyService {
                 let userList = await this.databaseService.user.findMany({
                     where: {
                         companyId,
+                        isDeleted: false
                     },
                     omit: {
                         hash: true,
                         invitationToken: true,
-                        passwordResetCode: true
+                        passwordResetCode: true,
+                        isDeleted: true
                     },
                     include: {
-                        company: true,
+                        company: {
+                            omit: {
+                                isDeleted: true
+                            }
+                        },
                         PermissionSet: {
                             omit: {
                                 userId: true
@@ -74,13 +80,16 @@ export class CompanyService {
                 employee = await this.databaseService.user.findFirstOrThrow({
                     where: {
                         id: userId,
-                        companyId: companyId
+                        isActive: true,
+                        companyId: companyId,
+                        isDeleted: false
                     }
                 });
                 employee = await this.databaseService.user.update({
                     where: {
                         id: userId,
-                        companyId: companyId
+                        companyId: companyId,
+                        isDeleted: false
                     },
                     data: {
                         name: body.name,
@@ -98,10 +107,15 @@ export class CompanyService {
                     omit: {
                         hash: true,
                         invitationToken: true,
-                        passwordResetCode: true
+                        passwordResetCode: true,
+                        isDeleted: true,
                     },
                     include: {
-                        company: true,
+                        company: {
+                            omit: {
+                                isDeleted: true
+                            }
+                        },
                         PermissionSet: {
                             omit: {
                                 userId: true
@@ -141,13 +155,17 @@ export class CompanyService {
                 employee = await this.databaseService.user.findFirstOrThrow({
                     where: {
                         id: userId,
-                        companyId: companyId
+                        isActive: true,
+                        companyId: companyId,
+                        isDeleted: false
                     }
                 });
                 employee = await this.databaseService.user.update({
                     where: {
                         id: userId,
-                        companyId: companyId
+                        isActive: true,
+                        companyId: companyId,
+                        isDeleted: false
                     },
                     data: {
                         email: body.email,
@@ -155,10 +173,15 @@ export class CompanyService {
                     omit: {
                         hash: true,
                         invitationToken: true,
-                        passwordResetCode: true
+                        passwordResetCode: true,
+                        isDeleted: true,
                     },
                     include: {
-                        company: true,
+                        company: {
+                            omit: {
+                                isDeleted: true
+                            }
+                        },
                         PermissionSet: {
                             omit: {
                                 userId: true
@@ -196,7 +219,9 @@ export class CompanyService {
                 }
                 let company = await this.databaseService.company.findUnique({
                     where: {
-                        id: companyId
+                        id: companyId,
+                        isActive: true,
+                        isDeleted: false
                     }
                 });
                 if (!company) {
@@ -225,10 +250,15 @@ export class CompanyService {
                     omit: {
                         hash: true,
                         invitationToken: true,
-                        passwordResetCode: true
+                        passwordResetCode: true,
+                        isDeleted: true
                     },
                     include: {
-                        company: true,
+                        company: {
+                            omit: {
+                                isDeleted: true
+                            }
+                        },
                         PermissionSet: {
                             omit: {
                                 userId: true
@@ -274,7 +304,9 @@ export class CompanyService {
                 let employee = await this.databaseService.user.findFirstOrThrow({
                     where: {
                         id: userId,
-                        companyId: companyId
+                        isActive: true,
+                        companyId: companyId,
+                        isDeleted: false
                     }
                 });
                 await this.databaseService.user.delete({
@@ -310,7 +342,9 @@ export class CompanyService {
             if (user.companyId === companyId || user.userType === UserTypes.ADMIN) {
                 let company = await this.databaseService.company.findUniqueOrThrow({
                     where: {
-                        id: companyId
+                        id: companyId,
+                        isActive: true,
+                        isDeleted: false
                     }
                 });
                 return { company }
@@ -341,7 +375,9 @@ export class CompanyService {
                 }
                 let company = await this.databaseService.company.findUnique({
                     where: {
-                        id: companyId
+                        id: companyId,
+                        isActive: true,
+                        isDeleted: false
                     }
                 });
                 if (!company) {
@@ -372,15 +408,25 @@ export class CompanyService {
                 }
                 let company = await this.databaseService.company.findUnique({
                     where: {
-                        id: companyId
-                    }
+                        id: companyId,
+                        isActive: true,
+                        isDeleted: false
+                    },
+                    omit: {
+                        isDeleted: true
+                    },
                 });
                 if (!company) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
                 company = await this.databaseService.company.update({
                     where: {
-                        id: companyId
+                        id: companyId,
+                        isActive: true,
+                        isDeleted: false
+                    },
+                    omit: {
+                        isDeleted: true
                     },
                     data: {
                         ...body

@@ -18,7 +18,8 @@ export class JobsService {
             if (user.userType == UserTypes.ADMIN || (user.userType == UserTypes.BUILDER && user.companyId === companyId)) {
                 let company = await this.databaseService.company.findUnique({
                     where: {
-                        id: companyId
+                        id: companyId,
+                        isDeleted: false
                     }
                 });
                 if (!company) {
@@ -79,7 +80,8 @@ export class JobsService {
             if (user.userType == UserTypes.ADMIN || (user.userType == UserTypes.BUILDER && user.companyId === companyId)) {
                 let company = await this.databaseService.company.findUnique({
                     where: {
-                        id: companyId
+                        id: companyId,
+                        isDeleted: false
                     }
                 });
                 if (!company) {
@@ -152,7 +154,8 @@ export class JobsService {
             if (user.userType == UserTypes.ADMIN || (user.userType == UserTypes.BUILDER && user.companyId === companyId)) {
                 let company = await this.databaseService.company.findUnique({
                     where: {
-                        id: companyId
+                        id: companyId,
+                        isDeleted: false
                     }
                 });
                 if (!company) {

@@ -9,5 +9,5 @@ import { JobsService } from './jobs.service';
 export class JobsModule {
 
 
-  ;
+  
 }

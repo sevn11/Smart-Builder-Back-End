@@ -27,6 +27,7 @@ model User {
   company           Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   isActive      Boolean        @default(true) @map("is_active")
+  isDeleted     Boolean?       @default(false) @map("is_deleted")
   PermissionSet PermissionSet?
 
   passwordResetCode Int?    @map("password_reset_code")
@@ -53,7 +54,8 @@ model Company {
   jobs                   Job[]
   categories             Category[]
   questionnaireTemplates QuestionnaireTemplate[]
-  isActive               Boolean        @default(true) @map("is_active")
+  isActive               Boolean                 @default(true) @map("is_active")
+  isDeleted              Boolean?                @default(false) @map("is_deleted")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -62,15 +64,16 @@ model Company {
 }
 
 model PermissionSet {
-  id             Int     @id @default(autoincrement())
-  userId         Int     @unique @map("user_id")
-  user           User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  fullAccess     Boolean @default(false) @map("full_access")
-  specifications Boolean @default(false)
-  questionnaire  Boolean @default(false)
-  selection      Boolean @default(false)
-  schedule       Boolean @default(false)
-  viewOnly       Boolean @default(true) @map("view_only")
+  id             Int      @id @default(autoincrement())
+  userId         Int      @unique @map("user_id")
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullAccess     Boolean  @default(false) @map("full_access")
+  specifications Boolean  @default(false)
+  questionnaire  Boolean  @default(false)
+  selection      Boolean  @default(false)
+  schedule       Boolean  @default(false)
+  viewOnly       Boolean  @default(true) @map("view_only")
+  isDeleted      Boolean? @default(false) @map("is_deleted")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

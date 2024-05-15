@@ -45,13 +45,19 @@ export class AuthService {
                 omit: {
                     hash: true,
                     invitationToken: true,
-                    passwordResetCode: true
+                    passwordResetCode: true,
+                    isDeleted: true
                 },
                 include: {
-                    company: true,
+                    company: {
+                        omit: {
+                            isDeleted: true
+                        }
+                    },
                     PermissionSet: {
                         omit: {
-                            userId: true
+                            userId: true,
+                            isDeleted: true,
                         }
                     }
                 }
@@ -79,16 +85,24 @@ export class AuthService {
             const user = await this.databaseService.user.findUniqueOrThrow({
                 where: {
                     email: body.email.toLowerCase(),
+                    isActive: true,
+                    isDeleted: false
                 },
                 omit: {
                     invitationToken: true,
-                    passwordResetCode: true
+                    passwordResetCode: true,
+                    isDeleted: true
                 },
                 include: {
-                    company: true,
+                    company: {
+                        omit: {
+                            isDeleted: true
+                        }
+                    },
                     PermissionSet: {
                         omit: {
-                            userId: true
+                            userId: true,
+                            isDeleted: true,
                         }
                     }
                 }
@@ -129,14 +143,18 @@ export class AuthService {
             // Get if email exist
             let user = await this.databaseService.user.findUniqueOrThrow({
                 where: {
-                    email: body.email.toLowerCase()
+                    email: body.email.toLowerCase(),
+                    isActive: true,
+                    isDeleted: false
                 }
             });
             // Generate Code
             let code = HelperFunctions.generateCode();
             await this.databaseService.user.update({
                 where: {
-                    id: user.id
+                    id: user.id,
+                    isActive: true,
+                    isDeleted: false,
                 },
                 data: {
                     passwordResetCode: code
@@ -168,13 +186,17 @@ export class AuthService {
         try {
             let user = await this.databaseService.user.findFirstOrThrow({
                 where: {
-                    passwordResetCode: code
+                    passwordResetCode: code,
+                    isActive: true,
+                    isDeleted: false
                 }
             });
             let hash = await argon.hash(body.password);
             await this.databaseService.user.update({
                 where: {
-                    id: user.id
+                    id: user.id,
+                    isActive: true,
+                    isDeleted: false
                 },
                 data: {
                     hash: hash,
@@ -193,18 +215,23 @@ export class AuthService {
         try {
             let user = await this.databaseService.user.findFirstOrThrow({
                 where: {
-                    invitationToken: token
+                    invitationToken: token,
+                    isActive: true,
+                    isDeleted: false
                 },
                 omit: {
                     hash: true,
                     invitationToken: true,
-                    passwordResetCode: true
+                    passwordResetCode: true,
+                    isDeleted: true
                 },
             });
             let hash = await argon.hash(body.password);
             let updatedUser = await this.databaseService.user.update({
                 where: {
-                    id: user.id
+                    id: user.id,
+                    isActive: true,
+                    isDeleted: false
                 },
                 data: {
                     hash: hash,
@@ -213,13 +240,19 @@ export class AuthService {
                 omit: {
                     hash: true,
                     invitationToken: true,
-                    passwordResetCode: true
+                    passwordResetCode: true,
+                    isDeleted: true
                 },
                 include: {
-                    company: true,
+                    company: {
+                        omit: {
+                            isDeleted: true
+                        },
+                    },
                     PermissionSet: {
                         omit: {
-                            userId: true
+                            userId: true,
+                            isDeleted: true,
                         }
                     }
                 }

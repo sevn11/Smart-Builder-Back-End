@@ -16,17 +16,25 @@ export class UserService {
             const userObj = await this.databaseService.user.findUnique({
                 where: {
                     id: user.id,
+                    isActive: true,
+                    isDeleted: false
                 },
                 omit: {
                     hash: true,
                     invitationToken: true,
-                    passwordResetCode: true
+                    passwordResetCode: true,
+                    isDeleted: false
                 },
                 include: {
-                    company: true,
+                    company: {
+                        omit: {
+                            isDeleted: true
+                        }
+                    },
                     PermissionSet: {
                         omit: {
-                            userId: true
+                            userId: true,
+                            isDeleted: true
                         }
                     }
                 }
@@ -45,7 +53,9 @@ export class UserService {
             let hash = await argon.hash(body.newPassword);
             await this.databaseService.user.update({
                 where: {
-                    id: user.id
+                    id: user.id,
+                    isActive: true,
+                    isDeleted: false
                 },
                 data: {
                     hash
@@ -68,7 +78,9 @@ export class UserService {
         try {
             let updatedUser = await this.databaseService.user.update({
                 where: {
-                    id: user.id
+                    id: user.id,
+                    isActive: true,
+                    isDeleted: false
                 },
                 data: {
                     name: body.name
@@ -76,13 +88,19 @@ export class UserService {
                 omit: {
                     hash: true,
                     invitationToken: true,
-                    passwordResetCode: true
+                    passwordResetCode: true,
+                    isDeleted: true,
                 },
                 include: {
-                    company: true,
+                    company: {
+                        omit: {
+                            isDeleted: true
+                        }
+                    },
                     PermissionSet: {
                         omit: {
-                            userId: true
+                            userId: true,
+                            isDeleted: true
                         }
                     }
                 }
@@ -98,7 +116,9 @@ export class UserService {
         try {
             await this.databaseService.user.update({
                 where: {
-                    id: user.id
+                    id: user.id,
+                    isActive: true,
+                    isDeleted: false
                 },
                 data: {
                     isTosAccepted: true,

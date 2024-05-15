@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Patch, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Patch, Query } from '@nestjs/common';
 import { AdminUsersService } from '../services';
 import { ChangeBuilderAccessDTO, GetBuilderListDTO } from '../validators';
 
@@ -18,6 +18,12 @@ export class AdminUsersController {
     @HttpCode(HttpStatus.OK)
     changeBuilderAccess(@Param('builderId', ParseIntPipe) builderId: number, @Body() body: ChangeBuilderAccessDTO) {
         return this.adminUserService.changeBuilderAccess(builderId, body)
+    }
+
+    @Delete('builders/:builderId')
+    @HttpCode(HttpStatus.OK)
+    deleteBuilder(@Param('builderId', ParseIntPipe) builderId: number) {
+        return this.adminUserService.deleteBuilder(builderId)
     }
 
 

@@ -22,13 +22,15 @@ export class AdminUsersService {
                             contains: query.search,
                             mode: 'insensitive'
                         },
+                        isDeleted: false,
                     },
                     skip: query.page * query.limit,
                     take: query.limit,
                     omit: {
                         hash: true,
                         invitationToken: true,
-                        passwordResetCode: true
+                        passwordResetCode: true,
+                        isDeleted: false,
                     },
                     include: {
                         company: {
@@ -47,6 +49,7 @@ export class AdminUsersService {
                             contains: query.search,
                             mode: 'insensitive'
                         },
+                        isDeleted: false,
                     },
                 })
 
@@ -61,13 +64,15 @@ export class AdminUsersService {
         try {
             let builder = await this.databaseService.user.findUniqueOrThrow({
                 where: {
-                    id: builderId
+                    id: builderId,
+                    isDeleted: false,
                 }
             });
             let [, user,] = await this.databaseService.$transaction([
                 this.databaseService.company.update({
                     where: {
-                        id: builder.companyId
+                        id: builder.companyId,
+                        isDeleted: false
                     },
                     data: {
                         isActive: body.isActive
@@ -75,7 +80,8 @@ export class AdminUsersService {
                 }),
                 this.databaseService.user.update({
                     where: {
-                        id: builderId
+                        id: builderId,
+                        isDeleted: false
                     },
                     data: {
                         isActive: body.isActive
@@ -83,7 +89,8 @@ export class AdminUsersService {
                     omit: {
                         hash: true,
                         invitationToken: true,
-                        passwordResetCode: true
+                        passwordResetCode: true,
+                        isDeleted: true
                     },
                     include: {
                         company: {
@@ -96,7 +103,8 @@ export class AdminUsersService {
                 }),
                 this.databaseService.user.updateMany({
                     where: {
-                        companyId: builder.companyId
+                        companyId: builder.companyId,
+                        isDeleted: false
                     },
                     data: {
                         isActive: body.isActive
@@ -105,6 +113,97 @@ export class AdminUsersService {
 
             ]);
             return { user }
+        } catch (error) {
+            console.log(error);
+            // Database Exceptions
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code == PrismaErrorCodes.NOT_FOUND)
+                    throw new BadRequestException(ResponseMessages.USER_NOT_FOUND);
+                else {
+                    console.log(error.code);
+                }
+            }
+            throw new InternalServerErrorException();
+        }
+    }
+
+    async deleteBuilder(builderId: number) {
+        try {
+            let builder = await this.databaseService.user.findUniqueOrThrow({
+                where: {
+                    id: builderId,
+                    isDeleted: false
+                }
+            });
+            await this.databaseService.$transaction([
+                this.databaseService.company.update({
+                    where: {
+                        id: builder.companyId,
+                        isDeleted: false,
+                    },
+                    data: {
+                        isActive: false,
+                        isDeleted: true
+                    }
+                }),
+                this.databaseService.user.update({
+                    where: {
+                        id: builderId,
+                        isDeleted: false
+                    },
+                    data: {
+                        isActive: false,
+                        isDeleted: true
+                    },
+                }),
+                this.databaseService.user.updateMany({
+                    where: {
+                        companyId: builder.companyId,
+                        isDeleted: false
+                    },
+                    data: {
+                        isActive: false,
+                        isDeleted: true
+                    },
+                }),
+                this.databaseService.customer.updateMany({
+                    where: {
+                        companyId: builder.companyId,
+                        isDeleted: false
+                    },
+                    data: {
+                        isDeleted: true
+                    },
+                }),
+                this.databaseService.job.updateMany({
+                    where: {
+                        companyId: builder.companyId,
+                        isDeleted: false
+                    },
+                    data: {
+                        isDeleted: true
+                    },
+                }),
+                this.databaseService.questionnaireTemplate.updateMany({
+                    where: {
+                        companyId: builder.companyId,
+                        isDeleted: false
+                    },
+                    data: {
+                        isDeleted: true
+                    },
+                }),
+                this.databaseService.category.updateMany({
+                    where: {
+                        companyId: builder.companyId,
+                        isDeleted: false
+                    },
+                    data: {
+                        isDeleted: true
+                    },
+                }),
+            ]);
+            return { message: ResponseMessages.BUILDER_REMOVED }
         } catch (error) {
             console.log(error);
             // Database Exceptions
