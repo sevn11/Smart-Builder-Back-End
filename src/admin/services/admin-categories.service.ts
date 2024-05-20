@@ -139,19 +139,29 @@ export class AdminCategoriesService {
 
                 },
             });
-            category = await this.databaseService.category.update({
-                where: {
-                    id: categoryId,
-                    questionnaireTemplateId: templateId,
-                    isCompanyCategory: false,
-                    isDeleted: false,
-
-                },
-                data: {
-                    isDeleted: true
-                }
-                // Todo: Delete all the questions 
-            });
+            await this.databaseService.$transaction([
+                this.databaseService.category.update({
+                    where: {
+                        id: category.id,
+                        questionnaireTemplateId: templateId,
+                        isCompanyCategory: false,
+                        isDeleted: false,
+                    },
+                    data: {
+                        isDeleted: true
+                    }
+                }),
+                this.databaseService.templateQuestion.updateMany({
+                    where: {
+                        questionnaireTemplateId: templateId,
+                        categoryId: category.id,
+                        isDeleted: false,
+                    },
+                    data: {
+                        isDeleted: true
+                    }
+                })
+            ]);
 
             return { message: ResponseMessages.CATEGORY_DELETED }
         } catch (error) {

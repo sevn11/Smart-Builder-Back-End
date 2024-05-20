@@ -33,7 +33,13 @@ export class AdminQuestionnaireTemplateService {
                             companyId: true
                         },
                         include: {
-                            questions: true
+                            questions: {
+                                omit: {
+                                    isDeleted: true,
+                                    categoryId: true,
+                                    questionnaireTemplateId: true
+                                },
+                            }
                         },
                         orderBy: {
                             questionnaireOrder: 'asc'
@@ -71,7 +77,13 @@ export class AdminQuestionnaireTemplateService {
                             companyId: true
                         },
                         include: {
-                            questions: true
+                            questions: {
+                                omit: {
+                                    isDeleted: true,
+                                    categoryId: true,
+                                    questionnaireTemplateId: true
+                                },
+                            }
                         },
                         orderBy: {
                             questionnaireOrder: 'asc'
@@ -118,7 +130,13 @@ export class AdminQuestionnaireTemplateService {
                             companyId: true
                         },
                         include: {
-                            questions: true
+                            questions: {
+                                omit: {
+                                    isDeleted: true,
+                                    categoryId: true,
+                                    questionnaireTemplateId: true
+                                },
+                            }
                         },
                         orderBy: {
                             questionnaireOrder: 'asc'
@@ -168,7 +186,13 @@ export class AdminQuestionnaireTemplateService {
                             companyId: true
                         },
                         include: {
-                            questions: true
+                            questions: {
+                                omit: {
+                                    isDeleted: true,
+                                    categoryId: true,
+                                    questionnaireTemplateId: true
+                                },
+                            }
                         },
                         orderBy: {
                             questionnaireOrder: 'asc'
@@ -192,18 +216,37 @@ export class AdminQuestionnaireTemplateService {
     }
     async deleteQuestionnaireTemplate(templateId: number) {
         try {
-            await this.databaseService.questionnaireTemplate.update({
-                where: {
-                    id: templateId,
-                    isDeleted: false,
-                    isCompanyTemplate: false
-                },
-                data: {
-                    isDeleted: true
-                }
-            });
-            // Todo: Delete all the category
-            // Todo: Delete all the questions
+            await this.databaseService.$transaction([
+                this.databaseService.questionnaireTemplate.update({
+                    where: {
+                        id: templateId,
+                        isDeleted: false,
+                        isCompanyTemplate: false
+                    },
+                    data: {
+                        isDeleted: true
+                    }
+                }),
+                this.databaseService.category.updateMany({
+                    where: {
+                        questionnaireTemplateId: templateId,
+                        isDeleted: false,
+                        isCompanyCategory: false
+                    },
+                    data: {
+                        isDeleted: true
+                    }
+                }),
+                this.databaseService.templateQuestion.updateMany({
+                    where: {
+                        questionnaireTemplateId: templateId,
+                        isDeleted: false,
+                    },
+                    data: {
+                        isDeleted: true
+                    }
+                })
+            ]);
             return { message: ResponseMessages.QUESTIONNAIRE_TEMPLATE_DELETED }
         } catch (error) {
             console.log(error);
