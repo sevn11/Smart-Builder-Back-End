@@ -161,15 +161,15 @@ model Category {
 }
 
 model QuestionnaireTemplate {
-  id                Int      @id @default(autoincrement())
+  id                Int                @id @default(autoincrement())
   name              String
-  isDeleted         Boolean  @default(false) @map("is_deleted")
-  isCompanyTemplate Boolean  @default(true) @map("is_company_template")
-  companyId         Int?     @map("company_id")
-  company           Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
-
-  questions  TemplateQuestion[]
-  categories Category[]
+  isDeleted         Boolean            @default(false) @map("is_deleted")
+  isCompanyTemplate Boolean            @default(true) @map("is_company_template")
+  companyId         Int?               @map("company_id")
+  company           Company?           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  templateType      String             @default("Questionnaire")
+  questions         TemplateQuestion[]
+  categories        Category[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

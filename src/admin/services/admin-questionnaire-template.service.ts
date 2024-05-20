@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, InternalServerErrorException } from '@
 import { DatabaseService } from 'src/database/database.service';
 import { CreateQuestionnaireTemplateDTO, UpdateQuestionnaireTemplateDTO } from '../validators';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
-import { PrismaErrorCodes, ResponseMessages } from 'src/core/utils';
+import { PrismaErrorCodes, ResponseMessages, TemplateType } from 'src/core/utils';
 
 @Injectable()
 export class AdminQuestionnaireTemplateService {
@@ -14,7 +14,8 @@ export class AdminQuestionnaireTemplateService {
             let template = await this.databaseService.questionnaireTemplate.create({
                 data: {
                     name: body.name,
-                    isCompanyTemplate: false
+                    isCompanyTemplate: false,
+                    templateType: TemplateType.QUESTIONNAIRE
                 },
                 omit: {
                     companyId: true,
@@ -78,6 +79,9 @@ export class AdminQuestionnaireTemplateService {
                         },
                         include: {
                             questions: {
+                                where: {
+                                    isDeleted: false
+                                },
                                 omit: {
                                     isDeleted: true,
                                     categoryId: true,
@@ -131,6 +135,9 @@ export class AdminQuestionnaireTemplateService {
                         },
                         include: {
                             questions: {
+                                where: {
+                                    isDeleted: false
+                                },
                                 omit: {
                                     isDeleted: true,
                                     categoryId: true,
@@ -187,6 +194,9 @@ export class AdminQuestionnaireTemplateService {
                         },
                         include: {
                             questions: {
+                                where: {
+                                    isDeleted: false
+                                },
                                 omit: {
                                     isDeleted: true,
                                     categoryId: true,
