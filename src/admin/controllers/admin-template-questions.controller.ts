@@ -1,4 +1,4 @@
-import { Body, Controller, HttpCode, HttpStatus, Param, ParseIntPipe, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Post } from '@nestjs/common';
 import { AdminTemplateQuestionsService } from '../services';
 import { CreateQuestionDTO } from '../validators/create-question';
 
@@ -9,8 +9,12 @@ export class AdminTemplateQuestionsController {
     }
 
     @Post()
-    createQuestion(@Param('categoryId', ParseIntPipe) categoryId,  @Body() body: CreateQuestionDTO) {
+    createQuestion(@Param('categoryId', ParseIntPipe) categoryId, @Body() body: CreateQuestionDTO) {
         return this.templateQuestionService.createQuestion(categoryId, body);
-
+    }
+    @HttpCode(HttpStatus.OK)
+    @Get()
+    getQuestionList(@Param('categoryId', ParseIntPipe) categoryId) {
+        return this.templateQuestionService.getQuestionList(categoryId);
     }
 }
