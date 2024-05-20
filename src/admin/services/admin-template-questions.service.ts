@@ -75,4 +75,31 @@ export class AdminTemplateQuestionsService {
             throw new InternalServerErrorException();
         }
     }
+    async getQuestionDetail(categoryId: number, questionId: number) {
+        try {
+            let question = await this.databaseService.templateQuestion.findUniqueOrThrow({
+                where: {
+                    id: questionId,
+                    categoryId: categoryId,
+                    isDeleted: false,
+                },
+                omit: {
+                    isDeleted: true
+                }
+            });
+
+            return { question }
+        } catch (error) {
+            console.log(error)
+            // Database Exceptions
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code == PrismaErrorCodes.NOT_FOUND)
+                    throw new BadRequestException(ResponseMessages.QUESTIONNAIRE_TEMPLATE_NOT_FOUND);
+                else {
+                    console.log(error.code);
+                }
+            }
+            throw new InternalServerErrorException();
+        }
+    }
 }

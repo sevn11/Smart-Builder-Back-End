@@ -17,4 +17,9 @@ export class AdminTemplateQuestionsController {
     getQuestionList(@Param('categoryId', ParseIntPipe) categoryId) {
         return this.templateQuestionService.getQuestionList(categoryId);
     }
+    @HttpCode(HttpStatus.OK)
+    @Get(':questionId')
+    getQuestionDetail(@Param('categoryId', ParseIntPipe) categoryId, @Param('questionId', ParseIntPipe) questionId) {
+        return this.templateQuestionService.getQuestionDetail(categoryId, questionId);
+    }
 }
