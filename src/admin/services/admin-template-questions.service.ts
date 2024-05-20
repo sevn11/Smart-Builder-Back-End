@@ -40,7 +40,7 @@ export class AdminTemplateQuestionsService {
             // Database Exceptions
             if (error instanceof PrismaClientKnownRequestError) {
                 if (error.code == PrismaErrorCodes.NOT_FOUND)
-                    throw new BadRequestException(ResponseMessages.QUESTIONNAIRE_TEMPLATE_NOT_FOUND);
+                    throw new BadRequestException(ResponseMessages.QUESTION_NOT_FOUND);
                 else {
                     console.log(error.code);
                 }
@@ -66,7 +66,7 @@ export class AdminTemplateQuestionsService {
             // Database Exceptions
             if (error instanceof PrismaClientKnownRequestError) {
                 if (error.code == PrismaErrorCodes.NOT_FOUND)
-                    throw new BadRequestException(ResponseMessages.QUESTIONNAIRE_TEMPLATE_NOT_FOUND);
+                    throw new BadRequestException(ResponseMessages.QUESTION_NOT_FOUND);
                 else {
                     console.log(error.code);
                 }
@@ -93,7 +93,7 @@ export class AdminTemplateQuestionsService {
             // Database Exceptions
             if (error instanceof PrismaClientKnownRequestError) {
                 if (error.code == PrismaErrorCodes.NOT_FOUND)
-                    throw new BadRequestException(ResponseMessages.QUESTIONNAIRE_TEMPLATE_NOT_FOUND);
+                    throw new BadRequestException(ResponseMessages.QUESTION_NOT_FOUND);
                 else {
                     console.log(error.code);
                 }
@@ -131,13 +131,50 @@ export class AdminTemplateQuestionsService {
                 }
             })
 
-            return { question }
+            return { question, message: ResponseMessages.QUESTION_UPDATED }
         } catch (error) {
             console.log(error)
             // Database Exceptions
             if (error instanceof PrismaClientKnownRequestError) {
                 if (error.code == PrismaErrorCodes.NOT_FOUND)
-                    throw new BadRequestException(ResponseMessages.QUESTIONNAIRE_TEMPLATE_NOT_FOUND);
+                    throw new BadRequestException(ResponseMessages.QUESTION_NOT_FOUND);
+                else {
+                    console.log(error.code);
+                }
+            }
+            throw new InternalServerErrorException();
+        }
+    }
+    async deleteQuestion(categoryId: number, questionId: number) {
+        try {
+            let question = await this.databaseService.templateQuestion.findUniqueOrThrow({
+                where: {
+                    id: questionId,
+                    categoryId: categoryId,
+                    isDeleted: false,
+                },
+                omit: {
+                    isDeleted: true
+                }
+            });
+            question = await this.databaseService.templateQuestion.update({
+                where: {
+                    id: questionId,
+                    categoryId: categoryId,
+                    isDeleted: false,
+                },
+                data: {
+                    isDeleted: true,
+                },
+            })
+
+            return { message: ResponseMessages.QUESTION_DELETED }
+        } catch (error) {
+            console.log(error)
+            // Database Exceptions
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code == PrismaErrorCodes.NOT_FOUND)
+                    throw new BadRequestException(ResponseMessages.QUESTION_NOT_FOUND);
                 else {
                     console.log(error.code);
                 }

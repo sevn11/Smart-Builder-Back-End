@@ -22,4 +22,8 @@ export class ResponseMessages {
     static CATEGORY_ORDER_UPDATED = 'Category order updated.'
     static ACCOUNT_SUSPENDED = 'Account suspended. Please contact administrator.'
     static BUILDER_REMOVED = 'Builder removed successfully.'
+    static QUESTION_DELETED = 'Question successfully deleted.'
+    static QUESTION_UPDATED = 'Question successfully updated.'
+    static QUESTION_NOT_FOUND = 'Question not found.'
+    
 }
