@@ -2,7 +2,7 @@ import { Type } from "class-transformer";
 import { IsArray, IsBoolean, IsNotEmpty, IsOptional, IsString, IsEnum } from "class-validator";
 import { QuestionTypes } from "src/core/utils";
 
-export class CreateQuestionDTO {
+export class UpdateQuestionDTO {
 
     @IsString()
     @IsNotEmpty()
