@@ -1,12 +1,12 @@
 import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, UseGuards } from '@nestjs/common';
 import { JwtGuard } from 'src/core/guards';
-import { AdminCategoriesService } from '../services';
+import { AdminCategoryService } from '../services';
 import { CreateCategoryDTO, UpdateCategoryDTO, UpdateCategoryOrderDTO } from '../validators';
 
 @UseGuards(JwtGuard)
 @Controller('admin/questionnairetemplate/:templateId/categories')
 export class AdminCategoriesController {
-    constructor(private adminCategoriesService: AdminCategoriesService) {
+    constructor(private adminCategoriesService: AdminCategoryService) {
 
     }
     @Post()

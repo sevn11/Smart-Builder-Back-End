@@ -12,6 +12,10 @@ export class UpdateCategoryDTO {
 
     @IsBoolean()
     @IsOptional()
-    linkToSelection: boolean
+    linkToInitalSelection: boolean = false
+
+    @IsBoolean()
+    @IsOptional()
+    linkToPaintSelection: boolean = false
 
 }

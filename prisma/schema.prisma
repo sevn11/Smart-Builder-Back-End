@@ -144,7 +144,8 @@ model Category {
   name                    String
   isDeleted               Boolean                @default(false) @map("is_deleted")
   linkToPhase             Boolean                @default(false) @map("link_to_phase")
-  linkToSelection         Boolean                @default(false) @map("link_to_selection")
+  linkToInitalSelection   Boolean                @default(false) @map("link_to_initial_selection")
+  linkToPaintSelection    Boolean                @default(false) @map("link_to_paint_selection")
   linkToQuestionnaire     Boolean                @default(true) @map("link_to_questionnaire")
   isCompanyCategory       Boolean                @default(false) @map("is_company_category")
   companyId               Int?                   @map("company_id")
@@ -178,14 +179,15 @@ model QuestionnaireTemplate {
 }
 
 model TemplateQuestion {
-  id                  Int     @id @default(autoincrement())
-  isDeleted           Boolean @default(false) @map("is_deleted")
-  linkToPhase         Boolean @default(false) @map("link_to_phase")
-  linkToSelection     Boolean @default(false) @map("link_to_selection")
-  linkToQuestionnaire Boolean @default(true) @map("link_to_questionnaire")
-  question            String
-  questionType        String
-  multipleOptions     Json?
+  id                    Int     @id @default(autoincrement())
+  isDeleted             Boolean @default(false) @map("is_deleted")
+  linkToPhase           Boolean @default(false) @map("link_to_phase")
+  linkToInitalSelection Boolean @default(false) @map("link_to_initial_selection")
+  linkToPaintSelection  Boolean @default(false) @map("link_to_paint_selection")
+  linkToQuestionnaire   Boolean @default(true) @map("link_to_questionnaire")
+  question              String
+  questionType          String
+  multipleOptions       Json?
 
   questionnaireTemplateId Int?                   @map("questionnaire_template_id")
   questionnaireTemplate   QuestionnaireTemplate? @relation(fields: [questionnaireTemplateId], references: [id], onDelete: Cascade)

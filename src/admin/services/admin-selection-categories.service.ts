@@ -1,15 +1,15 @@
 import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { DatabaseService } from 'src/database/database.service';
-import { CreateCategoryDTO, UpdateCategoryDTO, UpdateCategoryOrderDTO } from '../validators';
+import { CreateSelectionCategoryDTO, UpdateSelectionCategoryDTO, UpdateCategoryOrderDTO } from '../validators';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { PrismaErrorCodes, ResponseMessages } from 'src/core/utils';
 
 @Injectable()
-export class AdminCategoryService {
+export class AdminSelectionCategoryService {
     constructor(private databaseService: DatabaseService) {
 
     }
-    async createCategory(templateId: number, body: CreateCategoryDTO) {
+    async createCategory(templateId: number, body: CreateSelectionCategoryDTO) {
         try {
             let template = await this.databaseService.questionnaireTemplate.findUniqueOrThrow({
                 where: {
@@ -25,8 +25,9 @@ export class AdminCategoryService {
                     isCompanyCategory: false,
                     questionnaireOrder: body.questionnaireOrder,
                     linkToPhase: body.linkToPhase,
-                    linkToInitalSelection: body.linkToInitalSelection,
-                    linkToPaintSelection: body.linkToPaintSelection,
+                    linkToQuestionnaire: false,
+                    linkToInitalSelection: true,
+                    linkToPaintSelection: false,
                     questionnaireTemplateId: template.id
                 },
                 omit: {
@@ -53,7 +54,10 @@ export class AdminCategoryService {
         try {
             let categories = await this.databaseService.category.findMany({
                 where: {
-                    questionnaireTemplateId: templateId,
+                    OR: [
+                        { questionnaireTemplateId: templateId },
+                        { linkToInitalSelection: true }
+                    ],
                     isCompanyCategory: false,
                     isDeleted: false,
 
@@ -70,6 +74,7 @@ export class AdminCategoryService {
             let category = await this.databaseService.category.findUniqueOrThrow({
                 where: {
                     id: categoryId,
+                    linkToInitalSelection: true,
                     questionnaireTemplateId: templateId,
                     isCompanyCategory: false,
                     isDeleted: false,
@@ -90,11 +95,12 @@ export class AdminCategoryService {
             throw new InternalServerErrorException();
         }
     }
-    async updateCategory(templateId: number, categoryId: number, body: UpdateCategoryDTO) {
+    async updateCategory(templateId: number, categoryId: number, body: UpdateSelectionCategoryDTO) {
         try {
             let category = await this.databaseService.category.findUniqueOrThrow({
                 where: {
                     id: categoryId,
+                    linkToInitalSelection: true,
                     questionnaireTemplateId: templateId,
                     isCompanyCategory: false,
                     isDeleted: false,
@@ -104,6 +110,7 @@ export class AdminCategoryService {
             category = await this.databaseService.category.update({
                 where: {
                     id: categoryId,
+                    linkToInitalSelection: true,
                     questionnaireTemplateId: templateId,
                     isCompanyCategory: false,
                     isDeleted: false,
@@ -112,8 +119,6 @@ export class AdminCategoryService {
                 data: {
                     name: body.name,
                     linkToPhase: body.linkToPhase,
-                    linkToInitalSelection: body.linkToInitalSelection,
-                    linkToPaintSelection: body.linkToPaintSelection,
                 }
             })
             return { category, message: ResponseMessages.CATEGORY_UPDATED }
@@ -135,6 +140,7 @@ export class AdminCategoryService {
             let category = await this.databaseService.category.findUniqueOrThrow({
                 where: {
                     id: categoryId,
+                    linkToInitalSelection: true,
                     questionnaireTemplateId: templateId,
                     isCompanyCategory: false,
                     isDeleted: false,
@@ -145,6 +151,7 @@ export class AdminCategoryService {
                 this.databaseService.category.update({
                     where: {
                         id: category.id,
+                        linkToInitalSelection: true,
                         questionnaireTemplateId: templateId,
                         isCompanyCategory: false,
                         isDeleted: false,
@@ -192,6 +199,7 @@ export class AdminCategoryService {
             let category = await this.databaseService.category.findUniqueOrThrow({
                 where: {
                     id: categoryId,
+                    linkToInitalSelection: true,
                     questionnaireTemplateId: templateId,
                     isCompanyCategory: false,
                     isDeleted: false,

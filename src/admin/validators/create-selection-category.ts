@@ -1,7 +1,7 @@
 import { Type } from "class-transformer";
 import { IsBoolean, IsNotEmpty, IsNumber, IsOptional, IsString } from "class-validator";
 
-export class CreateCategoryDTO {
+export class CreateSelectionCategoryDTO {
 
     @IsString()
     @IsNotEmpty()
@@ -15,13 +15,5 @@ export class CreateCategoryDTO {
     @IsBoolean()
     @IsOptional()
     linkToPhase: boolean = false
-
-    @IsBoolean()
-    @IsOptional()
-    linkToInitalSelection: boolean = false
-
-    @IsBoolean()
-    @IsOptional()
-    linkToPaintSelection: boolean = false
 
 }

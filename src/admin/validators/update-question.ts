@@ -22,6 +22,10 @@ export class UpdateQuestionDTO {
 
     @IsBoolean()
     @IsOptional()
-    linkToSelection: boolean = false
+    linkToInitalSelection: boolean = false
+
+    @IsBoolean()
+    @IsOptional()
+    linkToPaintSelection: boolean = false
 
 }

@@ -2,7 +2,7 @@ import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseIntPip
 import { AdminTemplateQuestionsService } from '../services';
 import { CreateQuestionDTO, UpdateQuestionDTO } from '../validators';
 
-@Controller('admin/categories/:categoryId/templatequestions')
+@Controller('admin/questionnairetemplate/:templateI/categories/:categoryId/templatequestions')
 export class AdminTemplateQuestionsController {
     constructor(private templateQuestionService: AdminTemplateQuestionsService) {
 
