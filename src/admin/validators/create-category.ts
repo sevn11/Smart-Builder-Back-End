@@ -18,7 +18,7 @@ export class CreateCategoryDTO {
 
     @IsBoolean()
     @IsOptional()
-    linkToInitalSelection: boolean = false
+    linkToInitialSelection: boolean = false
 
     @IsBoolean()
     @IsOptional()

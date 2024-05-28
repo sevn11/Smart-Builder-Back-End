@@ -70,8 +70,6 @@ export class UserService {
                 throw new InternalServerErrorException()
             }
         }
-
-
     }
 
     async updateMyProfile(user: User, body: UpdateMyProfileDTO) {

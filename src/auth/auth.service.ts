@@ -80,7 +80,6 @@ export class AuthService {
     }
 
     async login(body: SignInDTO) {
-        console.log(body);
         try {
             const user = await this.databaseService.user.findUniqueOrThrow({
                 where: {

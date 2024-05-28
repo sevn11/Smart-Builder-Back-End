@@ -25,7 +25,7 @@ export class AdminSelectionService {
                 include: {
                     categories: {
                         where: {
-                            linkToInitalSelection: true,
+                            linkToInitialSelection: true,
                             isDeleted: false,
                             isCompanyCategory: false,
                         },
@@ -69,7 +69,7 @@ export class AdminSelectionService {
                     include: {
                         categories: {
                             where: {
-                                linkToInitalSelection: true,
+                                linkToInitialSelection: true,
                                 isDeleted: false,
                                 isCompanyCategory: false,
                             },
@@ -125,7 +125,7 @@ export class AdminSelectionService {
                 include: {
                     categories: {
                         where: {
-                            linkToInitalSelection: true,
+                            linkToInitialSelection: true,
                             isDeleted: false,
                             isCompanyCategory: false,
                         },
@@ -169,7 +169,7 @@ export class AdminSelectionService {
                     include: {
                         categories: {
                             where: {
-                                linkToInitalSelection: true,
+                                linkToInitialSelection: true,
                                 isDeleted: false,
                                 isCompanyCategory: false,
                             },

@@ -26,7 +26,7 @@ export class AdminSelectionCategoryService {
                     questionnaireOrder: body.questionnaireOrder,
                     linkToPhase: body.linkToPhase,
                     linkToQuestionnaire: false,
-                    linkToInitalSelection: true,
+                    linkToInitialSelection: true,
                     linkToPaintSelection: false,
                     questionnaireTemplateId: template.id
                 },
@@ -56,7 +56,7 @@ export class AdminSelectionCategoryService {
                 where: {
                     OR: [
                         { questionnaireTemplateId: templateId },
-                        { linkToInitalSelection: true }
+                        { linkToInitialSelection: true }
                     ],
                     isCompanyCategory: false,
                     isDeleted: false,
@@ -74,7 +74,7 @@ export class AdminSelectionCategoryService {
             let category = await this.databaseService.category.findUniqueOrThrow({
                 where: {
                     id: categoryId,
-                    linkToInitalSelection: true,
+                    linkToInitialSelection: true,
                     questionnaireTemplateId: templateId,
                     isCompanyCategory: false,
                     isDeleted: false,
@@ -100,7 +100,7 @@ export class AdminSelectionCategoryService {
             let category = await this.databaseService.category.findUniqueOrThrow({
                 where: {
                     id: categoryId,
-                    linkToInitalSelection: true,
+                    linkToInitialSelection: true,
                     questionnaireTemplateId: templateId,
                     isCompanyCategory: false,
                     isDeleted: false,
@@ -110,7 +110,7 @@ export class AdminSelectionCategoryService {
             category = await this.databaseService.category.update({
                 where: {
                     id: categoryId,
-                    linkToInitalSelection: true,
+                    linkToInitialSelection: true,
                     questionnaireTemplateId: templateId,
                     isCompanyCategory: false,
                     isDeleted: false,
@@ -140,7 +140,7 @@ export class AdminSelectionCategoryService {
             let category = await this.databaseService.category.findUniqueOrThrow({
                 where: {
                     id: categoryId,
-                    linkToInitalSelection: true,
+                    linkToInitialSelection: true,
                     questionnaireTemplateId: templateId,
                     isCompanyCategory: false,
                     isDeleted: false,
@@ -151,7 +151,7 @@ export class AdminSelectionCategoryService {
                 this.databaseService.category.update({
                     where: {
                         id: category.id,
-                        linkToInitalSelection: true,
+                        linkToInitialSelection: true,
                         questionnaireTemplateId: templateId,
                         isCompanyCategory: false,
                         isDeleted: false,
@@ -199,22 +199,59 @@ export class AdminSelectionCategoryService {
             let category = await this.databaseService.category.findUniqueOrThrow({
                 where: {
                     id: categoryId,
-                    linkToInitalSelection: true,
                     questionnaireTemplateId: templateId,
                     isCompanyCategory: false,
                     isDeleted: false,
 
                 }
             });
-            let result = await this.databaseService.$transaction([
-                this.databaseService.category.updateMany({
+            let currentOrder = category.questionnaireOrder;
+            let isTopDownn = currentOrder < body.questionnaireOrder;
+            let transaction = []
+            if (isTopDownn) {
+                transaction.push(this.databaseService.category.updateMany({
                     where: {
                         questionnaireTemplateId: templateId,
                         isCompanyCategory: false,
                         isDeleted: false,
+                        AND: [
+                            {
+                                questionnaireOrder: {
+                                    lte: body.questionnaireOrder
+                                }
+                            },
+                            {
+                                questionnaireOrder: {
+                                    gt: currentOrder
+                                }
+                            },
+                        ],
+
+                    },
+                    data: {
                         questionnaireOrder: {
-                            gte: body.questionnaireOrder
-                        },
+                            decrement: 1,
+                        }
+                    }
+                }));
+            } else {
+                transaction.push(this.databaseService.category.updateMany({
+                    where: {
+                        questionnaireTemplateId: templateId,
+                        isCompanyCategory: false,
+                        isDeleted: false,
+                        AND: [
+                            {
+                                questionnaireOrder: {
+                                    gte: body.questionnaireOrder
+                                }
+                            },
+                            {
+                                questionnaireOrder: {
+                                    lt: currentOrder
+                                }
+                            },
+                        ],
 
                     },
                     data: {
@@ -222,7 +259,9 @@ export class AdminSelectionCategoryService {
                             increment: 1,
                         }
                     }
-                }),
+                }));
+            }
+            transaction.push(
                 this.databaseService.category.update({
                     where: {
                         id: categoryId,
@@ -257,7 +296,16 @@ export class AdminSelectionCategoryService {
                                 companyId: true
                             },
                             include: {
-                                questions: true
+                                questions: {
+                                    where: {
+                                        isDeleted: false
+                                    },
+                                    omit: {
+                                        isDeleted: true,
+                                        categoryId: true,
+                                        questionnaireTemplateId: true
+                                    },
+                                }
                             },
                             orderBy: {
                                 questionnaireOrder: 'asc'
@@ -265,7 +313,8 @@ export class AdminSelectionCategoryService {
                         }
                     }
                 })
-            ])
+            );
+            let result = await this.databaseService.$transaction(transaction)
 
             return { template: result[2], message: ResponseMessages.CATEGORY_ORDER_UPDATED }
         } catch (error) {

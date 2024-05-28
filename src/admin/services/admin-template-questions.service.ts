@@ -24,7 +24,7 @@ export class AdminTemplateQuestionsService {
                     questionType: body.questionType,
                     multipleOptions: body.multipleOptions,
                     linkToPhase: body.linkToPhase,
-                    linkToInitalSelection: body.linkToInitalSelection,
+                    linkToInitialSelection: body.linkToInitialSelection,
                     linkToPaintSelection: body.linkToPaintSelection,
                     questionnaireTemplateId: category.questionnaireTemplateId,
                     categoryId: category.id
@@ -125,7 +125,7 @@ export class AdminTemplateQuestionsService {
                     questionType: body.questionType,
                     multipleOptions: body.multipleOptions,
                     linkToPhase: body.linkToPhase,
-                    linkToInitalSelection: body.linkToInitalSelection,
+                    linkToInitialSelection: body.linkToInitialSelection,
                     linkToPaintSelection: body.linkToPaintSelection
                 },
                 omit: {

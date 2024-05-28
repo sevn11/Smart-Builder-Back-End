@@ -12,7 +12,7 @@ export class UpdateCategoryDTO {
 
     @IsBoolean()
     @IsOptional()
-    linkToInitalSelection: boolean = false
+    linkToInitialSelection: boolean = false
 
     @IsBoolean()
     @IsOptional()
