@@ -1,5 +1,5 @@
 #!/bin/bash
 
-#pm2 stop api-dev
-#pm2 start api-dev
-pm2 restart api-dev
+#pm2 stop smart-builder-backend
+#pm2 start smart-builder-backend
+pm2 restart smart-builder-backend
