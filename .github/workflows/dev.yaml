@@ -1,0 +1,60 @@
+name: CI
+
+# Controls when the action will run. 
+on:
+  # Triggers the workflow on push or pull request events but only for the feature/service-workers branch
+  push:
+    branches: 
+    - dev
+jobs:
+  buildAndTest:
+    name: CI Pipeline
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+  deploy:
+    name: CD Pipeline
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        appname: ['api']
+        deploy-group: ['api-dev']
+        s3-bucket: ['smart-builder-backend-deployments']
+        s3-filename: ['api-prod-aws-codedeploy-${{ github.sha }}']
+
+    needs: buildAndTest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install AWS CLI 2
+        run: |
+          sudo apt-get update 
+          sudo apt-get install awscli
+     
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+      # Deploy push to AWS S3
+      - name: AWS Deploy push
+        run: |
+          aws deploy push \
+          --application-name ${{ matrix.appname }} \
+          --description "This is a revision for the ${{ matrix.appname }}-${{ github.sha }}" \
+          --ignore-hidden-files \
+          --s3-location s3://${{ matrix.s3-bucket }}/${{ matrix.s3-filename }}.zip \
+          --source .
+     # Create deployment to CodeDeploy
+      - name: AWS Create Deployment
+        id: deploy-stage
+        run: | 
+          output=$(aws deploy create-deployment \
+           --application-name ${{ matrix.appname }} \
+           --deployment-config-name CodeDeployDefault.OneAtATime \
+           --deployment-group-name ${{ matrix.deploy-group }} \
+           --file-exists-behavior OVERWRITE \
+           --s3-location bucket=${{ matrix.s3-bucket }},key=${{ matrix.s3-filename }}.zip,bundleType=zip \
+           --output text)
+          aws deploy get-deployment --deployment-id $output --query "deploymentInfo.[status, creator]" --output text
+          aws deploy wait deployment-successful --deployment-id $output

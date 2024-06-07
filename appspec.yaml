@@ -1,0 +1,14 @@
+version: 0.0
+os: linux
+files:
+  - source: /
+    destination: /home/ubuntu/Smart-Builder-Back-End
+permissions:
+  - object: /home/ubuntu/Smart-Builder-Back-End
+    owner: ubuntu
+    group: ubuntu
+hooks:
+  AfterInstall:
+    - location: deploy.sh
+      timeout: 900
+      runas: ubuntu
