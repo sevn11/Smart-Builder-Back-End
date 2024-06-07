@@ -1,6 +1,5 @@
 #!/bin/bash
 
-#pm2 stop smart-builder-backend
-#pm2 start smart-builder-backend
-git pull origin main
+current_branch=$(git rev-parse --abbrev-ref HEAD)
+git pull origin $current_branch
 pm2 restart smart-builder-backend
