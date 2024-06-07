@@ -17,9 +17,9 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        appname: ['api-prod']
+        appname: ['api']
         deploy-group: ['api-prod']
-        s3-bucket: ['api-deployments']
+        s3-bucket: ['smart-builder-backend-deployments']
         s3-filename: ['api-prod-aws-codedeploy-${{ github.sha }}']
 
     needs: buildAndTest
