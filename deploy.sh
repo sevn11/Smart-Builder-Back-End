@@ -9,6 +9,9 @@ export PATH=$PATH:/home/ubuntu/.nvm/versions/node/v18.17.0/bin
 # Navigate to the application directory
 cd /home/ubuntu/Smart-Builder-Back-End
 
+git clean -fd
+git stash
+
 # Get the current branch name
 branch=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
 
