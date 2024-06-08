@@ -18,5 +18,7 @@ branch=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
 # Pull the latest changes from the repository
 git pull origin $branch
 
+# build application
+pnpm build
 # Restart the application using pm2
 pm2 restart smart-builder-backend
