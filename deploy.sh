@@ -24,6 +24,19 @@ pm2 save --force
 # build application
 pnpm install
 pnpm build
+# migrations 
+if [ -z "$branch" ]; then
+  echo "No branch found"
+  exit 1
+fi
+
+if [[ "$branch" == "dev" ]]; then
+  npx prisma migrate dev
+  echo "migrating dev"
+elif [[ "$branch" == "main" ]]; then
+  npx prisma migrate deploy
+  echo "migrating in prod"
+fi
 # start the application using pm2
 pm2 start ecosystem.config.js 
 pm2 save
