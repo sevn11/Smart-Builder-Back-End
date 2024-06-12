@@ -1,0 +1,243 @@
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, InternalServerErrorException } from '@nestjs/common';
+import { ContractorDTO } from './validators/contractor';
+import { DatabaseService } from 'src/database/database.service';
+import { User } from '@prisma/client';
+import { PrismaErrorCodes, ResponseMessages, UserTypes } from 'src/core/utils';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
+
+@Injectable()
+export class ContractorService {
+
+    constructor(private databaseService: DatabaseService) {}
+
+    // get all non-deleted contractors
+    async getAllContractors(user: User, companyId: number) {
+        try {
+            // Check if User is Admin of the Company.
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
+                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
+                    throw new ForbiddenException("Action Not Allowed");
+                }
+                let contractors = await this.databaseService.contractor.findMany({
+                    where: {
+                        companyId,
+                        isDeleted: false
+                    },
+                    orderBy: {
+                        name: 'asc' 
+                    }
+                });
+                return { contractors }
+            } else {
+                throw new ForbiddenException("Action Not Allowed");
+            }
+
+        } catch (error) {
+            console.log(error);
+            // Database Exceptions
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code == PrismaErrorCodes.NOT_FOUND)
+                    throw new BadRequestException(ResponseMessages.USER_NOT_FOUND);
+                else {
+                    console.log(error.code);
+                }
+            } else if (error instanceof ForbiddenException) {
+                throw error;
+            }
+            throw new InternalServerErrorException();
+        }
+    }
+
+    // fn to create a new contractor
+    async createContractor(user: User, companyId: number, body: ContractorDTO) {
+        try {
+            // Check if User is Admin of the Company.
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
+                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
+                    throw new ForbiddenException("Action Not Allowed");
+                }
+                // Check for existing non-deleted contractor with the same email
+                const existingContractor = await this.databaseService.contractor.findFirst({
+                    where: {
+                        email: body.email,
+                        isDeleted: false,
+                    },
+                });
+
+                if (existingContractor) {
+                    throw new ConflictException('A contractor with this email already exists.');
+                }
+                let contractor = await this.databaseService.contractor.create({
+                    data: {
+                        companyId,
+                        ...body,
+                    }
+                })
+                return { contractor }
+            } else {
+                throw new ForbiddenException("Action Not Allowed");
+            }
+        } catch (error) {
+            console.log(error);
+            // Database Exceptions
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code === PrismaErrorCodes.NOT_FOUND) {
+                  throw new BadRequestException(ResponseMessages.USER_NOT_FOUND);
+                } else {
+                  console.error(error.code);
+                }
+            } else if (error instanceof ForbiddenException || error instanceof ConflictException) {
+                throw error;
+            }
+        
+            throw new InternalServerErrorException();
+        }
+    }
+
+    // fn to get a single contractor details
+    async getContractorDetails(user: User, companyId: number, contractorId: number) {
+        try {
+            // Check if User is Admin of the Company.
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
+                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
+                    throw new ForbiddenException("Action Not Allowed");
+                }
+                let contractor = await this.databaseService.contractor.findFirstOrThrow({
+                    where: {
+                        id: contractorId,
+                        companyId,
+                        isDeleted: false
+                    }
+                });
+                return { contractor }
+            } else {
+                throw new ForbiddenException("Action Not Allowed");
+            }
+
+        } catch (error) {
+            console.log(error);
+            // Database Exceptions
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code == PrismaErrorCodes.NOT_FOUND)
+                    throw new BadRequestException(ResponseMessages.USER_NOT_FOUND);
+                else {
+                    console.log(error.code);
+                }
+            } else if (error instanceof ForbiddenException) {
+                throw error;
+            }
+            throw new InternalServerErrorException();
+        }
+    }
+
+    // fn to update existing contractor
+    async updateContractor(user: User, companyId: number, contractorId: number, body: ContractorDTO) {
+        try {
+            // Check if User is Admin of the Company.
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
+                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
+                    throw new ForbiddenException("Action Not Allowed");
+                }
+
+                // throw error if contractor was not found
+                let contractor = await this.databaseService.contractor.findFirstOrThrow({
+                    where: {
+                        id: contractorId,
+                        companyId,
+                        isDeleted: false
+                    }
+                });
+
+                // check same contractor with email does not exist
+                const existingContractorWithEmail = await this.databaseService.contractor.findFirst({
+                    where: {
+                        email: body.email,
+                        id: {
+                            not: contractorId // Exclude the current contractor being updated
+                        },
+                        isDeleted: false,
+                    },
+                });
+
+                if (existingContractorWithEmail) {
+                    throw new ConflictException('A contractor with this email already exists.');
+                }
+
+                // updating the contractor
+                contractor = await this.databaseService.contractor.update({
+                    where: {
+                        id: contractor.id,
+                        companyId,
+                        isDeleted: false
+                    },
+                    data: {
+                        ...body,
+                    }
+                });
+                return { contractor }
+            } else {
+                throw new ForbiddenException("Action Not Allowed");
+            }
+        } catch (error) {
+            console.log(error);
+            // Database Exceptions
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code == PrismaErrorCodes.NOT_FOUND)
+                    throw new BadRequestException(ResponseMessages.CUSTOMER_NOT_FOUND);
+                else {
+                    console.log(error.code);
+                }
+            } else if (error instanceof ForbiddenException || error instanceof ConflictException) {
+                throw error;
+            }
+            throw new InternalServerErrorException();
+        }
+    }
+
+    // fn to delete existing contractor
+    async deleteContractor(user: User, companyId: number, contractorId: number) {
+        try {
+            // Check if User is Admin of the Company.
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
+                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
+                    throw new ForbiddenException("Action Not Allowed");
+                }
+                let contractor = await this.databaseService.contractor.findFirstOrThrow({
+                    where: {
+                        id: contractorId,
+                        companyId,
+                        isDeleted: false
+                    }
+                });
+                await this.databaseService.contractor.update({
+                    where: {
+                        id: contractorId,
+                        companyId,
+                    },
+                    data: {
+                        isDeleted: true
+                    }
+
+                })
+                
+                return { message: ResponseMessages.SUCCESSFUL }
+            } else {
+                throw new ForbiddenException("Action Not Allowed");
+            }
+
+        } catch (error) {
+            console.log(error);
+            // Database Exceptions
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code == PrismaErrorCodes.NOT_FOUND)
+                    throw new BadRequestException(ResponseMessages.USER_NOT_FOUND);
+                else {
+                    console.log(error.code);
+                }
+            } else if (error instanceof ForbiddenException) {
+                throw error;
+            }
+            throw new InternalServerErrorException();
+        }
+    }
+}

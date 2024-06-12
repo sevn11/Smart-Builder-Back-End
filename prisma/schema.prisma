@@ -53,6 +53,8 @@ model Company {
   customers              Customer[]
   jobs                   Job[]
   categories             Category[]
+  contractors            Contractor[]
+  JobContractor          JobContractor[]
   questionnaireTemplates QuestionnaireTemplate[]
   isActive               Boolean                 @default(true) @map("is_active")
   isDeleted              Boolean?                @default(false) @map("is_deleted")
@@ -123,6 +125,8 @@ model Job {
   isWaterAtLot       Boolean @default(false) @map("is_water_at_lot")
   isElectricityAtLot Boolean @default(false) @map("is_electricity_at_lot")
   isSewerAtLot       Boolean @default(false) @map("is_sewer_at_lot")
+
+  JobContractor     JobContractor[]
 
   companyId Int     @map("company_id")
   company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
@@ -198,4 +202,32 @@ model TemplateQuestion {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("template_question")
+}
+
+model Contractor {
+  id                Int                @id @default(autoincrement())
+  name              String
+  email             String
+  phase             String
+  companyId         Int?               @map("company_id")
+  company           Company?           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  isDeleted         Boolean?           @default(false) @map("is_deleted")
+  JobContractor     JobContractor[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("contractors")
+}
+
+model JobContractor {
+  id                Int                @id @default(autoincrement())
+  companyId         Int?               @map("company_id")
+  company           Company?           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  jobId             Int?               @map("job_id")
+  job               Job?               @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  contractorId      Int?               @map("contractor_id")
+  contractor         Contractor?        @relation(fields: [contractorId], references: [id], onDelete: Cascade)
+
+  @@map("job_contractors")
 }
