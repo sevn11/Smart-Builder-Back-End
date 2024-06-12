@@ -9,14 +9,14 @@ export PATH=$PATH:/home/ubuntu/.nvm/versions/node/v18.17.0/bin
 # Navigate to the application directory
 cd /home/ubuntu/Smart-Builder-Back-End
 
-#git clean -fd
-#git stash
+git clean -fd
+git stash
 
 # Get the current branch name
 branch=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
 
 # Pull the latest changes from the repository
-#git pull origin $branch
+git pull origin $branch
 #stop app
 pm2 stop smart-builder-backend
 pm2 delete smart-builder-backend
@@ -24,6 +24,7 @@ pm2 save --force
 # build application
 pnpm install
 pnpm build
+# migrations 
 if [ -z "$branch" ]; then
   echo "No branch found"
   exit 1
