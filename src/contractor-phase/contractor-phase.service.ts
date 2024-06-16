@@ -184,6 +184,16 @@ export class ContractorPhaseService {
                         isDeleted: true
                     }
 
+                });
+
+                await this.databaseService.contractor.updateMany({
+                    where: {
+                        phaseId: phaseId,
+                        companyId
+                    },
+                    data: {
+                        phaseId: null
+                    }
                 })
                 
                 return { message: ResponseMessages.SUCCESSFUL }
