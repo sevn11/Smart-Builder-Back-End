@@ -1,42 +1,38 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, InternalServerErrorException } from '@nestjs/common';
-import { ContractorDTO } from './validators/contractor';
-import { DatabaseService } from 'src/database/database.service';
 import { User } from '@prisma/client';
-import { PrismaErrorCodes, ResponseMessages, UserTypes } from 'src/core/utils';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
+import { PrismaErrorCodes, ResponseMessages, UserTypes } from 'src/core/utils';
+import { DatabaseService } from 'src/database/database.service';
+import { ContractorPhaseDTO } from './validators/contractor-phase';
 
 @Injectable()
-export class ContractorService {
+export class ContractorPhaseService {
 
     constructor(private databaseService: DatabaseService) {}
 
-    // get all non-deleted contractors
-    async getAllContractors(user: User, companyId: number) {
+    // get all phases
+    async getAllPhases(user: User, companyId: number) {
         try {
             // Check if User is Admin of the Company.
             if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
                 if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
-                let contractors = await this.databaseService.contractor.findMany({
+                let phases = await this.databaseService.contractorPhase.findMany({
                     where: {
                         companyId,
                         isDeleted: false
-                    },
-                    include: {
-                        phase: true
                     },
                     orderBy: {
                         name: 'asc' 
                     }
                 });
-                return { contractors }
+                return { phases }
             } else {
                 throw new ForbiddenException("Action Not Allowed");
             }
 
         } catch (error) {
-            console.log(error);
             // Database Exceptions
             if (error instanceof PrismaClientKnownRequestError) {
                 if (error.code == PrismaErrorCodes.NOT_FOUND)
@@ -51,8 +47,8 @@ export class ContractorService {
         }
     }
 
-    // fn to create a new contractor
-    async createContractor(user: User, companyId: number, body: ContractorDTO) {
+    // create new phase
+    async createPhase(user: User, companyId: number, body: ContractorPhaseDTO) {
         try {
             // Check if User is Admin of the Company.
             if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
@@ -60,25 +56,23 @@ export class ContractorService {
                     throw new ForbiddenException("Action Not Allowed");
                 }
                 // Check for existing non-deleted contractor with the same email
-                const existingContractor = await this.databaseService.contractor.findFirst({
+                const existingPhase = await this.databaseService.contractorPhase.findFirst({
                     where: {
-                        email: body.email,
+                        name: body.name,
                         isDeleted: false,
                     },
                 });
 
-                if (existingContractor) {
-                    throw new ConflictException('A contractor with this email already exists.');
+                if (existingPhase) {
+                    throw new ConflictException('A phase with this name already exists.');
                 }
-                let contractor = await this.databaseService.contractor.create({
+                let phase = await this.databaseService.contractorPhase.create({
                     data: {
                         companyId,
-                        name: body.name,
-                        email: body.email,
-                        phaseId: body.phaseId,
+                        ...body,
                     }
                 })
-                return { contractor }
+                return { phase }
             } else {
                 throw new ForbiddenException("Action Not Allowed");
             }
@@ -99,44 +93,8 @@ export class ContractorService {
         }
     }
 
-    // fn to get a single contractor details
-    async getContractorDetails(user: User, companyId: number, contractorId: number) {
-        try {
-            // Check if User is Admin of the Company.
-            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
-                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
-                    throw new ForbiddenException("Action Not Allowed");
-                }
-                let contractor = await this.databaseService.contractor.findFirstOrThrow({
-                    where: {
-                        id: contractorId,
-                        companyId,
-                        isDeleted: false
-                    }
-                });
-                return { contractor }
-            } else {
-                throw new ForbiddenException("Action Not Allowed");
-            }
-
-        } catch (error) {
-            console.log(error);
-            // Database Exceptions
-            if (error instanceof PrismaClientKnownRequestError) {
-                if (error.code == PrismaErrorCodes.NOT_FOUND)
-                    throw new BadRequestException(ResponseMessages.USER_NOT_FOUND);
-                else {
-                    console.log(error.code);
-                }
-            } else if (error instanceof ForbiddenException) {
-                throw error;
-            }
-            throw new InternalServerErrorException();
-        }
-    }
-
-    // fn to update existing contractor
-    async updateContractor(user: User, companyId: number, contractorId: number, body: ContractorDTO) {
+    // update an existing phase
+    async updatePhase(user: User, companyId: number, phaseId: number, body: ContractorPhaseDTO) {
         try {
             // Check if User is Admin of the Company.
             if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
@@ -145,43 +103,41 @@ export class ContractorService {
                 }
 
                 // throw error if contractor was not found
-                let contractor = await this.databaseService.contractor.findFirstOrThrow({
+                let phase = await this.databaseService.contractorPhase.findFirstOrThrow({
                     where: {
-                        id: contractorId,
+                        id: phaseId,
                         companyId,
                         isDeleted: false
                     }
                 });
 
-                // check same contractor with email does not exist
-                const existingContractorWithEmail = await this.databaseService.contractor.findFirst({
+                // checking phase with name already exist (exclude editing one)
+                const existingPhase = await this.databaseService.contractorPhase.findFirst({
                     where: {
-                        email: body.email,
+                        name: body.name,
                         id: {
-                            not: contractorId // Exclude the current contractor being updated
+                            not: phaseId // Exclude the current contractor being updated
                         },
                         isDeleted: false,
                     },
                 });
 
-                if (existingContractorWithEmail) {
-                    throw new ConflictException('A contractor with this email already exists.');
+                if (existingPhase) {
+                    throw new ConflictException('A phase with this name already exists.');
                 }
 
-                // updating the contractor
-                contractor = await this.databaseService.contractor.update({
+                // updating the contractor phase
+                phase = await this.databaseService.contractorPhase.update({
                     where: {
-                        id: contractor.id,
+                        id: phase.id,
                         companyId,
                         isDeleted: false
                     },
                     data: {
-                        name: body.name,
-                        email: body.email,
-                        phaseId: body.phaseId,
+                        ...body,
                     }
                 });
-                return { contractor }
+                return { phase }
             } else {
                 throw new ForbiddenException("Action Not Allowed");
             }
@@ -201,24 +157,27 @@ export class ContractorService {
         }
     }
 
-    // fn to delete existing contractor
-    async deleteContractor(user: User, companyId: number, contractorId: number) {
+    async deletePhase(user: User, companyId: number, phaseId: number) {
         try {
             // Check if User is Admin of the Company.
             if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
                 if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
-                let contractor = await this.databaseService.contractor.findFirstOrThrow({
+                
+                // checking phase exist or not
+                await this.databaseService.contractorPhase.findFirstOrThrow({
                     where: {
-                        id: contractorId,
+                        id: phaseId,
                         companyId,
                         isDeleted: false
                     }
                 });
-                await this.databaseService.contractor.update({
+
+                // deleting the phase
+                await this.databaseService.contractorPhase.update({
                     where: {
-                        id: contractorId,
+                        id: phaseId,
                         companyId,
                     },
                     data: {

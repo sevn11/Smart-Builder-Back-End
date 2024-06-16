@@ -13,6 +13,7 @@ import { AdminModule } from './admin/admin.module';
 import { QuestionnaireTemplateModule } from './questionnaire-template/questionnaire-template.module';
 import { ContractorModule } from './contractor/contractor.module';
 import { JobContractorModule } from './job-contractor/job-contractor.module';
+import { ContractorPhaseModule } from './contractor-phase/contractor-phase.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { JobContractorModule } from './job-contractor/job-contractor.module';
     QuestionnaireTemplateModule,
     ContractorModule,
     JobContractorModule,
+    ContractorPhaseModule,
   ],
 })
 export class AppModule { }

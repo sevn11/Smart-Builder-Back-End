@@ -25,7 +25,11 @@ export class JobContractorService {
                         jobId,
                     },
                     include: {
-                        contractor: true
+                        contractor: {
+                            include: {
+                                phase: true
+                            }
+                        }
                     }
                 });
                 return { jobContractors }

@@ -55,6 +55,7 @@ model Company {
   categories             Category[]
   contractors            Contractor[]
   JobContractor          JobContractor[]
+  ContractorPhase        ContractorPhase[]
   questionnaireTemplates QuestionnaireTemplate[]
   isActive               Boolean                 @default(true) @map("is_active")
   isDeleted              Boolean?                @default(false) @map("is_deleted")
@@ -208,7 +209,8 @@ model Contractor {
   id                Int                @id @default(autoincrement())
   name              String
   email             String
-  phase             String
+  phaseId           Int?               @map("phase_id")
+  phase             ContractorPhase?   @relation(fields: [phaseId], references: [id])
   companyId         Int?               @map("company_id")
   company           Company?           @relation(fields: [companyId], references: [id], onDelete: Cascade)
   isDeleted         Boolean?           @default(false) @map("is_deleted")
@@ -230,4 +232,19 @@ model JobContractor {
   contractor         Contractor?        @relation(fields: [contractorId], references: [id], onDelete: Cascade)
 
   @@map("job_contractors")
+}
+
+model ContractorPhase {
+  id                Int                @id @default(autoincrement())
+  companyId         Int?               @map("company_id")
+  company           Company?           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  name              String
+  isDeleted         Boolean?           @default(false) @map("is_deleted")
+
+  contractors       Contractor[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("contractor_phase")
 }
