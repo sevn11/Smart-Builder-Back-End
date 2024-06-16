@@ -11,7 +11,7 @@ export class ContractorDTO {
     email: string
 
 
-    @IsString()
+    @IsNumber()
     @IsNotEmpty()
-    phase: string
+    phaseId: number
 }
