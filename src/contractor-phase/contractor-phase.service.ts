@@ -59,6 +59,7 @@ export class ContractorPhaseService {
                 const existingPhase = await this.databaseService.contractorPhase.findFirst({
                     where: {
                         name: body.name,
+                        companyId: companyId,
                         isDeleted: false,
                     },
                 });
@@ -114,6 +115,7 @@ export class ContractorPhaseService {
                 // checking phase with name already exist (exclude editing one)
                 const existingPhase = await this.databaseService.contractorPhase.findFirst({
                     where: {
+                        companyId: companyId,
                         name: body.name,
                         id: {
                             not: phaseId // Exclude the current contractor being updated
