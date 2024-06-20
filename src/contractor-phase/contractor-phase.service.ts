@@ -23,6 +23,9 @@ export class ContractorPhaseService {
                         companyId,
                         isDeleted: false
                     },
+                    include: {
+                        contractors: true
+                    },
                     orderBy: {
                         name: 'asc' 
                     }
@@ -55,18 +58,7 @@ export class ContractorPhaseService {
                 if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
-                // Check for existing non-deleted contractor with the same email
-                const existingPhase = await this.databaseService.contractorPhase.findFirst({
-                    where: {
-                        name: body.name,
-                        companyId: companyId,
-                        isDeleted: false,
-                    },
-                });
-
-                if (existingPhase) {
-                    throw new ConflictException('A phase with this name already exists.');
-                }
+                
                 let phase = await this.databaseService.contractorPhase.create({
                     data: {
                         companyId,
@@ -111,22 +103,6 @@ export class ContractorPhaseService {
                         isDeleted: false
                     }
                 });
-
-                // checking phase with name already exist (exclude editing one)
-                const existingPhase = await this.databaseService.contractorPhase.findFirst({
-                    where: {
-                        companyId: companyId,
-                        name: body.name,
-                        id: {
-                            not: phaseId // Exclude the current contractor being updated
-                        },
-                        isDeleted: false,
-                    },
-                });
-
-                if (existingPhase) {
-                    throw new ConflictException('A phase with this name already exists.');
-                }
 
                 // updating the contractor phase
                 phase = await this.databaseService.contractorPhase.update({
