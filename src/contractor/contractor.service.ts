@@ -59,18 +59,7 @@ export class ContractorService {
                 if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
-                // Check for existing non-deleted contractor with the same email
-                const existingContractor = await this.databaseService.contractor.findFirst({
-                    where: {
-                        companyId: companyId,
-                        email: body.email,
-                        isDeleted: false,
-                    },
-                });
-
-                if (existingContractor) {
-                    throw new ConflictException('A contractor with this email already exists.');
-                }
+                
                 let contractor = await this.databaseService.contractor.create({
                     data: {
                         companyId,
@@ -153,22 +142,6 @@ export class ContractorService {
                         isDeleted: false
                     }
                 });
-
-                // check same contractor with email does not exist
-                const existingContractorWithEmail = await this.databaseService.contractor.findFirst({
-                    where: {
-                        companyId: companyId,
-                        email: body.email,
-                        id: {
-                            not: contractorId // Exclude the current contractor being updated
-                        },
-                        isDeleted: false,
-                    },
-                });
-
-                if (existingContractorWithEmail) {
-                    throw new ConflictException('A contractor with this email already exists.');
-                }
 
                 // updating the contractor
                 contractor = await this.databaseService.contractor.update({
