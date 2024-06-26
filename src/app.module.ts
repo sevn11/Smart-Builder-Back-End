@@ -11,6 +11,9 @@ import { CustomerModule } from './customer/customer.module';
 import { JobsModule } from './jobs/jobs.module';
 import { AdminModule } from './admin/admin.module';
 import { QuestionnaireTemplateModule } from './questionnaire-template/questionnaire-template.module';
+import { ContractorModule } from './contractor/contractor.module';
+import { JobContractorModule } from './job-contractor/job-contractor.module';
+import { ContractorPhaseModule } from './contractor-phase/contractor-phase.module';
 
 @Module({
   imports: [
@@ -26,6 +29,9 @@ import { QuestionnaireTemplateModule } from './questionnaire-template/questionna
     JobsModule,
     AdminModule,
     QuestionnaireTemplateModule,
+    ContractorModule,
+    JobContractorModule,
+    ContractorPhaseModule,
   ],
 })
 export class AppModule { }
