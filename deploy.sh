@@ -33,10 +33,12 @@ fi
 if [[ "$branch" == "dev" ]]; then
   npx prisma migrate dev
   echo "migrating dev"
+  pm2 start ecosystem-dev.config.js 
 elif [[ "$branch" == "main" ]]; then
   npx prisma migrate deploy
   echo "migrating in prod"
+  pm2 start ecosystem.config.js 
+
 fi
 # start the application using pm2
-pm2 start ecosystem.config.js 
 pm2 save
