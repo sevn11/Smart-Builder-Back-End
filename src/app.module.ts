@@ -14,6 +14,7 @@ import { QuestionnaireTemplateModule } from './questionnaire-template/questionna
 import { ContractorModule } from './contractor/contractor.module';
 import { JobContractorModule } from './job-contractor/job-contractor.module';
 import { ContractorPhaseModule } from './contractor-phase/contractor-phase.module';
+import { ContractorFileModule } from './contractor-file/contractor-file.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { ContractorPhaseModule } from './contractor-phase/contractor-phase.modul
     ContractorModule,
     JobContractorModule,
     ContractorPhaseModule,
+    ContractorFileModule
   ],
 })
 export class AppModule { }

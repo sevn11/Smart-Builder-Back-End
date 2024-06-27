@@ -55,6 +55,7 @@ model Company {
   categories             Category[]
   contractors            Contractor[]
   JobContractor          JobContractor[]
+  ContractorFiles        ContractorFiles[]
   ContractorPhase        ContractorPhase[]
   questionnaireTemplates QuestionnaireTemplate[]
   isActive               Boolean                 @default(true) @map("is_active")
@@ -102,6 +103,7 @@ model Customer {
   companyId      Int       @map("company_id")
   company        Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
   jobs           Job[]
+  ContractorFiles        ContractorFiles[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -128,6 +130,7 @@ model Job {
   isSewerAtLot       Boolean @default(false) @map("is_sewer_at_lot")
 
   JobContractor     JobContractor[]
+  ContractorFiles        ContractorFiles[]
 
   companyId Int     @map("company_id")
   company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
@@ -247,4 +250,21 @@ model ContractorPhase {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("contractor_phase")
+}
+
+model ContractorFiles {
+  id                Int                 @id @default(autoincrement())
+  companyId         Int?                @map("company_id")
+  company           Company?            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  customerId        Int                 @map("customer_id")
+  customer          Customer            @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  jobId             Int?                @map("job_id")
+  job               Job?                @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  fileName          String
+  filePath          String          
+
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
+
+  @@map("contractor_files")
 }
