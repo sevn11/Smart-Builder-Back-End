@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, ForbiddenException, Injectable, InternalServerErrorException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { User } from '@prisma/client';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { existsSync } from 'fs';
@@ -61,23 +61,28 @@ export class ContractorFileService {
                     else {
                         // Write the file to disk
                         await writeFile(filePath, file.buffer);
-              
-                        // after storing file in system create an entry in the database
-                        const uploadedFile = await this.databaseService.contractorFiles.create({
-                          data: {
-                            companyId: company.id,
-                            customerId: customer.id,
-                            jobId: job.id,
-                            fileName: file.originalname,
-                            filePath: filePath,
-                          },
-                        });
-              
-                        uploadedFiles.push({
-                          id: uploadedFile.id,
-                          fileName: uploadedFile.fileName,
-                          filePath: uploadedFile.filePath,
-                        });
+
+                        // Check again if file was successfully written
+                        if (await existsSync(filePath)) {
+                            // after storing file in system create an entry in the database
+                            const uploadedFile = await this.databaseService.contractorFiles.create({
+                              data: {
+                                companyId: company.id,
+                                customerId: customer.id,
+                                jobId: job.id,
+                                fileName: file.originalname,
+                                filePath: filePath,
+                              },
+                            });
+                  
+                            uploadedFiles.push({
+                              id: uploadedFile.id,
+                              fileName: uploadedFile.fileName,
+                              filePath: uploadedFile.filePath,
+                            });
+                        } else {
+                            throw new NotFoundException(ResponseMessages.FILE_NOT_UPLOADED);
+                        }
                     }
                   }
           
@@ -94,7 +99,7 @@ export class ContractorFileService {
                 } else {
                   console.error(error.code);
                 }
-            } else if (error instanceof ForbiddenException || error instanceof ConflictException) {
+            } else if (error instanceof ForbiddenException || error instanceof ConflictException || error instanceof NotFoundException) {
                 throw error;
             }
         
@@ -170,8 +175,11 @@ export class ContractorFileService {
                     }
                 })
                 
-                // delete file from the disk
-                await unlink(file.filePath);
+                // check file exist on server
+                if(existsSync(file.filePath)) {
+                    // delete file from the disk
+                    await unlink(file.filePath);
+                }
 
                 // delete file data entry from  database
                 await this.databaseService.contractorFiles.delete({
@@ -213,16 +221,18 @@ export class ContractorFileService {
                     where: {
                         id: fileId
                     }
-                })
-                
-                // return file from path 
-                const fileContent = await readFile(file.filePath);
+                });
 
-                return {
-                    id: file.id,
-                    fileName: file.fileName,
-                    fileContent: fileContent.toString('base64')
-                };
+                // check file exist on server
+                if (await existsSync(file.filePath)) {
+                    return {
+                        id: file.id,
+                        fileName: file.fileName,
+                        filePath: file.filePath
+                    };
+                } else {
+                    throw new NotFoundException(ResponseMessages.FILE_NOT_FOUND);
+                }
                 
             } else {
                 throw new ForbiddenException("Action Not Allowed");
@@ -235,7 +245,7 @@ export class ContractorFileService {
                 } else {
                   console.error(error.code);
                 }
-            } else if (error instanceof ForbiddenException || error instanceof ConflictException) {
+            } else if (error instanceof ForbiddenException || error instanceof ConflictException || error instanceof NotFoundException) {
                 throw error;
             }
         
