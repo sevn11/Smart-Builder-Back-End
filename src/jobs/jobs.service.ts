@@ -198,4 +198,51 @@ export class JobsService {
             }
         }
     }
+
+    // delete a particular job
+    async deleteJob(user: User, companyId: number, jobId: number) {
+        try {
+            // Check if User is Admin of the Company.
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
+                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
+                    throw new ForbiddenException("Action Not Allowed");
+                }
+                // check job exist or not
+                await this.databaseService.job.findFirstOrThrow({
+                    where: {
+                        id: jobId,
+                        companyId,
+                        isDeleted: false
+                    }
+                });
+                await this.databaseService.job.update({
+                    where: {
+                        id: jobId,
+                        companyId,
+                    },
+                    data: {
+                        isDeleted: true
+                    }
+
+                })
+                return { message: ResponseMessages.SUCCESSFUL }
+            } else {
+                throw new ForbiddenException("Action Not Allowed");
+            }
+
+        } catch (error) {
+            console.log(error);
+            // Database Exceptions
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code == PrismaErrorCodes.NOT_FOUND)
+                    throw new BadRequestException(ResponseMessages.USER_NOT_FOUND);
+                else {
+                    console.log(error.code);
+                }
+            } else if (error instanceof ForbiddenException) {
+                throw error;
+            }
+            throw new InternalServerErrorException();
+        }
+    }
 }
