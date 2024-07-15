@@ -17,6 +17,7 @@ import { ContractorPhaseModule } from './contractor-phase/contractor-phase.modul
 import { ContractorFileModule } from './contractor-file/contractor-file.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
+import { JobProjectEstimatorModule } from './job-project-estimator/job-project-estimator.module';
 
 @Module({
   imports: [
@@ -39,7 +40,8 @@ import { join } from 'path';
     ContractorModule,
     JobContractorModule,
     ContractorPhaseModule,
-    ContractorFileModule
+    ContractorFileModule,
+    JobProjectEstimatorModule,
   ],
 })
 export class AppModule { }
