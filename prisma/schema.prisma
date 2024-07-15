@@ -55,6 +55,7 @@ model Company {
   categories             Category[]
   contractors            Contractor[]
   JobContractor          JobContractor[]
+  JobProjectEstimatorHeader    JobProjectEstimatorHeader[]
   ContractorPhase        ContractorPhase[]
   questionnaireTemplates QuestionnaireTemplate[]
   isActive               Boolean                 @default(true) @map("is_active")
@@ -128,6 +129,7 @@ model Job {
   isSewerAtLot       Boolean @default(false) @map("is_sewer_at_lot")
 
   JobContractor     JobContractor[]
+  JobProjectEstimatorHeader JobProjectEstimatorHeader[]
 
   companyId Int     @map("company_id")
   company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
@@ -247,4 +249,39 @@ model ContractorPhase {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("contractor_phase")
+}
+
+model JobProjectEstimatorHeader {
+  id                 Int                          @id @default(autoincrement())
+  name               String
+  companyId          Int?                         @map("company_id")
+  company            Company?                     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  jobId              Int?                         @map("job_id")
+  job                Job?                         @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  isDeleted          Boolean?                     @default(false) @map("is_deleted")
+
+  JobProjectEstimator                             JobProjectEstimator[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("job_project_estimator_header")
+}
+
+model JobProjectEstimator {
+  id                Int                @id @default(autoincrement())
+  item              String
+  description       String
+  costType          String?            @map("cost_type")
+  quantity          Int
+  unitCost          Float              @map("unit_cost")
+  actualCost        Float              @map("actual_cost")
+  grossProfit       Float              @map("gross_profit")
+  contractPrice     Float              @map("contract_price")
+  isDeleted         Boolean?           @default(false) @map("is_deleted")
+
+  jobProjectEstimatorHeaderId          Int? @map("job_project_estimator_header_id")
+  jobProjectEstimatorHeader            JobProjectEstimatorHeader? @relation(fields: [jobProjectEstimatorHeaderId], references: [id], onDelete: Cascade)
+
+  @@map("job_project_estimator")
 }
