@@ -66,7 +66,7 @@ export class JobProjectEstimatorService {
                 if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
-                // 
+                // check new header is named as 'accounting'
                 if (body.name.toLowerCase() === "accounting") {
                     throw new ConflictException("Accounting header already exist")
                 }
@@ -93,6 +93,114 @@ export class JobProjectEstimatorService {
                     console.log(error.code);
                 }
             } else if (error instanceof ForbiddenException || error instanceof ConflictException) {
+                throw error;
+            }
+            throw new InternalServerErrorException();
+        }
+    }
+
+    // edit project estimator header
+    async editHeader (user: User, companyId: number, jobId: number, headerId: number, body: JobProjectEstimatorHeaderDTO) {
+        try {
+            // Check if User is Admin of the Company.
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
+                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
+                    throw new ForbiddenException("Action Not Allowed");
+                }
+                // check new header is named as 'accounting'
+                if (body.name.toLowerCase() === "accounting") {
+                    throw new ConflictException("Accounting header already exist")
+                }
+
+                // check non deleted header exist or not
+                await this.databaseService.jobProjectEstimatorHeader.findFirstOrThrow({
+                    where: {
+                        id: headerId,
+                        companyId,
+                        jobId,
+                        isDeleted: false
+                    }
+                });
+
+                let projectEstimatorHeader = await this.databaseService.jobProjectEstimatorHeader.update({
+                    where: { id: headerId },
+                    data: {
+                        name: body.name
+                    }
+                });
+    
+                return { projectEstimatorHeader };
+            } else {
+                throw new ForbiddenException("Action Not Allowed");
+            }
+
+        } catch (error) {
+            console.log(error);
+            // Database Exceptions
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code == PrismaErrorCodes.NOT_FOUND)
+                    throw new BadRequestException(ResponseMessages.RESOURCE_NOT_FOUND);
+                else {
+                    console.log(error.code);
+                }
+            } else if (error instanceof ForbiddenException || error instanceof ConflictException) {
+                throw error;
+            }
+            throw new InternalServerErrorException();
+        }
+    }
+
+    // delete project estimator data row of a header
+    async deleteHeader (user: User, companyId: number, jobId: number, headerId: number) {
+        try {
+            // Check if User is Admin of the Company.
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
+                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
+                    throw new ForbiddenException("Action Not Allowed");
+                }
+
+                // check header exisit or not
+                let header = await this.databaseService.jobProjectEstimatorHeader.findFirstOrThrow({
+                    where: {
+                        id: headerId,
+                        companyId,
+                        jobId,
+                        isDeleted: false
+                    }
+                });
+
+                // restrict accounting header delete
+                if (header.name.toLowerCase() === "accounting") {
+                    throw new ForbiddenException("Action Not Allowed");
+                }
+
+                // Delete header
+                await this.databaseService.jobProjectEstimatorHeader.update({
+                    where: { id: headerId },
+                    data: { isDeleted: true }
+                });
+                
+                // Delete related project estimator rows
+                await this.databaseService.jobProjectEstimator.updateMany({
+                    where: { jobProjectEstimatorHeaderId: headerId },
+                    data: { isDeleted: true }
+                });
+
+                return { message: ResponseMessages.SUCCESSFUL }
+            } else {
+                throw new ForbiddenException("Action Not Allowed");
+            }
+
+        } catch (error) {
+            console.log(error);
+            // Database Exceptions
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code == PrismaErrorCodes.NOT_FOUND)
+                    throw new BadRequestException(ResponseMessages.RESOURCE_NOT_FOUND);
+                else {
+                    console.log(error.code);
+                }
+            } else if (error instanceof ForbiddenException) {
                 throw error;
             }
             throw new InternalServerErrorException();

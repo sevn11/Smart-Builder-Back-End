@@ -27,13 +27,38 @@ export class JobProjectEstimatorController {
     // create new header for project estimator
     @Post('/header')
     @HttpCode(HttpStatus.OK)
-    createJobcontractor(
+    createHeader(
         @GetUser() user: User,
         @Param('companyId', ParseIntPipe) companyId: number,
         @Param('jobId', ParseIntPipe) jobId: number , 
         @Body() body: JobProjectEstimatorHeaderDTO
     ) {
         return this.jobProjectEstimatorService.createHeader(user, companyId, jobId, body);
+    }
+
+    // edit project estimator header
+    @Patch('/header/:headerId')
+    @HttpCode(HttpStatus.OK)
+    editHeader(
+        @GetUser() user: User,
+        @Param('companyId', ParseIntPipe) companyId: number,
+        @Param('jobId', ParseIntPipe) jobId: number, 
+        @Param('headerId', ParseIntPipe) headerId: number, 
+        @Body() body: JobProjectEstimatorHeaderDTO
+    ) {
+        return this.jobProjectEstimatorService.editHeader(user, companyId, jobId,headerId, body);
+    }
+
+    // delete project estimator header
+    @Delete('/header/:headerId')
+    @HttpCode(HttpStatus.OK)
+    deleteHeader(
+        @GetUser() user: User,
+        @Param('companyId', ParseIntPipe) companyId: number,
+        @Param('jobId', ParseIntPipe) jobId: number, 
+        @Param('headerId', ParseIntPipe) headerId: number, 
+    ) {
+        return this.jobProjectEstimatorService.deleteHeader(user, companyId, jobId, headerId);
     }
 
     // insert new project estimator data
