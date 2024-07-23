@@ -12,7 +12,7 @@ export class SendgridService {
 
     }
 
-    async sendEmailWithTemplate(recipient: string, templateId: string, body: object, attachments: { content: string; filename: string; type: string }[] = []): Promise<void> {
+    async sendEmailWithTemplate(recipient: string, templateId: string, body: object, attachments: { content: string; filename: string;}[] = []): Promise<void> {
         try {
             const mail: MailDataRequired = {
                 to: recipient,
@@ -22,7 +22,6 @@ export class SendgridService {
                 attachments: attachments.map(att => ({
                     content: att.content,
                     filename: att.filename,
-                    type: att.type,
                     disposition: 'attachment'
                 }))
             };
