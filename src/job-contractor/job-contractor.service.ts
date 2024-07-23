@@ -189,7 +189,6 @@ export class JobContractorService {
                     return {
                         content: fileContent.toString('base64'),
                         filename: file.fileName,
-                        type: 'application/pdf'
                     };
                 }));
 
@@ -209,13 +208,13 @@ export class JobContractorService {
                         user_name: contractor.name
                     };
     
-                    // Send email with template and attachments (uncomment when get sendgrid creadentiails)
-                    // await this.sendgridService.sendEmailWithTemplate(
-                    //     contractor.email,
-                    //     this.config.get('EMPLOYEE_PASSWORD_SET_TEMPLATE_ID'),
-                    //     templateData,
-                    //     attachments
-                    // );
+                    // Send email with template and attachments
+                    await this.sendgridService.sendEmailWithTemplate(
+                        contractor.email,
+                        this.config.get('CONTRACTOR_FILE_MAIL_ID'),
+                        templateData,
+                        attachments
+                    );
                 }));
                 
                 return { message: ResponseMessages.SUCCESSFUL }
