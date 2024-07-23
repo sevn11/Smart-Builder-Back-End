@@ -208,7 +208,7 @@ export class JobContractorService {
                         user_name: contractor.name
                     };
     
-                    // Send email with template and attachments
+                    // Send emails with template and attachments
                     await this.sendgridService.sendEmailWithTemplate(
                         contractor.email,
                         this.config.get('CONTRACTOR_FILE_MAIL_ID'),
