@@ -6,6 +6,7 @@ import { User } from '@prisma/client';
 import { JobProjectEstimatorHeaderDTO } from './validators/add-header';
 import { JobProjectEstimatorDTO } from './validators/add-project-estimator';
 import { JobProjectEstimatorAccountingDTO } from './validators/add-project-estimator-accounting';
+import { BulkUpdateProjectEstimatorDTO } from './validators/pe-bulk-update';
 
 @UseGuards(JwtGuard)
 @Controller('companies/:companyId/jobs/:jobId/job-project-estimator')
@@ -108,5 +109,17 @@ export class JobProjectEstimatorController {
         @Body() body: JobProjectEstimatorAccountingDTO
     ) {
         return this.jobProjectEstimatorService.createProjectEstimatorAccounting(user, companyId, jobId, body);
+    }
+
+    // bulk update project estimator rows
+    @Post('bulk-update')
+    @HttpCode(HttpStatus.OK)
+    bulkUpdateEstimator(
+        @GetUser() user: User, 
+        @Param('companyId', ParseIntPipe) companyId: number, 
+        @Param('jobId', ParseIntPipe) jobId: number, 
+        @Body() body: BulkUpdateProjectEstimatorDTO[]
+    ) {
+        return this.jobProjectEstimatorService.projectEstimatorBulkUpdate(user, companyId, jobId, body);
     }
 }
