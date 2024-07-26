@@ -294,14 +294,17 @@ model JobProjectEstimator {
   description       String
   costType          String?            @map("cost_type")
   quantity          Int
-  unitCost          Float              @map("unit_cost")
-  actualCost        Float              @map("actual_cost")
-  grossProfit       Float              @map("gross_profit")
-  contractPrice     Float              @map("contract_price")
+  unitCost          Decimal            @map("unit_cost") @db.Decimal(10, 2) @default(0.00)
+  actualCost        Decimal            @map("actual_cost") @db.Decimal(10, 2) @default(0.00)
+  grossProfit       Decimal            @map("gross_profit") @db.Decimal(10, 2) @default(0.00)
+  contractPrice     Decimal            @map("contract_price") @db.Decimal(10, 2) @default(0.00)
   isDeleted         Boolean?           @default(false) @map("is_deleted")
 
   jobProjectEstimatorHeaderId          Int? @map("job_project_estimator_header_id")
   jobProjectEstimatorHeader            JobProjectEstimatorHeader? @relation(fields: [jobProjectEstimatorHeaderId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("job_project_estimator")
 }

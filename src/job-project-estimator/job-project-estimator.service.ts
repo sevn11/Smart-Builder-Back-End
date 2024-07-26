@@ -1,11 +1,12 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, InternalServerErrorException } from '@nestjs/common';
-import { User } from '@prisma/client';
+import { Prisma, User } from '@prisma/client';
 import { DatabaseService } from 'src/database/database.service';
 import { JobProjectEstimatorHeaderDTO } from './validators/add-header';
 import { PrismaErrorCodes, ResponseMessages, UserTypes } from 'src/core/utils';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { JobProjectEstimatorDTO } from './validators/add-project-estimator';
 import { JobProjectEstimatorAccountingDTO } from './validators/add-project-estimator-accounting';
+import { BulkUpdateProjectEstimatorDTO } from './validators/pe-bulk-update';
 
 @Injectable()
 export class JobProjectEstimatorService {
@@ -20,7 +21,7 @@ export class JobProjectEstimatorService {
                 if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
-                let projectEstimatorData = await this.databaseService.jobProjectEstimatorHeader.findMany({
+                let prData = await this.databaseService.jobProjectEstimatorHeader.findMany({
                     where: {
                         companyId,
                         jobId,
@@ -37,6 +38,17 @@ export class JobProjectEstimatorService {
                         createdAt: 'asc' 
                     }
                 });
+                const projectEstimatorData = prData.map(item => ({
+                    ...item,
+                    JobProjectEstimator: item.JobProjectEstimator.map(estimator => ({
+                      ...estimator,
+                      unitCost: Number(estimator.unitCost).toFixed(2),
+                      actualCost: Number(estimator.actualCost).toFixed(2),
+                      grossProfit: Number(estimator.grossProfit).toFixed(2),
+                      contractPrice: Number(estimator.contractPrice).toFixed(2),
+                    }))
+                  }));
+
                 return { projectEstimatorData }
             } else {
                 throw new ForbiddenException("Action Not Allowed");
@@ -66,8 +78,8 @@ export class JobProjectEstimatorService {
                 if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
-                // check new header is named as 'accounting'
-                if (body.name.toLowerCase() === "accounting") {
+                // check new header is named as 'Change Orders'
+                if (body.name.toLowerCase().replace(/\s/g, '') === "change orders") {
                     throw new ConflictException("Accounting header already exist")
                 }
 
@@ -107,8 +119,8 @@ export class JobProjectEstimatorService {
                 if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
-                // check new header is named as 'accounting'
-                if (body.name.toLowerCase() === "accounting") {
+                // check new header is named as 'Change Orders'
+                if (body.name.toLowerCase().replace(/\s/g, '') === "change orders") {
                     throw new ConflictException("Accounting header already exist")
                 }
 
@@ -169,8 +181,8 @@ export class JobProjectEstimatorService {
                     }
                 });
 
-                // restrict accounting header delete
-                if (header.name.toLowerCase() === "accounting") {
+                // restrict Change Orders header delete
+                if (header.name.toLowerCase().replace(/\s/g, '') === "change orders") {
                     throw new ForbiddenException("Action Not Allowed");
                 }
 
@@ -279,7 +291,7 @@ export class JobProjectEstimatorService {
             // Database Exceptions
             if (error instanceof PrismaClientKnownRequestError) {
                 if (error.code == PrismaErrorCodes.NOT_FOUND)
-                    throw new BadRequestException(ResponseMessages.USER_NOT_FOUND);
+                    throw new BadRequestException(ResponseMessages.RESOURCE_NOT_FOUND);
                 else {
                     console.log(error.code);
                 }
@@ -326,7 +338,7 @@ export class JobProjectEstimatorService {
             // Database Exceptions
             if (error instanceof PrismaClientKnownRequestError) {
                 if (error.code == PrismaErrorCodes.NOT_FOUND)
-                    throw new BadRequestException(ResponseMessages.USER_NOT_FOUND);
+                    throw new BadRequestException(ResponseMessages.RESOURCE_NOT_FOUND);
                 else {
                     console.log(error.code);
                 }
@@ -346,12 +358,12 @@ export class JobProjectEstimatorService {
                     throw new ForbiddenException("Action Not Allowed");
                 }
 
-                // check Accounting header already exist or not else create new one
+                // check Change Orders header already exist or not else create new one
                 let accountingHeader = await this.databaseService.jobProjectEstimatorHeader.findFirst({
                     where: {
                         companyId,
                         jobId,
-                        name: 'Accounting',
+                        name: 'Change Orders',
                         isDeleted: false,
                     }
                 });
@@ -361,7 +373,7 @@ export class JobProjectEstimatorService {
                         data: {
                             companyId,
                             jobId,
-                            name: 'Accounting'
+                            name: 'Change Orders'
                         }
                     });
                     accountingHeader = createdHeader;
@@ -386,6 +398,69 @@ export class JobProjectEstimatorService {
             if (error instanceof PrismaClientKnownRequestError) {
                 if (error.code == PrismaErrorCodes.NOT_FOUND)
                     throw new BadRequestException(ResponseMessages.USER_NOT_FOUND);
+                else {
+                    console.log(error.code);
+                }
+            } else if (error instanceof ForbiddenException) {
+                throw error;
+            }
+            throw new InternalServerErrorException();
+        }
+    }
+
+    // project estimator bulk update
+    async projectEstimatorBulkUpdate (user: User, companyId: number, jobId: number, body: BulkUpdateProjectEstimatorDTO[]) {
+        try {
+            // Check if User is Admin of the Company.
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
+                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
+                    throw new ForbiddenException("Action Not Allowed");
+                }
+
+                // Ensure body is defined and not empty
+                if (!body || !Array.isArray(body) || body.length === 0) {
+                    return { message: 'No data provided for bulk update' };
+                }
+
+                const updatedData = [];
+                for (const header of body) {
+                    const updatedHeader = { ...header };
+                    const updatedJobProjectEstimator = [];
+                    for (const item of header.JobProjectEstimator) {
+                        const updatedItem = await this.databaseService.jobProjectEstimator.update({
+                            where: { id: item.id },
+                            data: {
+                                grossProfit: item.grossProfit,
+                                contractPrice: item.contractPrice,
+                            },
+                        });
+                        updatedJobProjectEstimator.push(updatedItem);
+                    }
+
+                    updatedHeader.JobProjectEstimator = updatedJobProjectEstimator;
+                    updatedData.push(updatedHeader);
+                }
+                const formattedData = updatedData.map(header => ({
+                    ...header,
+                    JobProjectEstimator: header.JobProjectEstimator.map(estimator => ({
+                        ...estimator,
+                        unitCost: parseFloat(estimator.unitCost).toFixed(2),
+                        actualCost: parseFloat(estimator.actualCost).toFixed(2),
+                        grossProfit: parseFloat(estimator.grossProfit).toFixed(2),
+                        contractPrice: parseFloat(estimator.contractPrice).toFixed(2)
+                    }))
+                }));
+                return { formattedData }
+            } else {
+                throw new ForbiddenException("Action Not Allowed");
+            }
+
+        } catch (error) {
+            console.log(error);
+            // Database Exceptions
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code == PrismaErrorCodes.NOT_FOUND)
+                    throw new BadRequestException(ResponseMessages.RESOURCE_NOT_FOUND);
                 else {
                     console.log(error.code);
                 }
