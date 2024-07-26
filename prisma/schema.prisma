@@ -284,7 +284,7 @@ model JobProjectEstimator {
   jobProjectEstimatorHeader            JobProjectEstimatorHeader? @relation(fields: [jobProjectEstimatorHeaderId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
   @@map("job_project_estimator")
 }
