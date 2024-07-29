@@ -137,6 +137,7 @@ export class ContractorFileService {
                     }
                 });
                 
+                // get all files under the company and customer
                 const files = await this.databaseService.contractorFiles.findMany({
                     where: {
                         companyId: companyId,
