@@ -122,4 +122,15 @@ export class JobProjectEstimatorController {
     ) {
         return this.jobProjectEstimatorService.projectEstimatorBulkUpdate(user, companyId, jobId, body);
     }
+
+    // get all change orders 
+    @Get('change-orders')
+    @HttpCode(HttpStatus.OK)
+    getAllChangeOrders(
+        @GetUser() user: User, 
+        @Param('companyId', ParseIntPipe) companyId: number, 
+        @Param('jobId', ParseIntPipe) jobId: number
+    ) {
+        return this.jobProjectEstimatorService.getAllChangeOrders(user, companyId, jobId);
+    }
 }
