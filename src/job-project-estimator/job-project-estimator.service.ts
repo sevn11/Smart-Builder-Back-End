@@ -79,8 +79,8 @@ export class JobProjectEstimatorService {
                     throw new ForbiddenException("Action Not Allowed");
                 }
                 // check new header is named as 'Change Orders'
-                if (body.name.toLowerCase().replace(/\s/g, '') === "change orders") {
-                    throw new ConflictException("Accounting header already exist")
+                if (body.name.toLowerCase().replace(/\s/g, '') === "changeorders") {
+                    throw new ConflictException("Change Orders header already exist")
                 }
 
                 let projectEstimatorHeader = await this.databaseService.jobProjectEstimatorHeader.create({
@@ -120,8 +120,8 @@ export class JobProjectEstimatorService {
                     throw new ForbiddenException("Action Not Allowed");
                 }
                 // check new header is named as 'Change Orders'
-                if (body.name.toLowerCase().replace(/\s/g, '') === "change orders") {
-                    throw new ConflictException("Accounting header already exist")
+                if (body.name.toLowerCase().replace(/\s/g, '') === "changeorders") {
+                    throw new ConflictException("Change Orders header already exist")
                 }
 
                 // check non deleted header exist or not
@@ -182,7 +182,7 @@ export class JobProjectEstimatorService {
                 });
 
                 // restrict Change Orders header delete
-                if (header.name.toLowerCase().replace(/\s/g, '') === "change orders") {
+                if (header.name.toLowerCase().replace(/\s/g, '') === "changeorders") {
                     throw new ForbiddenException("Action Not Allowed");
                 }
 
@@ -451,6 +451,54 @@ export class JobProjectEstimatorService {
                     }))
                 }));
                 return { formattedData }
+            } else {
+                throw new ForbiddenException("Action Not Allowed");
+            }
+
+        } catch (error) {
+            console.log(error);
+            // Database Exceptions
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code == PrismaErrorCodes.NOT_FOUND)
+                    throw new BadRequestException(ResponseMessages.RESOURCE_NOT_FOUND);
+                else {
+                    console.log(error.code);
+                }
+            } else if (error instanceof ForbiddenException) {
+                throw error;
+            }
+            throw new InternalServerErrorException();
+        }
+    }
+
+    // get all change orders
+    async getAllChangeOrders (user: User, companyId: number, jobId: number) {
+        try {
+            // Check if User is Admin of the Company.
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
+                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
+                    throw new ForbiddenException("Action Not Allowed");
+                }
+
+                const changeOrders = await this.databaseService.jobProjectEstimator.findMany({
+                    where: {
+                      isDeleted: false,
+                      jobProjectEstimatorHeader: {
+                        name: "Change Orders",
+                        companyId,
+                        jobId,
+                        isDeleted: false
+                      },
+                    },
+                    select: {
+                        id: true,
+                        description: true,
+                        unitCost: true,
+                        createdAt: true
+                    },
+                });                                 
+
+                return { changeOrders }
             } else {
                 throw new ForbiddenException("Action Not Allowed");
             }
