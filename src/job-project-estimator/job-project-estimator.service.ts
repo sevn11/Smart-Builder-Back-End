@@ -493,7 +493,7 @@ export class JobProjectEstimatorService {
                     select: {
                         id: true,
                         description: true,
-                        unitCost: true,
+                        contractPrice: true,
                         createdAt: true
                     },
                 });                                 
