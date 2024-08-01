@@ -174,6 +174,8 @@ export class JobContractorService {
                 
                 const jobContractors = body.jobContractors;
                 const fileIds = body.files;
+                const sendCC = body.sendCC;
+                const ccMail = user.email;
 
                 // Prepare attachments array
                 const attachments = await Promise.all(fileIds.map(async (fileId) => {
@@ -213,7 +215,9 @@ export class JobContractorService {
                         contractor.email,
                         this.config.get('CONTRACTOR_FILE_MAIL_ID'),
                         templateData,
-                        attachments
+                        attachments,
+                        sendCC,
+                        ccMail
                     );
                 }));
                 

@@ -1,4 +1,4 @@
-import { IsArray, IsNotEmpty, IsNumber } from "class-validator";
+import { IsArray, IsBoolean, IsNotEmpty, IsNumber, IsOptional } from "class-validator";
 
 
 export class SendInfoToContractorDTO {
@@ -11,4 +11,8 @@ export class SendInfoToContractorDTO {
     @IsNumber({}, { each: true })
     @IsNotEmpty()
     files: number[];
+
+    @IsOptional()
+    @IsBoolean()
+    sendCC: boolean;
 }
