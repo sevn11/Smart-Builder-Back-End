@@ -174,7 +174,7 @@ export class AuthService {
             console.log(error);
             if (error instanceof PrismaClientKnownRequestError) {
                 if (error.code == PrismaErrorCodes.NOT_FOUND)
-                    return { message: ResponseMessages.PASSWORD_RESET_CODE_SENT }
+                    throw new BadRequestException(ResponseMessages.USER_NOT_FOUND);
                 throw new InternalServerErrorException();
             } else {
                 throw new InternalServerErrorException();
