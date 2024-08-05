@@ -25,6 +25,7 @@ export class ResponseMessages {
     static QUESTION_DELETED = 'Question successfully deleted.'
     static QUESTION_UPDATED = 'Question successfully updated.'
     static QUESTION_NOT_FOUND = 'Question not found.'
+    static RESOURCE_NOT_FOUND = 'Resource not found'
     static FILE_NOT_UPLOADED = 'File not uploaded'
     static FILE_NOT_FOUND = 'File not found'
 }
