@@ -175,8 +175,22 @@ export class JobContractorService {
                 const jobContractors = body.jobContractors;
                 const fileIds = body.files;
                 const sendCC = body.sendCC;
-                const ccMail = user.email;
-
+                let ccMail = null;
+                
+                // get user company information
+                let company = await this.databaseService.company.findUniqueOrThrow({
+                    where: {
+                        id: companyId,
+                        isActive: true,
+                        isDeleted: false
+                    }
+                });
+                let replyTo = null;
+                if(!company.email) {
+                    throw new ForbiddenException("Company email not found");
+                }
+                replyTo = ccMail = company.email;
+                
                 // Prepare attachments array
                 const attachments = await Promise.all(fileIds.map(async (fileId) => {
                     // Retrieve file data from database
@@ -216,6 +230,7 @@ export class JobContractorService {
                         this.config.get('CONTRACTOR_FILE_MAIL_ID'),
                         templateData,
                         attachments,
+                        replyTo,
                         sendCC,
                         ccMail
                     );
