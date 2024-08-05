@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, ParseBoolPipe, ParseIntPipe, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseBoolPipe, ParseIntPipe, Post, Query, UseGuards } from '@nestjs/common';
 import { JobsService } from './jobs.service';
 import { GetUser } from 'src/core/decorators';
 import { CreateJobDTO, GetJobListDTO } from './validators';
@@ -25,5 +25,10 @@ export class JobsController {
     @Get(':jobId')
     getJobDetails(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number, @Param('jobId', ParseIntPipe) jobId: number) {
         return this.jobService.getJobDetails(user, companyId, jobId);
+    }
+    @Delete('/:jobId')
+    @HttpCode(HttpStatus.OK)
+    deleteJob(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number, @Param('jobId', ParseIntPipe) jobId: number) {
+        return this.jobService.deleteJob(user, companyId, jobId);
     }
 }

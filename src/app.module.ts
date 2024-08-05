@@ -15,9 +15,16 @@ import { ContractorModule } from './contractor/contractor.module';
 import { JobContractorModule } from './job-contractor/job-contractor.module';
 import { ContractorPhaseModule } from './contractor-phase/contractor-phase.module';
 import { JobProjectEstimatorModule } from './job-project-estimator/job-project-estimator.module';
+import { ContractorFileModule } from './contractor-file/contractor-file.module';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
 
 @Module({
   imports: [
+    ServeStaticModule.forRoot({
+      rootPath: join(__dirname, '..', '/uploads'),
+      serveRoot: '/uploads/'
+    }),
     ConfigModule.forRoot({ isGlobal: true }),
     AuthModule,
     UserModule,
@@ -34,6 +41,7 @@ import { JobProjectEstimatorModule } from './job-project-estimator/job-project-e
     JobContractorModule,
     ContractorPhaseModule,
     JobProjectEstimatorModule,
+    ContractorFileModule
   ],
 })
 export class AppModule { }

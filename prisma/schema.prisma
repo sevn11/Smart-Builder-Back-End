@@ -56,6 +56,7 @@ model Company {
   contractors            Contractor[]
   JobContractor          JobContractor[]
   JobProjectEstimatorHeader    JobProjectEstimatorHeader[]
+  ContractorFiles        ContractorFiles[]
   ContractorPhase        ContractorPhase[]
   questionnaireTemplates QuestionnaireTemplate[]
   isActive               Boolean                 @default(true) @map("is_active")
@@ -103,6 +104,7 @@ model Customer {
   companyId      Int       @map("company_id")
   company        Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
   jobs           Job[]
+  ContractorFiles        ContractorFiles[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -130,6 +132,7 @@ model Job {
 
   JobContractor     JobContractor[]
   JobProjectEstimatorHeader JobProjectEstimatorHeader[]
+  ContractorFiles        ContractorFiles[]
 
   companyId Int     @map("company_id")
   company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
@@ -287,4 +290,21 @@ model JobProjectEstimator {
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
   @@map("job_project_estimator")
+}
+
+model ContractorFiles {
+  id                Int                 @id @default(autoincrement())
+  companyId         Int?                @map("company_id")
+  company           Company?            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  customerId        Int                 @map("customer_id")
+  customer          Customer            @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  jobId             Int?                @map("job_id")
+  job               Job?                @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  fileName          String
+  filePath          String          
+
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
+
+  @@map("contractor_files")
 }

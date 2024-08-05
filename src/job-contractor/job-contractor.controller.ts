@@ -4,7 +4,7 @@ import { JobContractorService } from './job-contractor.service';
 import { JobContractorDTO } from './validators/job-contractor';
 import { GetUser } from 'src/core/decorators';
 import { User } from '@prisma/client';
-import { UpdateJobContractorDTO } from './validators/edit-job-contractor';
+import { SendInfoToContractorDTO } from './validators/send-info-mail';
 
 @UseGuards(JwtGuard)
 @Controller('companies/:companyId/jobs/:jobId/jobcontractor')
@@ -28,5 +28,11 @@ export class JobContractorController {
     @HttpCode(HttpStatus.OK)
     deletejobContractor(@GetUser() user: User,  @Param('companyId', ParseIntPipe) companyId: number, @Param('jobId', ParseIntPipe) jobId: number, @Param('jobContractorId', ParseIntPipe) jobContractorId: number) {
         return this.jobContractorService.deletejobContractor(user, companyId, jobId, jobContractorId);
+    }
+    
+    @Post('/send-info-mail')
+    @HttpCode(HttpStatus.OK)
+    sendInfoMail(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number, @Param('jobId', ParseIntPipe) jobId: number, @Body() body: SendInfoToContractorDTO) {
+        return this.jobContractorService.sendInfoMail(user, companyId, jobId, body);
     }
 }
