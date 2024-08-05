@@ -12,7 +12,15 @@ export class SendgridService {
 
     }
 
-    async sendEmailWithTemplate(recipient: string, templateId: string, body: object, attachments: { content: string; filename: string;}[] = [], sendCC? :boolean, ccMail?:string): Promise<void> {
+    async sendEmailWithTemplate(
+        recipient: string, 
+        templateId: string, 
+        body: object, 
+        attachments: { content: string; filename: string;}[] = [], 
+        replyTo? :string,
+        sendCC? :boolean, 
+        ccMail?:string
+    ): Promise<void> {
         try {
             let mail: MailDataRequired = {
                 to: recipient,
@@ -27,6 +35,9 @@ export class SendgridService {
             };
             if(sendCC && ccMail) {
                 mail.cc = ccMail;
+            }
+            if(replyTo) {
+                mail.replyTo = replyTo;
             }
             await SendGrid.send(mail);;
             this.logger.log(`Email successfully dispatched to ${mail.to as string}`);
