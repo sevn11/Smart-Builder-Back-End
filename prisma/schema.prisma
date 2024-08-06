@@ -90,6 +90,9 @@ model Customer {
   id             Int       @id @default(autoincrement())
   name           String
   address        String?
+  state          String?
+  city           String?
+  zip            String?
   telephone      String?
   mobileNumber1  String?   @map("mobile_number_1")
   mobileNumber2  String?   @map("mobile_number_2")

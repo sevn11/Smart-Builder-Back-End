@@ -11,6 +11,18 @@ export class UpdateCustomerDTO {
     @IsOptional()
     address: string
 
+    @IsString()
+    @IsOptional()
+    state?: string
+
+    @IsString()
+    @IsOptional()
+    city?: string
+
+    @IsString()
+    @IsOptional()
+    zip?: string
+
 
     @IsString()
     @IsNotEmpty()
