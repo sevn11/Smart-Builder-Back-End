@@ -1,10 +1,10 @@
-import { IsEmail, IsOptional, IsString, IsNumber, IsDecimal } from "class-validator";
+import { IsEmail, IsOptional, IsString, IsNumber, IsDecimal, ValidateIf, IsNotEmpty } from "class-validator";
 
 export class UpdateCompanyDTO {
 
 
     @IsString()
-    @IsOptional()
+    @IsNotEmpty()
     name?: string
 
 
@@ -22,6 +22,7 @@ export class UpdateCompanyDTO {
     @IsOptional()
     phoneNumber?: string
 
+    @ValidateIf((o) => o.email !== '' && o.email != null)
     @IsEmail()
     @IsOptional()
     email?: string
