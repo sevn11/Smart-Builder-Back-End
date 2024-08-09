@@ -133,4 +133,15 @@ export class JobProjectEstimatorController {
     ) {
         return this.jobProjectEstimatorService.getAllChangeOrders(user, companyId, jobId);
     }
+    
+    // get specific estimator data for account statement
+    @Get('statements')
+    @HttpCode(HttpStatus.OK)
+    getAllStatements(
+        @GetUser() user: User, 
+        @Param('companyId', ParseIntPipe) companyId: number, 
+        @Param('jobId', ParseIntPipe) jobId: number
+    ) {
+        return this.jobProjectEstimatorService.getAllStatements(user, companyId, jobId);
+    }
 }

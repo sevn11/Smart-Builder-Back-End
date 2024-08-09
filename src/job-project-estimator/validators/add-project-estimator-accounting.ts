@@ -5,6 +5,10 @@ export class JobProjectEstimatorAccountingDTO {
 
     @IsString()
     @IsNotEmpty()
+    headerName: string
+
+    @IsString()
+    @IsNotEmpty()
     item: string
 
     @IsString()

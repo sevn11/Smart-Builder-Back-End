@@ -38,6 +38,8 @@ export class JobProjectEstimatorService {
                         createdAt: 'asc' 
                     }
                 });
+                // Filter out headers named 'Statements'
+                prData = prData.filter(header => header.name !== 'Statements');
                 const projectEstimatorData = prData.map(item => ({
                     ...item,
                     JobProjectEstimator: item.JobProjectEstimator.map(estimator => ({
@@ -358,12 +360,12 @@ export class JobProjectEstimatorService {
                     throw new ForbiddenException("Action Not Allowed");
                 }
 
-                // check Change Orders header already exist or not else create new one
+                // check header already exist or not else create new one
                 let accountingHeader = await this.databaseService.jobProjectEstimatorHeader.findFirst({
                     where: {
                         companyId,
                         jobId,
-                        name: 'Change Orders',
+                        name: body.headerName,
                         isDeleted: false,
                     }
                 });
@@ -373,17 +375,21 @@ export class JobProjectEstimatorService {
                         data: {
                             companyId,
                             jobId,
-                            name: 'Change Orders'
+                            name: body.headerName
                         }
                     });
                     accountingHeader = createdHeader;
                 }
 
+                const { headerName, ...projectEstimatorData } = body;
+                
                 // insert new row for accounting
                 let projectEstimator = await this.databaseService.jobProjectEstimator.create({
                     data: {
-                        jobProjectEstimatorHeaderId: accountingHeader.id,
-                        ...body
+                        jobProjectEstimatorHeader: {
+                            connect: { id: accountingHeader.id }
+                        },
+                        ...projectEstimatorData
                     }
                 });
                 
@@ -499,6 +505,72 @@ export class JobProjectEstimatorService {
                 });                                 
 
                 return { changeOrders }
+            } else {
+                throw new ForbiddenException("Action Not Allowed");
+            }
+
+        } catch (error) {
+            console.log(error);
+            // Database Exceptions
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code == PrismaErrorCodes.NOT_FOUND)
+                    throw new BadRequestException(ResponseMessages.RESOURCE_NOT_FOUND);
+                else {
+                    console.log(error.code);
+                }
+            } else if (error instanceof ForbiddenException) {
+                throw error;
+            }
+            throw new InternalServerErrorException();
+        }
+    }
+
+    // get specific estimator data for account statement
+    async getAllStatements (user: User, companyId: number, jobId: number) {
+        try {
+            // Check if User is Admin of the Company.
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
+                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
+                    throw new ForbiddenException("Action Not Allowed");
+                }
+
+                // statments types
+                const statementTypes = ['allowance', 'credit', 'contract-price', 'construction-draw', 'customer-payment', 'disbursement', 'expense'];
+
+                const statements = await this.databaseService.jobProjectEstimator.findMany({
+                    where: {
+                        OR: [
+                            // Condition for "Change Orders" headers
+                            {
+                                jobProjectEstimatorHeader: {
+                                    name: 'Change Orders',
+                                    companyId,
+                                    jobId,
+                                    isDeleted: false,
+                                },
+                                isDeleted: false
+                            },
+                            // Condition for "Statements" headers with specific item types
+                            {
+                                jobProjectEstimatorHeader: {
+                                    name: 'Statements',
+                                    companyId,
+                                    jobId,
+                                    isDeleted: false
+                                },
+                                isDeleted: false,
+                                item: {
+                                    in: statementTypes
+                                }
+                            }
+                        ]
+                    },
+                    orderBy: {
+                        createdAt: 'asc' 
+                    }
+                });        
+
+                return { statements }
             } else {
                 throw new ForbiddenException("Action Not Allowed");
             }
