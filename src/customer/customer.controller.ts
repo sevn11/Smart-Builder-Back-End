@@ -34,10 +34,10 @@ export class CustomerController {
 
 
 
-    @Get('/:customerId')
+    @Get('/:customerId/:jobId')
     @HttpCode(HttpStatus.OK)
-    getCustomerDetails(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number, @Param('customerId', ParseIntPipe) customerId: number) {
-        return this.customerService.getCustomerDetails(user, companyId, customerId);
+    getCustomerDetails(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number, @Param('jobId', ParseIntPipe) jobId: number, @Param('customerId', ParseIntPipe) customerId: number) {
+        return this.customerService.getCustomerDetails(user, companyId, jobId, customerId);
     }
 
     @Patch('/:customerId')

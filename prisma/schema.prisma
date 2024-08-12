@@ -133,6 +133,17 @@ model Job {
   isElectricityAtLot Boolean @default(false) @map("is_electricity_at_lot")
   isSewerAtLot       Boolean @default(false) @map("is_sewer_at_lot")
 
+  calendarColor      String? @map("calendar_color")
+  templateName       String? @map("template_name")
+  projectAddress     String? @map("project_address")
+  projectState       String? @map("project_state")
+  projectCity        String? @map("project_city")
+  projectZip         String? @map("project_zip")
+  
+  houseBudget        String? @map("house_budget")
+  sizeOfHouse        String? @map("size_of_house")
+  referral           String?
+
   JobContractor     JobContractor[]
   JobProjectEstimatorHeader JobProjectEstimatorHeader[]
   ContractorFiles        ContractorFiles[]

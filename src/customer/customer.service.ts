@@ -45,7 +45,7 @@ export class CustomerService {
         }
     }
 
-    async getCustomerDetails(user: User, companyId: number, customerId: number) {
+    async getCustomerDetails(user: User, companyId: number, jobId: number, customerId: number) {
         try {
             // Check if User is Admin of the Company.
             if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
@@ -57,7 +57,15 @@ export class CustomerService {
                         id: customerId,
                         companyId,
                         isDeleted: false
-                    }
+                    },
+                    include: {
+                      jobs: {
+                        where: {
+                          id: jobId,
+                          isDeleted: false,
+                        },
+                      },
+                    },
                 });
                 return { customer }
             } else {
