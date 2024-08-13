@@ -7,6 +7,7 @@ import { JobProjectEstimatorHeaderDTO } from './validators/add-header';
 import { JobProjectEstimatorDTO } from './validators/add-project-estimator';
 import { JobProjectEstimatorAccountingDTO } from './validators/add-project-estimator-accounting';
 import { BulkUpdateProjectEstimatorDTO } from './validators/pe-bulk-update';
+import { UpdateStatementDTO } from './validators/update-statement';
 
 @UseGuards(JwtGuard)
 @Controller('companies/:companyId/jobs/:jobId/job-project-estimator')
@@ -144,4 +145,17 @@ export class JobProjectEstimatorController {
     ) {
         return this.jobProjectEstimatorService.getAllStatements(user, companyId, jobId);
     }
+
+     // get specific estimator data for account statement
+     @Patch('statement/:id')
+     @HttpCode(HttpStatus.OK)
+     updateStatement(
+         @GetUser() user: User, 
+         @Param('companyId', ParseIntPipe) companyId: number, 
+         @Param('jobId', ParseIntPipe) jobId: number,
+         @Param('id', ParseIntPipe) id: number,
+         @Body() body: UpdateStatementDTO
+     ) {
+         return this.jobProjectEstimatorService.updateStatement(user, companyId, jobId, id, body);
+     }
 }

@@ -7,6 +7,7 @@ import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { JobProjectEstimatorDTO } from './validators/add-project-estimator';
 import { JobProjectEstimatorAccountingDTO } from './validators/add-project-estimator-accounting';
 import { BulkUpdateProjectEstimatorDTO } from './validators/pe-bulk-update';
+import { UpdateStatementDTO } from './validators/update-statement';
 
 @Injectable()
 export class JobProjectEstimatorService {
@@ -590,4 +591,55 @@ export class JobProjectEstimatorService {
             throw new InternalServerErrorException();
         }
     }
+
+    // update statement row
+    async updateStatement (user: User, companyId: number, jobId: number, id: number, body: UpdateStatementDTO) {
+        try {
+            // Check if User is Admin of the Company.
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
+                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
+                    throw new ForbiddenException("Action Not Allowed");
+                }
+
+                await this.databaseService.jobProjectEstimator.findFirstOrThrow({
+                    where: {
+                        id: id,
+                        isDeleted: false
+                    }
+                });
+
+                const { headerName, ...bodyWithoutHeader } = body;
+
+                let statement = await this.databaseService.jobProjectEstimator.update({
+                    where: {
+                        id: id,
+                        isDeleted: false
+                    },
+                    data: {
+                        ...bodyWithoutHeader
+                    }
+                });
+
+                return { statement }
+                
+            } else {
+                throw new ForbiddenException("Action Not Allowed");
+            }
+
+        } catch (error) {
+            console.log(error);
+            // Database Exceptions
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code == PrismaErrorCodes.NOT_FOUND)
+                    throw new BadRequestException(ResponseMessages.RESOURCE_NOT_FOUND);
+                else {
+                    console.log(error.code);
+                }
+            } else if (error instanceof ForbiddenException) {
+                throw error;
+            }
+            throw new InternalServerErrorException();
+        }
+    }
+
 }
