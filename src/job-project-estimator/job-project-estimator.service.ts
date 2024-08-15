@@ -386,6 +386,15 @@ export class JobProjectEstimatorService {
                         ...body
                     }
                 });
+                // insert invoice id
+                await this.databaseService.jobProjectEstimator.update({
+                    where: {
+                      id: projectEstimator.id,
+                    },
+                    data: {
+                      invoiceId: projectEstimator.id + 1000,
+                    },
+                })
                 
                 return { projectEstimator }
             } else {
@@ -494,7 +503,8 @@ export class JobProjectEstimatorService {
                         id: true,
                         description: true,
                         contractPrice: true,
-                        createdAt: true
+                        createdAt: true,
+                        invoiceId: true
                     },
                 });                                 
 
