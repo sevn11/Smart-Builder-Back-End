@@ -393,15 +393,44 @@ export class JobProjectEstimatorService {
                         ...projectEstimatorData
                     }
                 });
-                // insert invoice id
-                await this.databaseService.jobProjectEstimator.update({
-                    where: {
-                      id: projectEstimator.id,
-                    },
-                    data: {
-                      invoiceId: projectEstimator.id + 1000,
-                    },
-                })
+                // insert invoice id for change orders
+                if(projectEstimator.item === 'Change Order') {
+                    // check for existing invoice ids
+                    let items = await this.databaseService.jobProjectEstimator.findMany({
+                        where: {
+                            jobProjectEstimatorHeaderId: accountingHeader.id,
+                            item: 'Change Order',
+                            id: { not: projectEstimator.id }
+                        },
+                        orderBy: {
+                            invoiceId: 'desc',
+                        },
+                    });
+
+                    if(items.length == 0) {
+                        await this.databaseService.jobProjectEstimator.update({
+                            where: {
+                                id: projectEstimator.id,
+                            },
+                            data: {
+                                invoiceId: 1100,
+                            },
+                        })
+                    }
+                    else {
+                        let highestInvoiceId = items[0].invoiceId;
+                        if(highestInvoiceId) {
+                            await this.databaseService.jobProjectEstimator.update({
+                                where: {
+                                    id: projectEstimator.id,
+                                },
+                                data: {
+                                    invoiceId: highestInvoiceId + 1,
+                                },
+                            });
+                        }
+                    }
+                }
                 
                 return { projectEstimator }
             } else {
