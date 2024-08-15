@@ -295,6 +295,7 @@ model JobProjectEstimator {
   actualCost        Decimal            @map("actual_cost") @db.Decimal(10, 2) @default(0.00)
   grossProfit       Decimal            @map("gross_profit") @db.Decimal(10, 2) @default(0.00)
   contractPrice     Decimal            @map("contract_price") @db.Decimal(10, 2) @default(0.00)
+  invoiceId         Int?               @map("invoice_id")
   isDeleted         Boolean?           @default(false) @map("is_deleted")
 
   jobProjectEstimatorHeaderId          Int? @map("job_project_estimator_header_id")
