@@ -36,4 +36,8 @@ export class UpdateCompanyDTO {
     @IsOptional()
     saleTaxRate?: number
 
+    @IsString()
+    @IsOptional()
+    logo?: string
+
 }
