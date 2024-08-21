@@ -1,4 +1,4 @@
-export class JobStatus {
-    static OPEN = 'OPEN'
-    static CLOSED = 'CLOSED'
+export enum JobStatus {
+    OPEN = 'OPEN',
+    CLOSED = 'CLOSED',
 }

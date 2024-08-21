@@ -4,6 +4,8 @@ import { DatabaseService } from 'src/database/database.service';
 import { CreateJobDTO, GetJobListDTO } from './validators';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { JobStatus, PrismaErrorCodes, ResponseMessages, UserTypes } from 'src/core/utils';
+import { UpdateJobStatusCalendarColorTemplateDto } from './validators/update-jobstatus-calendarcolor-template';
+import { UpdateJobDTO } from './validators/update-job';
 
 @Injectable()
 export class JobsService {
@@ -196,6 +198,157 @@ export class JobsService {
             } else {
                 throw new InternalServerErrorException();
             }
+        }
+    }
+
+    async updateJobStatusCalenderColorTemplate(
+        user: User,
+        companyId: number,
+        jobId: number,
+        body: UpdateJobStatusCalendarColorTemplateDto
+      ) {
+        try {
+          // Check if User is Admin of the Company.
+          if (
+            user.userType == UserTypes.ADMIN ||
+            (user.userType == UserTypes.BUILDER && user.companyId === companyId)
+          ) {
+            let company = await this.databaseService.company.findUnique({
+              where: {
+                id: companyId,
+                isDeleted: false,
+              },
+            });
+            if (!company) {
+              throw new ForbiddenException("Action Not Allowed");
+            }
+            let job = await this.databaseService.job.findUniqueOrThrow({
+              where: {
+                id: jobId,
+                companyId,
+                isDeleted: false,
+              },
+              omit: {
+                isDeleted: true,
+              },
+            });
+
+            job.status = body.jobStatus;
+            job.calendarColor = body.color;
+            job.templateName = body.template;
+    
+            // updating the contractor
+            let updatedJob = await this.databaseService.job.update({
+              where: {
+                id: jobId,
+                companyId,
+                isDeleted: false,
+              },
+              data: {
+                ...job,
+              },
+            });
+    
+            return { updatedJob };
+          } else {
+            throw new ForbiddenException("Action Not Allowed");
+          }
+        } catch (error) {
+          // Database Exceptions
+          if (error instanceof PrismaClientKnownRequestError) {
+            if (error.code == PrismaErrorCodes.UNIQUE_CONSTRAINT_ERROR)
+              throw new BadRequestException(ResponseMessages.UNIQUE_EMAIL_ERROR);
+            else {
+              console.log(error.code);
+            }
+          } else if (error instanceof ForbiddenException) {
+            throw error;
+          } else {
+            throw new InternalServerErrorException();
+          }
+        }
+    }
+
+    async updateJob(
+        user: User,
+        companyId: number,
+        jobId: number,
+        body: UpdateJobDTO
+      ) {
+        try {
+          // Check if User is Admin of the Company.
+          if (
+            user.userType == UserTypes.ADMIN ||
+            (user.userType == UserTypes.BUILDER && user.companyId === companyId)
+          ) {
+            let company = await this.databaseService.company.findUnique({
+              where: {
+                id: companyId,
+                isDeleted: false,
+              },
+            });
+            if (!company) {
+              throw new ForbiddenException("Action Not Allowed");
+            }
+            let job = await this.databaseService.job.findUniqueOrThrow({
+              where: {
+                id: jobId,
+                companyId,
+                isDeleted: false,
+              },
+              omit: {
+                isDeleted: true,
+              },
+            });
+    
+            job.description = body.jobDescription;
+            job.projectAddress = body.projectLocation;
+            job.projectState = body.projectState;
+            job.projectCity = body.projectCity;
+            job.projectZip = body.projectZip;
+            job.totalBudget = body.projectBudget;
+            job.lotBudget = body.lotBudget;
+            job.houseBudget = body.houseBudget;
+            job.sizeOfHouse = body.houseSize;
+            job.financing = body.financing;
+            job.timeFrame = body.timeFrame;
+            job.referral = body.hearAbout;
+            job.startDate = body.startDate ? new Date(body.startDate) : null;
+            job.endDate = body.endDate ? new Date(body.endDate) : null;
+            job.isGasAtLot = body.isGas;
+            job.isElectricityAtLot = body.isElectric;
+            job.isWaterAtLot = body.isWater;
+            job.isSewerAtLot = body.isSewer;
+    
+            // updating the contractor
+            let updatedJob = await this.databaseService.job.update({
+              where: {
+                id: jobId,
+                companyId,
+                isDeleted: false,
+              },
+              data: {
+                ...job,
+              },
+            });
+    
+            return { updatedJob };
+          } else {
+            throw new ForbiddenException("Action Not Allowed");
+          }
+        } catch (error) {
+          // Database Exceptions
+          if (error instanceof PrismaClientKnownRequestError) {
+            if (error.code == PrismaErrorCodes.UNIQUE_CONSTRAINT_ERROR)
+              throw new BadRequestException(ResponseMessages.UNIQUE_EMAIL_ERROR);
+            else {
+              console.log(error.code);
+            }
+          } else if (error instanceof ForbiddenException) {
+            throw error;
+          } else {
+            throw new InternalServerErrorException();
+          }
         }
     }
 
