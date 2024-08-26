@@ -323,3 +323,9 @@ model ContractorFiles {
 
   @@map("contractor_files")
 }
+
+model TermsAndCondition {
+  id                Int                 @id @default(autoincrement())
+  content           String
+  @@map("terms_and_condition")
+}
