@@ -19,6 +19,7 @@ import { ContractorFileModule } from './contractor-file/contractor-file.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { TermsAndConditionModule } from './terms-and-condition/terms-and-condition.module';
+import { PaymentScheduleModule } from './payment-schedule/payment-schedule.module';
 
 @Module({
   imports: [
@@ -43,7 +44,8 @@ import { TermsAndConditionModule } from './terms-and-condition/terms-and-conditi
     ContractorPhaseModule,
     JobProjectEstimatorModule,
     ContractorFileModule,
-    TermsAndConditionModule
+    TermsAndConditionModule,
+    PaymentScheduleModule
   ],
 })
 export class AppModule { }
