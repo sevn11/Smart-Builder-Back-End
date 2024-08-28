@@ -19,6 +19,12 @@ export class JobsController {
         return this.jobService.createJob(user, companyId, body);
     }
 
+    @HttpCode(HttpStatus.OK)
+    @Get('/open-jobs')
+    getOpenJobList(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number) {
+        return this.jobService.getOpenJobList(user, companyId);
+    }
+
 
     @HttpCode(HttpStatus.OK)
     @Get()
