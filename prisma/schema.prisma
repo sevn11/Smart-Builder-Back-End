@@ -335,7 +335,7 @@ model TermsAndCondition {
 model PaymentSchedule {
   id                 Int        @id @default(autoincrement())
   paymentDate        DateTime   @map("payment_date")
-  amount             Float      @default(0)
+  amount             Decimal    @db.Decimal(10, 2) @default(0.00)
   companyId          Int?       @map("company_id")
   company            Company?   @relation(fields: [companyId], references: [id], onDelete: Cascade)
   jobId              Int?       @map("job_id")
@@ -353,7 +353,7 @@ model PaymentScheduleDraw {
   paymentDate         DateTime        @map("payment_date")
   amount              Float           @default(0)
   drawPercentage      Float           @map("draw_percentage") @default(0)
-  bankFees            Float?          @default(0) @map("bank_fees")
+  bankFees            Decimal?        @map("bank_fees") @db.Decimal(10, 2) @default(0.00)
   received            Boolean         @default(false)
   paymentScheduleId   Int             @map("payment_schedule_id")
   paymentSchedule     PaymentSchedule @relation(fields: [paymentScheduleId], references: [id], onDelete: Cascade)
