@@ -36,6 +36,9 @@ export class PaymentScheduleService {
                         },
                     },
                 });
+                if (!paymentSchedules) {
+                    return { formattedPaymentSchedule: null };
+                }
                 const formattedPaymentSchedule = {
                     ...paymentSchedules,
                     amount: Number(paymentSchedules.amount).toFixed(2),
