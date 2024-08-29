@@ -36,7 +36,15 @@ export class PaymentScheduleService {
                         },
                     },
                 });
-                return { paymentSchedules }
+                const formattedPaymentSchedule = {
+                    ...paymentSchedules,
+                    amount: Number(paymentSchedules.amount).toFixed(2),
+                    draws: paymentSchedules.draws.map(draw => ({
+                        ...draw,
+                        bankFees: Number(draw.bankFees).toFixed(2)
+                    }))
+                  };
+                return { formattedPaymentSchedule }
             } else {
                 throw new ForbiddenException("Action Not Allowed");
             }
