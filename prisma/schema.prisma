@@ -356,4 +356,11 @@ model PaymentScheduleDraw {
   updatedAt           DateTime        @updatedAt
 
   @@map("payment_schedule_draw")
+
+}
+
+model TermsAndCondition {
+  id                Int                 @id @default(autoincrement())
+  content           String
+  @@map("terms_and_condition")
 }
