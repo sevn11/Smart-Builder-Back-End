@@ -18,6 +18,7 @@ import { JobProjectEstimatorModule } from './job-project-estimator/job-project-e
 import { ContractorFileModule } from './contractor-file/contractor-file.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
+import { PaymentScheduleModule } from './payment-schedule/payment-schedule.module';
 import { TermsAndConditionModule } from './terms-and-condition/terms-and-condition.module';
 
 @Module({
@@ -43,6 +44,7 @@ import { TermsAndConditionModule } from './terms-and-condition/terms-and-conditi
     ContractorPhaseModule,
     JobProjectEstimatorModule,
     ContractorFileModule,
+    PaymentScheduleModule,
     TermsAndConditionModule
   ],
 })

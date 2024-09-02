@@ -59,6 +59,7 @@ model Company {
   ContractorFiles        ContractorFiles[]
   ContractorPhase        ContractorPhase[]
   questionnaireTemplates QuestionnaireTemplate[]
+  paymentSchedules       PaymentSchedule[]
   isActive               Boolean                 @default(true) @map("is_active")
   isDeleted              Boolean?                @default(false) @map("is_deleted")
 
@@ -147,6 +148,7 @@ model Job {
   JobContractor     JobContractor[]
   JobProjectEstimatorHeader JobProjectEstimatorHeader[]
   ContractorFiles        ContractorFiles[]
+  paymentSchedules       PaymentSchedule[]
 
   companyId Int     @map("company_id")
   company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
@@ -322,6 +324,39 @@ model ContractorFiles {
   updatedAt         DateTime            @updatedAt @map("updated_at")
 
   @@map("contractor_files")
+}
+
+model PaymentSchedule {
+  id                 Int        @id @default(autoincrement())
+  paymentDate        DateTime   @map("payment_date")
+  amount             Decimal    @db.Decimal(10, 2) @default(0.00)
+  companyId          Int?       @map("company_id")
+  company            Company?   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  jobId              Int?       @map("job_id")
+  job                Job?       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  isDeleted          Boolean?    @default(false) @map("is_deleted")
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+  draws              PaymentScheduleDraw[]
+
+  @@map("payment_schedule")
+}
+
+model PaymentScheduleDraw {
+  id                  Int             @id @default(autoincrement())
+  paymentDate         DateTime        @map("payment_date")
+  amount              Float           @default(0)
+  drawPercentage      Float           @map("draw_percentage") @default(0)
+  bankFees            Decimal?        @map("bank_fees") @db.Decimal(10, 2) @default(0.00)
+  received            Boolean         @default(false)
+  paymentScheduleId   Int             @map("payment_schedule_id")
+  paymentSchedule     PaymentSchedule @relation(fields: [paymentScheduleId], references: [id], onDelete: Cascade)
+  isDeleted           Boolean?        @default(false) @map("is_deleted")
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  @@map("payment_schedule_draw")
+
 }
 
 model TermsAndCondition {
