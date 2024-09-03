@@ -60,6 +60,7 @@ model Company {
   ContractorPhase        ContractorPhase[]
   questionnaireTemplates QuestionnaireTemplate[]
   paymentSchedules       PaymentSchedule[]
+  CashFlow               CashFlow[]
   isActive               Boolean                 @default(true) @map("is_active")
   isDeleted              Boolean?                @default(false) @map("is_deleted")
 
@@ -363,4 +364,16 @@ model TermsAndCondition {
   id                Int                 @id @default(autoincrement())
   content           String
   @@map("terms_and_condition")
+}
+
+model CashFlow {
+  id                Int                 @id @default(autoincrement())
+  companyId         Int?                @map("company_id") @unique
+  company           Company?            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  salesDeduction    Float               @default(0) @map("sales_deduction")
+  deduction         Float               @default(0)
+  depreciation      Float               @default(0)
+  expense           Float               @default(0)
+
+  @@map("cash_flow")
 }

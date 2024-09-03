@@ -20,6 +20,7 @@ import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { PaymentScheduleModule } from './payment-schedule/payment-schedule.module';
 import { TermsAndConditionModule } from './terms-and-condition/terms-and-condition.module';
+import { CashFlowModule } from './cash-flow/cash-flow.module';
 
 @Module({
   imports: [
@@ -45,7 +46,8 @@ import { TermsAndConditionModule } from './terms-and-condition/terms-and-conditi
     JobProjectEstimatorModule,
     ContractorFileModule,
     PaymentScheduleModule,
-    TermsAndConditionModule
+    TermsAndConditionModule,
+    CashFlowModule
   ],
 })
 export class AppModule { }
