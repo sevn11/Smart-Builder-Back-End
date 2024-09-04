@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsNumber, IsOptional, IsString } from "class-validator";
+import { IsNotEmpty, IsNumber, IsOptional, IsString, IsBoolean } from "class-validator";
 
 
 export class JobProjectEstimatorDTO {
@@ -42,4 +42,8 @@ export class JobProjectEstimatorDTO {
     @IsNumber()
     @IsNotEmpty()
     contractPrice: number
+
+    @IsBoolean()
+    @IsOptional()
+    isLootCost: boolean
 }
