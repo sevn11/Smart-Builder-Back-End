@@ -234,6 +234,11 @@ export class JobsService {
                 });
 
                 job.status = body.jobStatus;
+                if(body.jobStatus == "OPEN") {
+                    job.isClosed = false;
+                } else {
+                    job.isClosed = true;
+                }
                 job.calendarColor = body.color;
                 job.templateName = body.template;
 
