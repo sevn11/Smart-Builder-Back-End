@@ -145,6 +145,7 @@ model Job {
   houseBudget        String? @map("house_budget")
   sizeOfHouse        String? @map("size_of_house")
   referral           String?
+  salesTaxStatus     Boolean? @map("sales_tax_status") @default(false)
 
   JobContractor     JobContractor[]
   JobProjectEstimatorHeader JobProjectEstimatorHeader[]
