@@ -13,10 +13,10 @@ import { ConfigService } from '@nestjs/config';
 export class JobContractorService {
 
     constructor(
-        private databaseService: DatabaseService, 
+        private databaseService: DatabaseService,
         private sendgridService: SendgridService,
         private readonly config: ConfigService,
-    ) {}
+    ) { }
 
     // fn get all job contractors
     async getAllJobContractors(user: User, companyId: number, jobId: number) {
@@ -76,7 +76,7 @@ export class JobContractorService {
                         contractorId: { in: body.contractorIds }
                     }
                 });
-                
+
                 if (existingJobContractors.length > 0) {
                     throw new ConflictException('One or more contractors are already assigned to this job');
                 }
@@ -91,7 +91,7 @@ export class JobContractorService {
                         }
                     });
                 }));
-                
+
                 return { jobContractors };
 
             } else {
@@ -102,14 +102,14 @@ export class JobContractorService {
             // Database Exceptions
             if (error instanceof PrismaClientKnownRequestError) {
                 if (error.code === PrismaErrorCodes.NOT_FOUND) {
-                  throw new BadRequestException(ResponseMessages.USER_NOT_FOUND);
+                    throw new BadRequestException(ResponseMessages.USER_NOT_FOUND);
                 } else {
-                  console.error(error.code);
+                    console.error(error.code);
                 }
             } else if (error instanceof ForbiddenException || error instanceof ConflictException) {
                 throw error;
             }
-        
+
             throw new InternalServerErrorException();
         }
     }
@@ -122,7 +122,7 @@ export class JobContractorService {
                 if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
-                
+
                 // check jobcontractor exist or not
                 await this.databaseService.jobContractor.findFirstOrThrow({
                     where: {
@@ -131,7 +131,7 @@ export class JobContractorService {
                         jobId
                     }
                 });
-                
+
                 // delete the contractor from the job
                 await this.databaseService.jobContractor.delete({
                     where: {
@@ -140,7 +140,7 @@ export class JobContractorService {
                         jobId
                     }
                 })
-                
+
                 return { message: ResponseMessages.SUCCESSFUL }
             } else {
                 throw new ForbiddenException("Action Not Allowed");
@@ -171,12 +171,13 @@ export class JobContractorService {
                 if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
-                
+
                 const jobContractors = body.jobContractors;
                 const fileIds = body.files;
                 const sendCC = body.sendCC;
+                const subject = body.subject
                 let ccMail = null;
-                
+
                 // get user company information
                 let company = await this.databaseService.company.findUniqueOrThrow({
                     where: {
@@ -186,11 +187,11 @@ export class JobContractorService {
                     }
                 });
                 let replyTo = null;
-                if(!company.email) {
+                if (!company.email) {
                     throw new ForbiddenException("Company email not found");
                 }
                 replyTo = ccMail = company.email;
-                
+
                 // Prepare attachments array
                 const attachments = await Promise.all(fileIds.map(async (fileId) => {
                     // Retrieve file data from database
@@ -213,17 +214,18 @@ export class JobContractorService {
                     const jobContractorData = await this.databaseService.jobContractor.findFirstOrThrow({
                         where: { id: jobContractorId }
                     });
-    
+
                     // Retrieve contractor data using contractorId from job contractor data
                     const contractor = await this.databaseService.contractor.findFirstOrThrow({
                         where: { id: jobContractorData.contractorId }
                     });
-    
+
                     // Prepare template data for email
                     const templateData = {
-                        user_name: contractor.name
+                        user_name: contractor.name,
+                        subject: subject
                     };
-    
+
                     // Send emails with template and attachments
                     await this.sendgridService.sendEmailWithTemplate(
                         contractor.email,
@@ -235,7 +237,7 @@ export class JobContractorService {
                         ccMail
                     );
                 }));
-                
+
                 return { message: ResponseMessages.SUCCESSFUL }
             } else {
                 throw new ForbiddenException("Action Not Allowed");

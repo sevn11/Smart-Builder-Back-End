@@ -1,4 +1,4 @@
-import { IsArray, IsBoolean, IsNotEmpty, IsNumber, IsOptional } from "class-validator";
+import { IsArray, IsBoolean, IsNotEmpty, IsNumber, IsOptional, IsString } from "class-validator";
 
 
 export class SendInfoToContractorDTO {
@@ -15,4 +15,8 @@ export class SendInfoToContractorDTO {
     @IsOptional()
     @IsBoolean()
     sendCC: boolean;
+
+    @IsString()
+    @IsNotEmpty()
+    subject: string
 }
