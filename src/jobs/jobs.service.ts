@@ -472,4 +472,57 @@ export class JobsService {
             }
         }
     }
+
+    async updateJobSalesStatus(
+        user: User,
+        companyId: number,
+        jobId: number,
+        body: {salesTaxStatus: boolean}
+    ) {
+        try {
+            // Check if User is Admin of the Company.
+            if (
+                user.userType == UserTypes.ADMIN ||
+                (user.userType == UserTypes.BUILDER && user.companyId === companyId)
+            ) {
+                let job = await this.databaseService.job.findUnique({
+                    where: {
+                        id: jobId,
+                        companyId,
+                        isDeleted: false,
+                    },
+                });
+                if (!job) {
+                    throw new ForbiddenException("Action Not Allowed");
+                }
+                await this.databaseService.job.update({
+                    where: {
+                        id: jobId,
+                        companyId,
+                        isDeleted: false,
+                    },
+                    data: {
+                        ...body
+                    }
+                });
+
+                return ResponseMessages.SUCCESSFUL;
+            } else {
+                throw new ForbiddenException("Action Not Allowed");
+            }
+        } catch (error) {
+            // Database Exceptions
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code == PrismaErrorCodes.UNIQUE_CONSTRAINT_ERROR)
+                    throw new BadRequestException(ResponseMessages.UNIQUE_EMAIL_ERROR);
+                else {
+                    console.log(error.code);
+                }
+            } else if (error instanceof ForbiddenException) {
+                throw error;
+            } else {
+                throw new InternalServerErrorException();
+            }
+        }
+    }
 }

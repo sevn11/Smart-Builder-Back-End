@@ -61,6 +61,17 @@ export class JobsController {
         return this.jobService.updateJob(user, companyId, jobId, body);
     }
 
+    @Patch(':jobId/sale-tax-status')
+    @HttpCode(HttpStatus.OK)
+    updateJobSalesStatus(
+        @GetUser() user: User,
+        @Param('companyId', ParseIntPipe) companyId: number,
+        @Param('jobId', ParseIntPipe) jobId: number,
+        @Body() body: {salesTaxStatus: boolean},
+    ) {
+        return this.jobService.updateJobSalesStatus(user, companyId, jobId, body);
+    }
+
     @Delete('/:jobId')
     @HttpCode(HttpStatus.OK)
     deleteJob(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number, @Param('jobId', ParseIntPipe) jobId: number) {
