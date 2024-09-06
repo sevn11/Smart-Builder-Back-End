@@ -61,6 +61,8 @@ model Company {
   questionnaireTemplates QuestionnaireTemplate[]
   paymentSchedules       PaymentSchedule[]
   CashFlow               CashFlow[]
+  projectEstimatorTemplates     ProjectEstimatorTemplate[]
+  projectEstimatorTemplateHeader ProjectEstimatorTemplateHeader[]
   isActive               Boolean                 @default(true) @map("is_active")
   isDeleted              Boolean?                @default(false) @map("is_deleted")
 
@@ -379,3 +381,53 @@ model CashFlow {
 
   @@map("cash_flow")
 }
+model ProjectEstimatorTemplate {
+  id            Int      @id @default(autoincrement())
+  templateName  String
+  companyId     Int?      @map("company_id")
+  company       Company?  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  projectEstimatorTemplateHeader     ProjectEstimatorTemplateHeader[]
+
+  @@map("project_estimator_template")
+}
+
+model ProjectEstimatorTemplateHeader {
+  id                 Int                          @id @default(autoincrement())
+  petId              Int                          @map("project_estimator_template_id")
+  pet                ProjectEstimatorTemplate?    @relation(fields: [petId],references: [id], onDelete: Cascade)
+  name               String
+  companyId          Int?                         @map("company_id")
+  company            Company?                     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  isDeleted          Boolean?                     @default(false) @map("is_deleted")
+
+  ProjectEstimatorTemplateData    ProjectEstimatorTemplateData[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("project_estimator_template_header")
+}
+
+
+model ProjectEstimatorTemplateData {
+  id                Int                @id @default(autoincrement())
+  item              String
+  description       String
+  costType          String?            @map("cost_type")
+  quantity          Int
+  unitCost          Decimal            @map("unit_cost") @db.Decimal(10, 2) @default(0.00)
+  actualCost        Decimal            @map("actual_cost") @db.Decimal(10, 2) @default(0.00)
+  grossProfit       Decimal            @map("gross_profit") @db.Decimal(10, 2) @default(0.00)
+  contractPrice     Decimal            @map("contract_price") @db.Decimal(10, 2) @default(0.00)
+  isDeleted         Boolean?           @default(false) @map("is_deleted")
+
+  petHeaderId       Int?               @map("project_estimator_template_header_id")
+  petHeader         ProjectEstimatorTemplateHeader? @relation(fields: [petHeaderId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("project_estimator_template_data")
+}
+
