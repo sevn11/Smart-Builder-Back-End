@@ -21,6 +21,9 @@ import { join } from 'path';
 import { TermsAndConditionModule } from './terms-and-condition/terms-and-condition.module';
 import { PaymentScheduleModule } from './payment-schedule/payment-schedule.module';
 import { CashFlowModule } from './cash-flow/cash-flow.module';
+import { QuestionnaireCategoryModule } from './questionnaire-category/questionnaire-category.module';
+import { TemplateQuestionModule } from './template-question/template-question.module';
+import { TemplateQuestionAnswerModule } from './template-question-answer/template-question-answer.module';
 @Module({
   imports: [
     ServeStaticModule.forRoot({
@@ -46,7 +49,10 @@ import { CashFlowModule } from './cash-flow/cash-flow.module';
     ContractorFileModule,
     TermsAndConditionModule,
     PaymentScheduleModule,
-    CashFlowModule
+    CashFlowModule,
+    QuestionnaireCategoryModule,
+    TemplateQuestionModule,
+    TemplateQuestionAnswerModule
   ],
 })
 export class AppModule { }

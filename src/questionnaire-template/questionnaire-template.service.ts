@@ -2,20 +2,18 @@ import { BadRequestException, ForbiddenException, Injectable, InternalServerErro
 import { User } from '@prisma/client';
 import { DatabaseService } from 'src/database/database.service';
 import { CreateUpdateQuestionnaireTemplateDTO } from './validators/create-edit-questionnaire-template';
-import { PrismaErrorCodes, ResponseMessages, UserTypes } from 'src/core/utils';
+import { PrismaErrorCodes, ResponseMessages, UserTypes, TemplateType } from 'src/core/utils';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 
 @Injectable()
 export class QuestionnaireTemplateService {
 
-    constructor(private databaseService: DatabaseService) {
-
-    }
-
+    constructor(private databaseService: DatabaseService) { }
 
     async createQuestionnaireTemplate(user: User, companyId: number, body: CreateUpdateQuestionnaireTemplateDTO) {
         try {
             // Check if User is Admin of the Company.
+
             if (user.userType == UserTypes.ADMIN || (user.userType == UserTypes.BUILDER && user.companyId === companyId)) {
                 let company = await this.databaseService.company.findUnique({
                     where: {
@@ -27,16 +25,43 @@ export class QuestionnaireTemplateService {
                     throw new ForbiddenException("Action Not Allowed");
                 }
 
-
                 let template = await this.databaseService.questionnaireTemplate.create({
                     data: {
                         name: body.name,
                         companyId: company.id,
+                        isCompanyTemplate: true,
+                        templateType: TemplateType.QUESTIONNAIRE
                     },
                     omit: {
-                        isDeleted: true
-                    },
 
+                        isDeleted: true,
+                        isCompanyTemplate: false
+                    },
+                    include: {
+                        categories: {
+                            where: {
+                                isDeleted: false,
+                                isCompanyCategory: false,
+                            },
+                            omit: {
+                                isDeleted: true,
+                                isCompanyCategory: false,
+                                companyId: true
+                            },
+                            include: {
+                                questions: {
+                                    omit: {
+                                        isDeleted: true,
+                                        categoryId: true,
+                                        questionnaireTemplateId: true
+                                    },
+                                }
+                            },
+                            orderBy: {
+                                questionnaireOrder: 'asc'
+                            }
+                        }
+                    }
                 });
                 return { template }
 
@@ -60,7 +85,6 @@ export class QuestionnaireTemplateService {
         }
     }
 
-
     async getQuestionnaireTemplateList(user: User, companyId: number) {
 
         try {
@@ -78,17 +102,46 @@ export class QuestionnaireTemplateService {
 
                 let templates = await this.databaseService.questionnaireTemplate.findMany({
                     where: {
-                        companyId,
+                        isCompanyTemplate: true,
                         isDeleted: false,
+                        templateType: TemplateType.QUESTIONNAIRE
                     },
-
                     omit: {
-                        isDeleted: true
+
+                        isDeleted: true,
+                        isCompanyTemplate: false
                     },
+                    include: {
+                        categories: {
+                            where: {
+                                isDeleted: false,
+                                isCompanyCategory: true,
+                            },
+                            omit: {
+                                isDeleted: true,
+                                isCompanyCategory: false,
 
+                            },
+                            include: {
+                                questions: {
+                                    where: {
+                                        isDeleted: false
+                                    },
+                                    omit: {
+                                        isDeleted: true,
+
+                                    },
+                                }
+                            },
+                            orderBy: {
+                                questionnaireOrder: 'asc'
+                            }
+                        }
+                    }
                 });
-
                 return { templates }
+
+
             } else {
                 throw new ForbiddenException("Action Not Allowed");
             }
@@ -108,7 +161,6 @@ export class QuestionnaireTemplateService {
             }
         }
     }
-
 
     async updateQuestionnaireTemplate(user: User, companyId: number, templateId: number, body: CreateUpdateQuestionnaireTemplateDTO) {
         try {
@@ -123,35 +175,51 @@ export class QuestionnaireTemplateService {
                 if (!company) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
-                let template = await this.databaseService.questionnaireTemplate.findUniqueOrThrow({
+
+                let template = await this.databaseService.questionnaireTemplate.update({
                     where: {
                         id: templateId,
-                        companyId,
                         isDeleted: false,
-                    },
-                    omit: {
-                        isDeleted: true
-                    },
-
-                });
-
-                template.name = body.name;
-
-
-
-                // updating the template
-                let updatedTemplate = await this.databaseService.questionnaireTemplate.update({
-                    where: {
-                        id: templateId,
-                        companyId,
-                        isDeleted: false
+                        isCompanyTemplate: true,
                     },
                     data: {
-                        ...template
+                        name: body.name
+                    },
+                    omit: {
+
+                        isDeleted: true,
+                        isCompanyTemplate: false
+                    },
+                    include: {
+                        categories: {
+                            where: {
+                                isDeleted: false,
+                                isCompanyCategory: true,
+                            },
+                            omit: {
+                                isDeleted: true,
+                                isCompanyCategory: false,
+
+                            },
+                            include: {
+                                questions: {
+                                    where: {
+                                        isDeleted: false
+                                    },
+                                    omit: {
+                                        isDeleted: true,
+
+                                    },
+                                }
+                            },
+                            orderBy: {
+                                questionnaireOrder: 'asc'
+                            }
+                        }
                     }
                 });
+                return { template, message: ResponseMessages.QUESTIONNAIRE_TEMPLATE_UPDATED }
 
-                return { updatedTemplate }
             } else {
                 throw new ForbiddenException("Action Not Allowed");
             }
@@ -171,7 +239,4 @@ export class QuestionnaireTemplateService {
             }
         }
     }
-
-
-
 }

@@ -5,13 +5,10 @@ import { User } from '@prisma/client';
 import { CreateUpdateQuestionnaireTemplateDTO } from './validators/create-edit-questionnaire-template';
 import { JwtGuard } from 'src/core/guards';
 
-
 @UseGuards(JwtGuard)
 @Controller('companies/:companyId/questionnaire-template')
 export class QuestionnaireTemplateController {
-    constructor(private questionnaireTemplateService: QuestionnaireTemplateService) {
-
-    }
+    constructor(private questionnaireTemplateService: QuestionnaireTemplateService) {}
 
     @Post()
     createQuestionnaireTemplate(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number, @Body() body: CreateUpdateQuestionnaireTemplateDTO) {
@@ -24,9 +21,9 @@ export class QuestionnaireTemplateController {
         return this.questionnaireTemplateService.getQuestionnaireTemplateList(user, companyId);
     }
 
-    @Patch(':templateId')
     @HttpCode(HttpStatus.OK)
-    updateQuestionnaireTemplate(
+    @Patch(':templateId')
+    updateJob(
         @GetUser() user: User,
         @Param('companyId', ParseIntPipe) companyId: number,
         @Param('templateId', ParseIntPipe) templateId: number,
@@ -34,6 +31,4 @@ export class QuestionnaireTemplateController {
     ) {
         return this.questionnaireTemplateService.updateQuestionnaireTemplate(user, companyId, templateId, body);
     }
-
-
 }

@@ -28,4 +28,5 @@ export class ResponseMessages {
     static RESOURCE_NOT_FOUND = 'Resource not found'
     static FILE_NOT_UPLOADED = 'File not uploaded'
     static FILE_NOT_FOUND = 'File not found'
+    static QUESTION_ADDED = 'Question successfully saved.'
 }

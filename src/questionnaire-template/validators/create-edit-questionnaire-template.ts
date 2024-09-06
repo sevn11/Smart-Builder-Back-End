@@ -5,5 +5,4 @@ export class CreateUpdateQuestionnaireTemplateDTO {
     @IsString()
     @IsNotEmpty()
     name: string
-
 }
