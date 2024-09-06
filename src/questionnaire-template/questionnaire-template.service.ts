@@ -102,6 +102,7 @@ export class QuestionnaireTemplateService {
 
                 let templates = await this.databaseService.questionnaireTemplate.findMany({
                     where: {
+                        companyId,
                         isCompanyTemplate: true,
                         isDeleted: false,
                         templateType: TemplateType.QUESTIONNAIRE
@@ -178,6 +179,7 @@ export class QuestionnaireTemplateService {
 
                 let template = await this.databaseService.questionnaireTemplate.update({
                     where: {
+                        companyId,
                         id: templateId,
                         isDeleted: false,
                         isCompanyTemplate: true,

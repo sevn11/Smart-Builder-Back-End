@@ -23,7 +23,7 @@ export class QuestionnaireTemplateController {
 
     @HttpCode(HttpStatus.OK)
     @Patch(':templateId')
-    updateJob(
+    updateQuestionnaireTemplate(
         @GetUser() user: User,
         @Param('companyId', ParseIntPipe) companyId: number,
         @Param('templateId', ParseIntPipe) templateId: number,
