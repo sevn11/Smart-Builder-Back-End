@@ -11,7 +11,7 @@ export class QuestionnaireTemplateController {
     constructor(private questionnaireTemplateService: QuestionnaireTemplateService) {}
 
     @Post()
-    createJob(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number, @Body() body: CreateUpdateQuestionnaireTemplateDTO) {
+    createQuestionnaireTemplate(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number, @Body() body: CreateUpdateQuestionnaireTemplateDTO) {
         return this.questionnaireTemplateService.createQuestionnaireTemplate(user, companyId, body);
     }
 
@@ -23,7 +23,7 @@ export class QuestionnaireTemplateController {
 
     @HttpCode(HttpStatus.OK)
     @Patch(':templateId')
-    updateJob(
+    updateQuestionnaireTemplate(
         @GetUser() user: User,
         @Param('companyId', ParseIntPipe) companyId: number,
         @Param('templateId', ParseIntPipe) templateId: number,
