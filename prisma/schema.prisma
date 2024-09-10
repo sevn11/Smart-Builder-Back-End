@@ -225,7 +225,7 @@ model TemplateQuestion {
   category                Category?              @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   phaseId                 Int?                   @map("phase_id")
   phase                   ContractorPhase?       @relation(fields: [phaseId], references: [id])
-  questionOrder         Int   @default(0)  @map("question_order")
+  questionOrder           Int   @default(0)  @map("question_order")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
