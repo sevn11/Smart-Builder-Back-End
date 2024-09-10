@@ -28,4 +28,10 @@ export class CreateUpdateQuestionDTO {
     @IsBoolean()
     @IsOptional()
     isQuestionLinkedSelections: boolean = false
+
+    @IsNumber()
+    @Type(() => Number)
+    @IsNotEmpty()
+    questionOrder: number
+
 }

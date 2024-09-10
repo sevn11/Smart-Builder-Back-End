@@ -56,6 +56,9 @@ export class TemplateQuestionAnswerService {
               where: {
                 isDeleted: false,
               },
+              orderBy: {
+                questionOrder: 'asc'
+              },
               include: {
                 answers: {},
               },
@@ -138,6 +141,9 @@ export class TemplateQuestionAnswerService {
             questions: {
               where: {
                 isDeleted: false,
+              },
+              orderBy: {
+                questionOrder: 'asc'
               },
               include: {
                 answers: {},

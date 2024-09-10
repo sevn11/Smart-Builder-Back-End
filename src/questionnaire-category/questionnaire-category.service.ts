@@ -135,6 +135,9 @@ export class QuestionnaireCategoryService {
                 categoryId: true,
                 questionnaireTemplateId: true,
               },
+              orderBy: {
+                questionOrder: 'asc'
+              }
             },
           },
         });
@@ -302,6 +305,16 @@ export class QuestionnaireCategoryService {
             isCompanyCategory: true,
             isDeleted: false,
           },
+          include: {
+            questions: {
+              where: {
+                isDeleted: false,
+              },
+              orderBy: {
+                questionOrder: 'asc'
+              }
+            }
+          }
         });
 
         return { categories, message: ResponseMessages.CATEGORY_DELETED };
@@ -416,7 +429,14 @@ export class QuestionnaireCategoryService {
                     companyId: true,
                   },
                   include: {
-                    questions: true,
+                    questions: {
+                      where: {
+                        isDeleted: false,
+                      },
+                      orderBy: {
+                        questionOrder: 'asc'
+                      }
+                    },
                   },
                   orderBy: {
                     questionnaireOrder: "asc",
@@ -483,7 +503,14 @@ export class QuestionnaireCategoryService {
                     companyId: true,
                   },
                   include: {
-                    questions: true,
+                    questions: {
+                      where: {
+                        isDeleted: false,
+                      },
+                      orderBy: {
+                        questionOrder: 'asc'
+                      }
+                    },
                   },
                   orderBy: {
                     questionnaireOrder: "asc",
