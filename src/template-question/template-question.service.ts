@@ -461,6 +461,7 @@ export class TemplateQuestionService {
                         this.databaseService.templateQuestion.updateMany({
                             where: {
                                 questionnaireTemplateId: template.id,
+                                categoryId: category.id,
                                 isDeleted: false,
                                 questionOrder: {
                                     gt: currentQuesOrder,
@@ -477,6 +478,7 @@ export class TemplateQuestionService {
                             where: {
                                 id: questionId,
                                 questionnaireTemplateId: template.id,
+                                categoryId: category.id,
                                 isDeleted: false,
                             },
                             data: {
