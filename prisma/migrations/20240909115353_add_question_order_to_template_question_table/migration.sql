@@ -5,4 +5,4 @@
 
 */
 -- AlterTable
-ALTER TABLE "template_question" ADD COLUMN     "question_order" INTEGER NOT NULL;
+ALTER TABLE "template_question" ADD COLUMN "question_order" INTEGER DEFAULT 0;
