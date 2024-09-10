@@ -55,6 +55,9 @@ export class QuestionnaireTemplateService {
                                         categoryId: true,
                                         questionnaireTemplateId: true
                                     },
+                                    orderBy: {
+                                        questionOrder: 'asc'
+                                    }
                                 }
                             },
                             orderBy: {
@@ -132,6 +135,9 @@ export class QuestionnaireTemplateService {
                                         isDeleted: true,
 
                                     },
+                                    orderBy: {
+                                        questionOrder: 'asc'
+                                    }
                                 }
                             },
                             orderBy: {
@@ -212,6 +218,9 @@ export class QuestionnaireTemplateService {
                                         isDeleted: true,
 
                                     },
+                                    orderBy: {
+                                        questionOrder: 'asc'
+                                    }
                                 }
                             },
                             orderBy: {
@@ -241,4 +250,116 @@ export class QuestionnaireTemplateService {
             }
         }
     }
+
+    async deleteQuestionnaireTemplate(user: User, companyId: number, templateId: number) {
+        try {
+            if (user.userType == UserTypes.BUILDER || user.userType === UserTypes.ADMIN) {
+                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
+                    throw new ForbiddenException("Action Not Allowed");
+                }
+
+                await this.databaseService.questionnaireTemplate.findUniqueOrThrow({
+                    where: {
+                        id: templateId,
+                        isDeleted: false,
+                        isCompanyTemplate: true,
+                        companyId
+                    }
+                })
+
+                // Update the template to set isDeleted to true
+                await this.databaseService.$transaction([
+                    this.databaseService.questionnaireTemplate.update({
+                        where: {
+                            id: templateId,
+                        },
+                        data: {
+                            isDeleted: true
+                        }
+                    }),
+                    this.databaseService.category.updateMany({
+                        where: {
+                            questionnaireTemplateId: templateId,
+                            isDeleted: false,
+                        },
+                        data: {
+                            isDeleted: true
+                        },
+                    }),
+                    this.databaseService.templateQuestion.updateMany({
+                        where: {
+                            questionnaireTemplateId: templateId,
+                            isDeleted: false,
+                        },
+                        data: {
+                            isDeleted: true
+                        }
+                    })
+                ]);
+
+                let template = await this.databaseService.questionnaireTemplate.findMany({
+                    where: {
+                        companyId,
+                        isCompanyTemplate: true,
+                        isDeleted: false,
+                        templateType: TemplateType.QUESTIONNAIRE
+                    },
+                    omit: {
+
+                        isDeleted: true,
+                        isCompanyTemplate: false
+                    },
+                    include: {
+                        categories: {
+                            where: {
+                                isDeleted: false,
+                                isCompanyCategory: true,
+                            },
+                            omit: {
+                                isDeleted: true,
+                                isCompanyCategory: false,
+
+                            },
+                            include: {
+                                questions: {
+                                    where: {
+                                        isDeleted: false
+                                    },
+                                    omit: {
+                                        isDeleted: true,
+
+                                    },
+                                    orderBy: {
+                                        questionOrder: 'asc'
+                                    }
+                                }
+                            },
+                            orderBy: {
+                                questionnaireOrder: 'asc'
+                            }
+                        }
+                    }
+                });
+
+                return { template, message: ResponseMessages.QUESTIONNAIRE_TEMPLATE_DELETED }
+
+            } else {
+                throw new ForbiddenException("Action Not Allowed");
+            }
+        } catch (error) {
+            console.error(error);
+
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code === PrismaErrorCodes.UNIQUE_CONSTRAINT_ERROR) {
+                    throw new BadRequestException(ResponseMessages.RESOURCE_NOT_FOUND);
+                }
+                console.log(error.code); // Log error code for debugging
+            } else if (error instanceof ForbiddenException) {
+                throw error;
+            } else {
+                throw new InternalServerErrorException();
+            }
+        }
+    }
+
 }

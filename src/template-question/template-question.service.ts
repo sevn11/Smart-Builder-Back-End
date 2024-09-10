@@ -4,6 +4,7 @@ import { PrismaErrorCodes, ResponseMessages, UserTypes } from 'src/core/utils';
 import { DatabaseService } from 'src/database/database.service';
 import { CreateUpdateQuestionDTO } from './validators/create-update-question';
 import { User } from '@prisma/client';
+import { QuestionOrderDTO } from './validators/order';
 
 
 @Injectable()
@@ -14,7 +15,6 @@ export class TemplateQuestionService {
     async createQuestion(user: User, companyId: number, templateId: number, categoryId: number, body: CreateUpdateQuestionDTO) {
         try {
             // Check if User is Admin of the Company.
-            console.log(body)
             if (user.userType == UserTypes.ADMIN || (user.userType == UserTypes.BUILDER && user.companyId === companyId)) {
                 let company = await this.databaseService.company.findUnique({
                     where: {
@@ -26,6 +26,22 @@ export class TemplateQuestionService {
                     throw new ForbiddenException("Action Not Allowed");
                 }
 
+                // Get the highest question order for the given templateId and categoryId
+                let maxOrder = await this.databaseService.templateQuestion.aggregate({
+                    _max: {
+                        questionOrder: true,
+                    },
+                    where: {
+                        questionnaireTemplateId: templateId,
+                        categoryId: categoryId,
+                        isDeleted: false,
+                    }
+                })
+
+                // if body.questionOrder = 0 , set it to maxOrder + 1
+                let order = body.questionOrder === 0
+                    ? (maxOrder._max.questionOrder ?? 0) + 1
+                    : body.questionOrder
 
                 let question = await this.databaseService.templateQuestion.create({
                     data: {
@@ -33,6 +49,7 @@ export class TemplateQuestionService {
                         questionType: body.type,
                         multipleOptions: body.multipleOptions,
                         linkToPhase: body.isQuestionLinkedPhase,
+                        questionOrder: order,
                         linkToInitalSelection: body.isQuestionLinkedSelections,
                         linkToPaintSelection: body.isQuestionLinkedSelections,
                         questionnaireTemplateId: templateId,
@@ -57,6 +74,9 @@ export class TemplateQuestionService {
                             where: {
                                 isDeleted: false,
                             },
+                            orderBy: {
+                                questionOrder: 'asc'
+                            }
 
                         }
                     }
@@ -100,6 +120,9 @@ export class TemplateQuestionService {
                     },
                     omit: {
                         isDeleted: true
+                    },
+                    orderBy: {
+                        questionOrder: 'asc'
                     }
                 });
 
@@ -205,7 +228,9 @@ export class TemplateQuestionService {
                             where: {
                                 isDeleted: false,
                             },
-
+                            orderBy: {
+                                questionOrder: 'asc'
+                            },
                         }
                     }
                 });
@@ -255,27 +280,44 @@ export class TemplateQuestionService {
                     throw new BadRequestException(ResponseMessages.QUESTION_NOT_FOUND);
                 }
 
-                // Delete the corresponding answer(s) for the question
-                await this.databaseService.templateQuestionAnswer.deleteMany({
-                    where: {
-                        questionId: questionId
-                    }
-                });
+                const deletedQuesOrder = question.questionOrder;
 
-                // Mark the question as deleted
-                await this.databaseService.templateQuestion.update({
-                    where: {
-                        id: questionId,
-                    },
-                    data: {
-                        isDeleted: true,
-                    },
-                });
+                await this.databaseService.$transaction([
+                    this.databaseService.templateQuestionAnswer.deleteMany({
+                        where: {
+                            questionId: questionId
+                        },
+                    }),
+                    this.databaseService.templateQuestion.update({
+                        where: {
+                            id: questionId,
+                        },
+                        data: {
+                            isDeleted: true,
+                            questionOrder: 0, // Set the order to 0 for the deleted template
+                        }
+                    }),
+                    this.databaseService.templateQuestion.updateMany({
+                        where: {
+                            questionnaireTemplateId: templateId,
+                            categoryId: categoryId,
+                            isDeleted: false,
+                            questionOrder: {
+                                gt: deletedQuesOrder
+                            }
+                        },
+                        data: {
+                            questionOrder: {
+                                decrement: 1,
+                            }
+                        }
+                    })
+                ]);
 
                 // Fetch the updated category with non-deleted questions
-                const category = await this.databaseService.category.findUniqueOrThrow({
+                const category = await this.databaseService.category.findMany({
                     where: {
-                        id: categoryId,
+                        questionnaireTemplateId: templateId,
                         isCompanyCategory: true,
                         isDeleted: false,
                     },
@@ -284,8 +326,14 @@ export class TemplateQuestionService {
                             where: {
                                 isDeleted: false,
                             },
-                        },
+                            orderBy: {
+                                questionOrder: 'asc'
+                            }
+                        }
                     },
+                    orderBy: {
+                        questionnaireOrder: 'asc'
+                    }
                 });
 
                 return { category, message: ResponseMessages.QUESTION_DELETED };
@@ -297,6 +345,186 @@ export class TemplateQuestionService {
             if (error instanceof PrismaClientKnownRequestError) {
                 if (error.code === PrismaErrorCodes.NOT_FOUND) {
                     throw new BadRequestException(ResponseMessages.QUESTION_NOT_FOUND);
+                } else {
+                    console.log(error.code);
+                }
+            }
+
+            throw new InternalServerErrorException();
+        }
+    }
+
+    async updateOrder(user: User, companyId: number, templateId: number, categoryId: number, questionId: number, body: QuestionOrderDTO) {
+        try {
+
+            // Check if User is Admin of the Company.
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
+                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
+                    throw new ForbiddenException("Action Not Allowed");
+                }
+
+                let company = await this.databaseService.company.findUnique({
+                    where: {
+                        id: companyId,
+                        isDeleted: false,
+                    }
+                })
+
+                if (!company) {
+                    throw new ForbiddenException("Action Not Allowed");
+                }
+
+                let template = await this.databaseService.questionnaireTemplate.findUniqueOrThrow({
+                    where: {
+                        id: templateId,
+                        isCompanyTemplate: true,
+                        isDeleted: false,
+                    }
+                });
+                let category = await this.databaseService.category.findUniqueOrThrow({
+                    where: {
+                        id: categoryId,
+                        questionnaireTemplateId: templateId,
+                        isCompanyCategory: true,
+                        isDeleted: false,
+                    }
+                });
+
+                let question = await this.databaseService.templateQuestion.findUniqueOrThrow({
+                    where: {
+                        id: questionId,
+                        questionnaireTemplateId: template.id,
+                        categoryId: category.id,
+                        isDeleted: false,
+                    }
+                })
+
+                const currentQuesOrder = question.questionOrder
+
+                if (currentQuesOrder > body.questionOrder) {
+                    let result = await this.databaseService.$transaction([
+                        this.databaseService.templateQuestion.updateMany({
+                            where: {
+                                questionnaireTemplateId: template.id,
+                                categoryId: category.id,
+                                isDeleted: false,
+                                questionOrder: {
+                                    gte: body.questionOrder,
+                                    lt: currentQuesOrder,
+                                }
+                            },
+                            data: {
+                                questionOrder: {
+                                    increment: 1,
+                                }
+                            }
+                        }),
+                        this.databaseService.templateQuestion.update({
+                            where: {
+                                id: questionId,
+                                questionnaireTemplateId: template.id,
+                                categoryId: category.id,
+                                isDeleted: false,
+                            },
+                            data: {
+                                questionOrder: body.questionOrder
+                            }
+                        }),
+                        this.databaseService.category.findMany({
+                            where: {
+                                questionnaireTemplateId: templateId,
+                                isCompanyCategory: true,
+                                isDeleted: false,
+                            },
+                            include: {
+                                questions: {
+                                    where: {
+                                        isDeleted: false,
+                                    },
+                                    orderBy: {
+                                        questionOrder: 'asc'
+                                    }
+                                }
+                            },
+                            orderBy: {
+                                questionnaireOrder: 'asc'
+                            }
+                        })
+                    ]);
+
+                    return {
+                        categories: result[2],
+                        message: ResponseMessages.QUESTION_ORDER_UPDATED,
+                    }
+                } else if (currentQuesOrder < body.questionOrder) {
+                    let result = await this.databaseService.$transaction([
+                        this.databaseService.templateQuestion.updateMany({
+                            where: {
+                                questionnaireTemplateId: template.id,
+                                categoryId: category.id,
+                                isDeleted: false,
+                                questionOrder: {
+                                    gt: currentQuesOrder,
+                                    lte: body.questionOrder
+                                }
+                            },
+                            data: {
+                                questionOrder: {
+                                    decrement: 1,
+                                }
+                            }
+                        }),
+                        this.databaseService.templateQuestion.update({
+                            where: {
+                                id: questionId,
+                                questionnaireTemplateId: template.id,
+                                categoryId: category.id,
+                                isDeleted: false,
+                            },
+                            data: {
+                                questionOrder: body.questionOrder
+                            }
+                        }),
+                        this.databaseService.category.findMany({
+                            where: {
+                                questionnaireTemplateId: templateId,
+                                isCompanyCategory: true,
+                                isDeleted: false,
+                            },
+                            include: {
+                                questions: {
+                                    where: {
+                                        isDeleted: false,
+                                    },
+                                    orderBy: {
+                                        questionOrder: 'asc'
+                                    }
+                                }
+                            },
+                            orderBy: {
+                                questionnaireOrder: 'asc'
+                            }
+                        })
+                    ])
+                    return {
+                        categories: result[2],
+                        message: ResponseMessages.QUESTION_ORDER_UPDATED,
+                    }
+                } else {
+                    throw new ForbiddenException("Unable to change the order.");
+                }
+
+
+            } else {
+                throw new ForbiddenException("Action Not Allowed");
+            }
+        } catch (error) {
+            console.log(error);
+
+            // Database Exceptions
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code === PrismaErrorCodes.NOT_FOUND) {
+                    throw new BadRequestException(ResponseMessages.RESOURCE_NOT_FOUND);
                 } else {
                     console.log(error.code);
                 }

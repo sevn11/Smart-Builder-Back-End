@@ -4,6 +4,7 @@ import { TemplateQuestionService } from './template-question.service';
 import { GetUser } from 'src/core/decorators';
 import { User } from '@prisma/client';
 import { CreateUpdateQuestionDTO } from './validators/create-update-question';
+import { QuestionOrderDTO } from './validators/order';
 
 
 @UseGuards(JwtGuard)
@@ -38,5 +39,18 @@ export class TemplateQuestionController {
     @Delete(':questionId')
     deleteQuestion(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number, @Param('templateId', ParseIntPipe) templateId: number, @Param('categoryId', ParseIntPipe) categoryId: number, @Param('questionId', ParseIntPipe) questionId: number) {
         return this.templateQuestionService.deleteQuestion(user, companyId, templateId, categoryId, questionId);
+    }
+    // Update the questionorder within a category.
+    @HttpCode(HttpStatus.OK)
+    @Patch(':questionId/order')
+    updateOrder(
+        @GetUser() user: User,
+        @Param('companyId', ParseIntPipe) companyId: number,
+        @Param('templateId', ParseIntPipe) templateId: number,
+        @Param('categoryId', ParseIntPipe) categoryId: number,
+        @Param('questionId', ParseIntPipe) questionId: number,
+        @Body() body: QuestionOrderDTO
+    ) {
+        return this.templateQuestionService.updateOrder(user, companyId, templateId, categoryId, questionId, body);
     }
 }
