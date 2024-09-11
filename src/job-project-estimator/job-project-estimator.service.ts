@@ -400,7 +400,8 @@ export class JobProjectEstimatorService {
                         where: {
                             jobProjectEstimatorHeaderId: accountingHeader.id,
                             item: 'Change Order',
-                            id: { not: projectEstimator.id }
+                            id: { not: projectEstimator.id },
+                            invoiceId: { not: null },
                         },
                         orderBy: {
                             invoiceId: 'desc',
