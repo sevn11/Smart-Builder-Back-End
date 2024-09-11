@@ -35,41 +35,70 @@ export class ProjectEstimatorTemplateController {
         return this.projectEstimatorTemplateService.createTemplateData(user, companyId, templateId, body)
     }
 
-    @Post('/:templateId/bulk-update')
+    @Post(':companyId/:templateId/bulk-update')
     @HttpCode(HttpStatus.OK)
     bulkUpdateEstimator(
         @GetUser() user: User,
         @Param('templateId', ParseIntPipe) templateId: number,
+        @Param('companyId', ParseIntPipe) companyId: number,
         @Body() body: BulkUpdateProjectEstimatorTemplateDTO[]
     ) {
-        return this.projectEstimatorTemplateService.projectEstimatorBulkUpdate(user, templateId, body);
+        return this.projectEstimatorTemplateService.projectEstimatorBulkUpdate(user, companyId, templateId, body);
     }
 
-    @Patch('/estimator/:estimatorId')
+    @Patch(':companyId/estimator/:estimatorId')
     @HttpCode(HttpStatus.OK)
     updateTemplateData(
         @GetUser() user: User,
         @Param('estimatorId', ParseIntPipe) estimatorId: number,
+        @Param('companyId', ParseIntPipe) companyId: number,
         @Body() body: ProjectEstimatorTemplateDTO
     ) {
-        return this.projectEstimatorTemplateService.updateTemplateData(user, estimatorId, body);
+        return this.projectEstimatorTemplateService.updateTemplateData(user, companyId, estimatorId, body);
     }
 
     // create project estimator template name
-    @Post('/create-template')
+    @Post(':companyId/create-template')
     @HttpCode(HttpStatus.OK)
     createProjectEstimatorTemplateName(
         @GetUser() user: User,
+        @Param('companyId', ParseIntPipe) companyId: number,
         @Body() body: ProjectEstimatorTemplateNameDTO
     ) {
-        return this.projectEstimatorTemplateService.addProjectEstimatorTemplateName(user, body)
+        return this.projectEstimatorTemplateService.addProjectEstimatorTemplateName(user, companyId, body)
+    }
+
+    // update project estimator template name
+    @Patch(':companyId/edit-template/:templateId')
+    @HttpCode(HttpStatus.OK)
+    updateProjectEstimatorTemplate(
+        @GetUser() user: User,
+        @Param('templateId', ParseIntPipe) templateId: number,
+        @Param('companyId', ParseIntPipe) companyId: number,
+        @Body() body: ProjectEstimatorTemplateNameDTO
+    ) {
+        return this.projectEstimatorTemplateService.updateProjectEstimatorTemplate(user, companyId, templateId, body)
+    }
+
+    // delete project estimator template name
+    @Delete(':companyId/delete-template/:templateId')
+    @HttpCode(HttpStatus.OK)
+    deleteProjectEstimatorTemplate(
+        @GetUser() user: User,
+        @Param('templateId', ParseIntPipe) templateId: number,
+        @Param('companyId', ParseIntPipe) companyId: number,
+    ) {
+        return this.projectEstimatorTemplateService.deleteProjectEstimatorTemplate(user, companyId, templateId)
     }
 
     // get the created template names.
-    @Get('/template-name')
+    @Get(':companyId/template-name')
     @HttpCode(HttpStatus.OK)
-    getTemplateName(@GetUser() user: User) {
-        return this.projectEstimatorTemplateService.getProjectEstimatorTemplateName(user);
+    getTemplateName(
+        @GetUser() user: User,
+        @Param('companyId', ParseIntPipe) companyId: number,
+    ) {
+        return this.projectEstimatorTemplateService.getProjectEstimatorTemplateName(user, companyId);
     }
 
     // create template name header.
@@ -84,45 +113,49 @@ export class ProjectEstimatorTemplateController {
     }
 
     // delete project estimator header
-    @Delete(':templateId/header/:headerId')
+    @Delete(':companyId/:templateId/header/:headerId')
     @HttpCode(HttpStatus.OK)
     deleteHeader(
         @GetUser() user: User,
         @Param('templateId', ParseIntPipe) templateId: number,
         @Param('headerId', ParseIntPipe) headerId: number,
+        @Param('companyId', ParseIntPipe) companyId: number,
     ) {
-        return this.projectEstimatorTemplateService.deleteHeader(user, templateId, headerId);
+        return this.projectEstimatorTemplateService.deleteHeader(user, companyId, templateId, headerId);
     }
 
     //edit project estimator header
-    @Patch(':templateId/header/:headerId')
+    @Patch(':companyId/:templateId/header/:headerId')
     @HttpCode(HttpStatus.OK)
     editHeader(
         @GetUser() user: User,
         @Param('templateId', ParseIntPipe) templateId: number,
         @Param('headerId', ParseIntPipe) headerId: number,
+        @Param('companyId', ParseIntPipe) companyId: number,
         @Body() body: ProjectEstimatorTemplateHeaderDTO
     ) {
-        return this.projectEstimatorTemplateService.editHeader(user, templateId, headerId, body)
+        return this.projectEstimatorTemplateService.editHeader(user, companyId, templateId, headerId, body)
     }
 
-    @Delete(':templateId/estimator/:estimatorId')
+    @Delete(':companyId/:templateId/estimator/:estimatorId')
     @HttpCode(HttpStatus.OK)
     deleteProjectEstimator(
         @GetUser() user: User,
         @Param('templateId', ParseIntPipe) templateId: number,
-        @Param('estimatorId', ParseIntPipe) estimatorId: number
+        @Param('estimatorId', ParseIntPipe) estimatorId: number,
+        @Param('companyId', ParseIntPipe) companyId: number,
     ) {
-        return this.projectEstimatorTemplateService.deleteProjectEstimator(user, templateId, estimatorId);
+        return this.projectEstimatorTemplateService.deleteProjectEstimator(user, companyId, templateId, estimatorId);
     }
 
-    @Post('/:templateId/accounting')
+    @Post(':companyId/:templateId/accounting')
     @HttpCode(HttpStatus.OK)
     createProjectEstimatorAccount(
         @GetUser() user: User,
         @Param('templateId', ParseIntPipe) templateId: number,
+        @Param('companyId', ParseIntPipe) companyId: number,
         @Body() body: ProjectEstimatorAccountingTemplateDTO
     ) {
-        return this.projectEstimatorTemplateService.createProjectEstimatorAccount(user, templateId, body)
+        return this.projectEstimatorTemplateService.createProjectEstimatorAccount(user, companyId, templateId, body)
     }
 }

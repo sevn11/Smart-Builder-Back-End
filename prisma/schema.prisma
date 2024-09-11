@@ -386,8 +386,11 @@ model ProjectEstimatorTemplate {
   templateName  String
   companyId     Int?      @map("company_id")
   company       Company?  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  
+  isDeleted          Boolean?                     @default(false) @map("is_deleted")
   projectEstimatorTemplateHeader     ProjectEstimatorTemplateHeader[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
   @@map("project_estimator_template")
 }
