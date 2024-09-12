@@ -8,7 +8,7 @@ import { ContractorPhaseDTO } from './validators/contractor-phase';
 @Injectable()
 export class ContractorPhaseService {
 
-    constructor(private databaseService: DatabaseService) {}
+    constructor(private databaseService: DatabaseService) { }
 
     // get all phases
     async getAllPhases(user: User, companyId: number) {
@@ -27,7 +27,7 @@ export class ContractorPhaseService {
                         contractors: true
                     },
                     orderBy: {
-                        name: 'asc' 
+                        name: 'asc'
                     }
                 });
                 return { phases }
@@ -58,7 +58,7 @@ export class ContractorPhaseService {
                 if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
-                
+
                 let phase = await this.databaseService.contractorPhase.create({
                     data: {
                         companyId,
@@ -74,14 +74,14 @@ export class ContractorPhaseService {
             // Database Exceptions
             if (error instanceof PrismaClientKnownRequestError) {
                 if (error.code === PrismaErrorCodes.NOT_FOUND) {
-                  throw new BadRequestException(ResponseMessages.USER_NOT_FOUND);
+                    throw new BadRequestException(ResponseMessages.USER_NOT_FOUND);
                 } else {
-                  console.error(error.code);
+                    console.error(error.code);
                 }
             } else if (error instanceof ForbiddenException || error instanceof ConflictException) {
                 throw error;
             }
-        
+
             throw new InternalServerErrorException();
         }
     }
@@ -142,7 +142,7 @@ export class ContractorPhaseService {
                 if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
-                
+
                 // checking phase exist or not
                 await this.databaseService.contractorPhase.findFirstOrThrow({
                     where: {
@@ -173,7 +173,7 @@ export class ContractorPhaseService {
                         phaseId: null
                     }
                 })
-                
+
                 return { message: ResponseMessages.SUCCESSFUL }
             } else {
                 throw new ForbiddenException("Action Not Allowed");
