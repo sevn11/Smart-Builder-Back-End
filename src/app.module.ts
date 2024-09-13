@@ -21,6 +21,7 @@ import { join } from 'path';
 import { PaymentScheduleModule } from './payment-schedule/payment-schedule.module';
 import { TermsAndConditionModule } from './terms-and-condition/terms-and-condition.module';
 import { CashFlowModule } from './cash-flow/cash-flow.module';
+import { SelectionTemplateModule } from './selection-template/selection-template.module';
 
 import { QuestionnaireCategoryModule } from './questionnaire-category/questionnaire-category.module';
 import { TemplateQuestionModule } from './template-question/template-question.module';
@@ -53,7 +54,8 @@ import { TemplateQuestionAnswerModule } from './template-question-answer/templat
     CashFlowModule,
     QuestionnaireCategoryModule,
     TemplateQuestionModule,
-    TemplateQuestionAnswerModule
+    TemplateQuestionAnswerModule,
+    SelectionTemplateModule
   ],
 })
 export class AppModule { }
