@@ -24,6 +24,8 @@ import { CashFlowModule } from './cash-flow/cash-flow.module';
 import { QuestionnaireCategoryModule } from './questionnaire-category/questionnaire-category.module';
 import { TemplateQuestionModule } from './template-question/template-question.module';
 import { TemplateQuestionAnswerModule } from './template-question-answer/template-question-answer.module';
+import { ProjectEstimatorTemplateModule } from './project-estimator-template/project-estimator-template.module';
+
 @Module({
   imports: [
     ServeStaticModule.forRoot({
@@ -52,7 +54,8 @@ import { TemplateQuestionAnswerModule } from './template-question-answer/templat
     CashFlowModule,
     QuestionnaireCategoryModule,
     TemplateQuestionModule,
-    TemplateQuestionAnswerModule
+    TemplateQuestionAnswerModule,
+    ProjectEstimatorTemplateModule
   ],
 })
 export class AppModule { }
