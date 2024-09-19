@@ -9,6 +9,8 @@ import { ProjectEstimatorTemplateHeaderDTO } from './validators/header';
 import { ProjectEstimatorTemplateDTO } from './validators/add-project-estimator-template';
 import { ProjectEstimatorAccountingTemplateDTO } from './validators/add-project-estimator-accounting';
 import { BulkUpdateProjectEstimatorTemplateDTO } from './validators/pet-bulk-update'
+import { ItemOrderDTO } from './validators/item-order';
+
 @UseGuards(JwtGuard)
 @Controller('project-estimator-template')
 export class ProjectEstimatorTemplateController {
@@ -158,4 +160,16 @@ export class ProjectEstimatorTemplateController {
     ) {
         return this.projectEstimatorTemplateService.createProjectEstimatorAccount(user, companyId, templateId, body)
     }
+
+    @Patch(':templateId/companies/:companyId/sort-item')
+    @HttpCode(HttpStatus.OK)
+    reorderItem(
+        @GetUser() user: User,
+        @Param('templateId', ParseIntPipe) templateId: number,
+        @Param('companyId', ParseIntPipe) companyId: number,
+        @Body() body: ItemOrderDTO
+    ) {
+        return this.projectEstimatorTemplateService.reorderItem(user, templateId, companyId, body)
+    }
+
 }

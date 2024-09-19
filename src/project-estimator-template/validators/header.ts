@@ -8,4 +8,8 @@ export class ProjectEstimatorTemplateHeaderDTO {
     @IsNumber()
     @IsNotEmpty()
     projectEstimatorTemplateId: number
+
+    @IsNumber()
+    @IsNotEmpty()
+    headerOrder: number
 }

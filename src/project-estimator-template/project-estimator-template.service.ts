@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, ForbiddenException, Injectable, InternalServerErrorException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, InternalServerErrorException, Res } from '@nestjs/common';
 import { User } from '@prisma/client';
 import { DatabaseService } from 'src/database/database.service';
 
@@ -9,6 +9,7 @@ import { ProjectEstimatorTemplateHeaderDTO } from './validators/header';
 import { ProjectEstimatorTemplateDTO } from './validators/add-project-estimator-template';
 import { ProjectEstimatorAccountingTemplateDTO } from './validators/add-project-estimator-accounting';
 import { BulkUpdateProjectEstimatorTemplateDTO } from './validators/pet-bulk-update';
+import { ItemOrderDTO } from './validators/item-order';
 
 
 @Injectable()
@@ -63,9 +64,10 @@ export class ProjectEstimatorTemplateService {
                 let template = await this.databaseService.projectEstimatorTemplate.findUnique({
                     where: {
                         id: templateId,
+                        isDeleted: false,
                     }
                 })
-                if (!template || template.isDeleted === true) {
+                if (!template) {
                     throw new ForbiddenException('An error occurred with the template.')
                 }
 
@@ -111,24 +113,74 @@ export class ProjectEstimatorTemplateService {
                 let template = await this.databaseService.projectEstimatorTemplate.findUnique({
                     where: {
                         id: templateId,
+                        isDeleted: false
                     }
                 })
-                if (!template || template.isDeleted === true) {
-                    throw new ForbiddenException('An error occurred with the template.')
+
+                if (!template) {
+                    return new ForbiddenException('Template not found');
                 }
+                const templateToDelete = template.id;
 
-                template = await this.databaseService.projectEstimatorTemplate.update({
-                    where: {
-                        id: templateId,
-                        isDeleted: false,
-                    },
-                    data: {
-                        isDeleted: true
+                const result = await this.databaseService.$transaction(async (tx) => {
+                    // get all the header data of the template.
+                    const deleteHeaders = await tx.projectEstimatorTemplateHeader.findMany({
+                        where: {
+                            petId: templateToDelete, // The field you're using for filtering
+                            isDeleted: false,
+                        },
+                        select: {
+                            id: true, // Replace 'id' with the actual field name for your header ID
+                        },
+                    });
+                    // delete header ids
+                    const deletedHeaderIds = deleteHeaders.map(header => header.id);
+
+                    if (deletedHeaderIds.length > 0) {
+                        // delete all the template data.
+                        const deletedData = await tx.projectEstimatorTemplateData.updateMany({
+                            where: {
+                                petHeaderId: {
+                                    in: deletedHeaderIds
+                                },
+                                isDeleted: false,
+                            },
+                            data: {
+                                isDeleted: true,
+                                order: 0
+                            }
+                        });
+
+                        // delete all the headers.
+                        const deletedHeaders = await tx.projectEstimatorTemplateHeader.updateMany({
+                            where: {
+                                id: {
+                                    in: deletedHeaderIds,
+                                },
+                                petId: templateToDelete,
+                                isDeleted: false,
+                                companyId
+                            },
+                            data: {
+                                isDeleted: true,
+                                headerOrder: 0
+                            }
+                        });
                     }
+
+                    // delete the template
+                    const deleteTemplate = await tx.projectEstimatorTemplate.update({
+                        where: {
+                            id: templateToDelete,
+                            isDeleted: false,
+                            companyId
+                        },
+                        data: {
+                            isDeleted: true
+                        }
+                    })
                 })
-
-                return { template, message: 'Template deleted successfully.' }
-
+                return { message: ResponseMessages.TEMPLATE_DELETED_SUCCESSFULLY };
             } else {
                 throw new ForbiddenException("Action Not Allowed");
             }
@@ -193,12 +245,29 @@ export class ProjectEstimatorTemplateService {
                     throw new ConflictException("Change Orders header already exist")
                 }
 
+                let maxOrder = await this.databaseService.projectEstimatorTemplateHeader.aggregate({
+                    _max: {
+                        headerOrder: true,
+                    },
+                    where: {
+                        isDeleted: false,
+                        companyId,
+                        petId: body.projectEstimatorTemplateId
+                    }
+                })
+                // If body.headerOrder is 0, set it to maxOrder + 1
+                let order =
+                    body.headerOrder === 0
+                        ? (maxOrder?._max.headerOrder ?? 0) + 1
+                        : body.headerOrder;
+
                 let projectEstimatorHeader = await this.databaseService.projectEstimatorTemplateHeader.create({
                     data: {
                         companyId,
                         name: body.name,
-                        petId: body.projectEstimatorTemplateId
-                    }
+                        petId: body.projectEstimatorTemplateId,
+                        headerOrder: order
+                    },
                 })
 
                 return { projectEstimatorHeader }
@@ -236,17 +305,20 @@ export class ProjectEstimatorTemplateService {
                         petId: templateId
                     },
                     orderBy: {
-                        createdAt: 'asc'
+                        headerOrder: 'asc'
                     },
                     include: {
                         ProjectEstimatorTemplateData: {
                             where: {
                                 isDeleted: false,
+                            },
+                            orderBy: {
+                                order: 'asc'
                             }
                         }
                     }
                 });
-                console.log(templateData)
+
                 templateData = templateData.filter(header => header.name !== 'Statements');
 
                 const projectEstimatorTempData = templateData.map(item => {
@@ -291,10 +363,23 @@ export class ProjectEstimatorTemplateService {
                 if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
+                let maxOrder = await this.databaseService.projectEstimatorTemplateData.aggregate({
+                    _max: {
+                        order: true
+                    },
+                    where: {
+                        petHeaderId: body.petHeaderId,
+                        isDeleted: false,
+                    }
+                })
+
+                let order =
+                    (maxOrder._max.order ?? 0) + 1;
 
                 let projectEstimator = await this.databaseService.projectEstimatorTemplateData.create({
                     data: {
                         ...body,
+                        order: order
 
                     }
                 });
@@ -389,25 +474,54 @@ export class ProjectEstimatorTemplateService {
                     throw new ForbiddenException("Action Not Allowed");
                 }
 
-                // Delete header
-                await this.databaseService.projectEstimatorTemplateHeader.update({
+                const headerToDelete = await this.databaseService.projectEstimatorTemplateHeader.findUniqueOrThrow({
                     where: {
-                        id: headerId
+                        id: headerId,
+                        isDeleted: false,
+                        companyId
                     },
-                    data: {
-                        isDeleted: true
-                    }
-                });
-
-                // Delete related project estimator data
-                await this.databaseService.projectEstimatorTemplateData.updateMany({
-                    where: {
-                        petHeaderId: headerId
-                    },
-                    data: {
-                        isDeleted: true
-                    }
                 })
+
+                const delHeaderOrder = headerToDelete.headerOrder;
+                const delHeaderId = headerToDelete.id
+                await this.databaseService.$transaction([
+                    this.databaseService.projectEstimatorTemplateHeader.update({
+                        where: {
+                            id: headerId,
+                            petId: templateId,
+                            isDeleted: false,
+                            companyId
+                        },
+                        data: {
+                            isDeleted: true,
+                            headerOrder: 0
+                        }
+                    }),
+                    this.databaseService.projectEstimatorTemplateData.updateMany({
+                        where: {
+                            petHeaderId: delHeaderId,
+                            isDeleted: false,
+                        },
+                        data: {
+                            isDeleted: true,
+                        }
+                    }),
+                    this.databaseService.projectEstimatorTemplateHeader.updateMany({
+                        where: {
+                            petId: templateId,
+                            isDeleted: false,
+                            companyId,
+                            headerOrder: {
+                                gt: delHeaderOrder
+                            }
+                        },
+                        data: {
+                            headerOrder: {
+                                decrement: 1,
+                            }
+                        }
+                    })
+                ]);
                 return { mesage: ResponseMessages.SUCCESSFUL }
             } else {
                 throw new ForbiddenException("Action Not Allowed");
@@ -436,23 +550,40 @@ export class ProjectEstimatorTemplateService {
                     throw new ForbiddenException("Action Not Allowed");
                 }
 
-                // Check if the project estimator exist.
-                await this.databaseService.projectEstimatorTemplateData.findFirstOrThrow({
+                const prEstToDelete = await this.databaseService.projectEstimatorTemplateData.findUniqueOrThrow({
                     where: {
                         id: estimatorId,
-                        isDeleted: false
                     }
                 })
 
-                await this.databaseService.projectEstimatorTemplateData.update({
-                    where: {
-                        id: estimatorId,
-                        isDeleted: false,
-                    },
-                    data: {
-                        isDeleted: true
-                    }
-                })
+                const deleteOrder = prEstToDelete.order
+
+                let result = await this.databaseService.$transaction([
+                    this.databaseService.projectEstimatorTemplateData.update({
+                        where: {
+                            id: estimatorId,
+                            isDeleted: false,
+                        },
+                        data: {
+                            isDeleted: true,
+                            order: 0
+                        }
+                    }),
+                    this.databaseService.projectEstimatorTemplateData.updateMany({
+                        where: {
+                            petHeaderId: prEstToDelete.petHeaderId,
+                            isDeleted: false,
+                            order: {
+                                gt: deleteOrder
+                            }
+                        },
+                        data: {
+                            order: {
+                                decrement: 1,
+                            }
+                        }
+                    })
+                ])
 
                 return { message: ResponseMessages.SUCCESSFUL }
             } else {
@@ -482,6 +613,13 @@ export class ProjectEstimatorTemplateService {
                     throw new ForbiddenException("Action Not Allowed");
                 }
 
+                let template = await this.databaseService.projectEstimatorTemplate.findUniqueOrThrow({
+                    where: {
+                        id: templateId,
+                        isDeleted: false,
+                    }
+                });
+
                 // Check if change order header exist or not. If not create one
                 let accountingHeader = await this.databaseService.projectEstimatorTemplateHeader.findFirst({
                     where: {
@@ -505,6 +643,17 @@ export class ProjectEstimatorTemplateService {
                     accountingHeader = createHeader;
                 }
 
+                let maxOrder = await this.databaseService.projectEstimatorTemplateData.aggregate({
+                    _max: {
+                        order: true,
+                    },
+                    where: {
+                        petHeaderId: accountingHeader.id,
+                        isDeleted: false,
+                    }
+                });
+
+                let order = (maxOrder?._max.order ?? 0) + 1;
                 const { headerName, ...projectEstimatorData } = body;
 
                 // insert new row for accounting
@@ -515,7 +664,8 @@ export class ProjectEstimatorTemplateService {
                                 id: accountingHeader.id
                             }
                         },
-                        ...projectEstimatorData
+                        ...projectEstimatorData,
+                        order
                     }
                 })
 
@@ -551,8 +701,19 @@ export class ProjectEstimatorTemplateService {
                 if (body.name.toLowerCase().replace(/\s/g, '') === "changeorders") {
                     throw new ConflictException("Change Orders header already exist")
                 }
+                let totalHeaders = await this.databaseService.projectEstimatorTemplateHeader.count({
+                    where: {
+                        petId: templateId,
+                        isDeleted: false,
+                        companyId: user.companyId
+                    }
+                })
 
-                await this.databaseService.projectEstimatorTemplateHeader.findFirstOrThrow({
+                if (body.headerOrder > totalHeaders) {
+                    throw new ForbiddenException(`Please enter a valid header order to sort.The order value should be min 1 to max ${totalHeaders}`);
+                }
+
+                let header = await this.databaseService.projectEstimatorTemplateHeader.findFirstOrThrow({
                     where: {
                         id: headerId,
                         companyId: user.companyId,
@@ -561,16 +722,82 @@ export class ProjectEstimatorTemplateService {
                     }
                 });
 
-                let projectEstimatorHeader = await this.databaseService.projectEstimatorTemplateHeader.update({
+                let currentOrder = header.headerOrder;
+
+
+                if (currentOrder > body.headerOrder) {
+                    let result = await this.databaseService.$transaction([
+                        this.databaseService.projectEstimatorTemplateHeader.updateMany({
+                            where: {
+                                petId: templateId,
+                                isDeleted: false,
+                                companyId: user.companyId,
+                                headerOrder: {
+                                    gte: body.headerOrder,
+                                    lt: currentOrder,
+                                }
+                            },
+                            data: {
+                                headerOrder: {
+                                    increment: 1,
+                                }
+                            }
+                        }),
+                        this.databaseService.projectEstimatorTemplateHeader.update({
+                            where: {
+                                id: headerId,
+                                companyId: user.companyId,
+                                petId: templateId,
+                                isDeleted: false
+                            },
+                            data: {
+                                headerOrder: body.headerOrder,
+                                name: body.name
+                            }
+                        })
+                    ])
+                } else if (currentOrder < body.headerOrder) {
+                    let result = await this.databaseService.$transaction([
+                        this.databaseService.projectEstimatorTemplateHeader.updateMany({
+                            where: {
+                                petId: templateId,
+                                isDeleted: false,
+                                companyId: user.companyId,
+                                headerOrder: {
+                                    gt: currentOrder,
+                                    lte: body.headerOrder,
+                                },
+                            },
+                            data: {
+                                headerOrder: {
+                                    decrement: 1,
+                                }
+                            }
+                        }),
+                        this.databaseService.projectEstimatorTemplateHeader.update({
+                            where: {
+                                id: headerId,
+                                companyId: user.companyId,
+                                petId: templateId,
+                                isDeleted: false
+                            },
+                            data: {
+                                headerOrder: body.headerOrder,
+                                name: body.name
+                            }
+                        })
+                    ])
+                }
+
+                header = await this.databaseService.projectEstimatorTemplateHeader.findFirstOrThrow({
                     where: {
                         id: headerId,
-                        petId: templateId
+                        companyId: user.companyId,
+                        petId: templateId,
+                        isDeleted: false
                     },
-                    data: {
-                        name: body.name
-                    }
                 });
-                return { projectEstimatorHeader }
+                return { header };
             } else {
                 throw new ForbiddenException("Action Not Allowed");
             }
@@ -605,7 +832,6 @@ export class ProjectEstimatorTemplateService {
                 }
 
 
-                console.log(body)
                 const updatedData = [];
                 for (const header of body) {
                     const updatedHeader = { ...header };
@@ -638,6 +864,133 @@ export class ProjectEstimatorTemplateService {
             } else {
                 throw new ForbiddenException("Action Not Allowed");
             }
+
+        } catch (error) {
+            console.log(error);
+            // Database Exceptions
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code == PrismaErrorCodes.NOT_FOUND)
+                    throw new BadRequestException(ResponseMessages.RESOURCE_NOT_FOUND);
+                else {
+                    console.log(error.code);
+                }
+            } else if (error instanceof ForbiddenException || error instanceof ConflictException) {
+                throw error;
+            }
+            throw new InternalServerErrorException();
+        }
+    }
+
+    // sort the order of items
+    async reorderItem(user: User, templateId: number, companyId: number, body: ItemOrderDTO) {
+        try {
+
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
+                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
+                    throw new ForbiddenException("Action Not Allowed");
+                }
+
+                await this.databaseService.company.findUniqueOrThrow({
+                    where: {
+                        id: companyId,
+                        isDeleted: false,
+                    }
+                })
+
+                let template = await this.databaseService.projectEstimatorTemplate.findUniqueOrThrow({
+                    where: {
+                        id: templateId,
+                        isDeleted: false
+                    }
+                })
+
+                let header = await this.databaseService.projectEstimatorTemplateHeader.findUniqueOrThrow({
+                    where: {
+                        id: body.headerId,
+                        petId: templateId,
+                        isDeleted: false,
+                    }
+                })
+
+                let prEstData = await this.databaseService.projectEstimatorTemplateData.findUniqueOrThrow({
+                    where: {
+                        id: body.itemId,
+                        petHeaderId: body.headerId,
+                        isDeleted: false,
+                    }
+                })
+
+                const currentOrder = prEstData.order;
+
+                if (currentOrder > body.order) {
+                    // Item is moving up.
+                    let result = await this.databaseService.$transaction([
+                        this.databaseService.projectEstimatorTemplateData.updateMany({
+                            where: {
+                                petHeaderId: body.headerId,
+                                isDeleted: false,
+                                order: {
+                                    gte: body.order,
+                                    lt: currentOrder
+                                }
+                            },
+                            data: {
+                                order: {
+                                    increment: 1,
+                                }
+                            }
+                        }),
+                        this.databaseService.projectEstimatorTemplateData.update({
+                            where: {
+                                id: body.itemId,
+                                petHeaderId: body.headerId,
+                                isDeleted: false,
+                            },
+                            data: {
+                                order: body.order
+                            }
+                        })
+                    ])
+
+                    return { message: ResponseMessages.ITEM_ORDER_UPDATED, }
+                } else if (currentOrder < body.order) {
+                    // Item is moving down.
+                    let result = await this.databaseService.$transaction([
+                        this.databaseService.projectEstimatorTemplateData.updateMany({
+                            where: {
+                                petHeaderId: body.headerId,
+                                isDeleted: false,
+                                order: {
+                                    gt: currentOrder,
+                                    lte: body.order
+                                }
+                            },
+                            data: {
+                                order: {
+                                    decrement: 1
+                                }
+                            }
+                        }),
+                        this.databaseService.projectEstimatorTemplateData.update({
+                            where: {
+                                id: body.itemId,
+                                petHeaderId: body.headerId,
+                                isDeleted: false
+                            },
+                            data: {
+                                order: body.order
+                            }
+                        }),
+                    ]);
+
+                    return { message: ResponseMessages.ITEM_ORDER_UPDATED, }
+                }
+
+
+            } else {
+                throw new ForbiddenException("Action Not Allowed");
+            }
+
 
         } catch (error) {
             console.log(error);
