@@ -430,6 +430,8 @@ model ProjectEstimatorTemplateHeader {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  headerOrder       Int?  @default(0) @map("header_order")
+
   @@map("project_estimator_template_header")
 }
 
@@ -448,6 +450,8 @@ model ProjectEstimatorTemplateData {
 
   petHeaderId       Int?               @map("project_estimator_template_header_id")
   petHeader         ProjectEstimatorTemplateHeader? @relation(fields: [petHeaderId], references: [id], onDelete: Cascade)
+
+  order             Int?               @default(0) @map("order")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
