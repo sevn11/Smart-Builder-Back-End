@@ -21,6 +21,7 @@ import { join } from 'path';
 import { PaymentScheduleModule } from './payment-schedule/payment-schedule.module';
 import { TermsAndConditionModule } from './terms-and-condition/terms-and-condition.module';
 import { CashFlowModule } from './cash-flow/cash-flow.module';
+import { ProjectEstimatorTemplateModule } from './project-estimator-template/project-estimator-template.module';
 
 import { QuestionnaireCategoryModule } from './questionnaire-category/questionnaire-category.module';
 import { TemplateQuestionModule } from './template-question/template-question.module';
@@ -51,6 +52,7 @@ import { TemplateQuestionAnswerModule } from './template-question-answer/templat
     PaymentScheduleModule,
     TermsAndConditionModule,
     CashFlowModule,
+    ProjectEstimatorTemplateModule,
     QuestionnaireCategoryModule,
     TemplateQuestionModule,
     TemplateQuestionAnswerModule

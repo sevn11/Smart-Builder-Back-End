@@ -12,10 +12,10 @@ import { UpdateStatementDTO } from './validators/update-statement';
 @Injectable()
 export class JobProjectEstimatorService {
 
-    constructor(private databaseService: DatabaseService) {}
+    constructor(private databaseService: DatabaseService) { }
 
     // get all headers and project estimator data
-    async getProjectEstimatorData (user: User, companyId: number, jobId: number) {
+    async getProjectEstimatorData(user: User, companyId: number, jobId: number) {
         try {
             // Check if User is Admin of the Company.
             if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
@@ -36,7 +36,7 @@ export class JobProjectEstimatorService {
                         }
                     },
                     orderBy: {
-                        createdAt: 'asc' 
+                        createdAt: 'asc'
                     }
                 });
                 // Filter out headers named 'Statements'
@@ -44,13 +44,13 @@ export class JobProjectEstimatorService {
                 const projectEstimatorData = prData.map(item => ({
                     ...item,
                     JobProjectEstimator: item.JobProjectEstimator.map(estimator => ({
-                      ...estimator,
-                      unitCost: Number(estimator.unitCost).toFixed(2),
-                      actualCost: Number(estimator.actualCost).toFixed(2),
-                      grossProfit: Number(estimator.grossProfit).toFixed(2),
-                      contractPrice: Number(estimator.contractPrice).toFixed(2),
+                        ...estimator,
+                        unitCost: Number(estimator.unitCost).toFixed(2),
+                        actualCost: Number(estimator.actualCost).toFixed(2),
+                        grossProfit: Number(estimator.grossProfit).toFixed(2),
+                        contractPrice: Number(estimator.contractPrice).toFixed(2),
                     }))
-                  }));
+                }));
 
                 return { projectEstimatorData }
             } else {
@@ -74,7 +74,7 @@ export class JobProjectEstimatorService {
     }
 
     // create new header for project estimator
-    async createHeader (user: User, companyId: number, jobId: number, body: JobProjectEstimatorHeaderDTO) {
+    async createHeader(user: User, companyId: number, jobId: number, body: JobProjectEstimatorHeaderDTO) {
         try {
             // Check if User is Admin of the Company.
             if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
@@ -115,7 +115,7 @@ export class JobProjectEstimatorService {
     }
 
     // edit project estimator header
-    async editHeader (user: User, companyId: number, jobId: number, headerId: number, body: JobProjectEstimatorHeaderDTO) {
+    async editHeader(user: User, companyId: number, jobId: number, headerId: number, body: JobProjectEstimatorHeaderDTO) {
         try {
             // Check if User is Admin of the Company.
             if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
@@ -143,7 +143,7 @@ export class JobProjectEstimatorService {
                         name: body.name
                     }
                 });
-    
+
                 return { projectEstimatorHeader };
             } else {
                 throw new ForbiddenException("Action Not Allowed");
@@ -166,7 +166,7 @@ export class JobProjectEstimatorService {
     }
 
     // delete project estimator data row of a header
-    async deleteHeader (user: User, companyId: number, jobId: number, headerId: number) {
+    async deleteHeader(user: User, companyId: number, jobId: number, headerId: number) {
         try {
             // Check if User is Admin of the Company.
             if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
@@ -194,7 +194,7 @@ export class JobProjectEstimatorService {
                     where: { id: headerId },
                     data: { isDeleted: true }
                 });
-                
+
                 // Delete related project estimator rows
                 await this.databaseService.jobProjectEstimator.updateMany({
                     where: { jobProjectEstimatorHeaderId: headerId },
@@ -223,7 +223,7 @@ export class JobProjectEstimatorService {
     }
 
     // create new project estimator data row for a header
-    async createProjectEstimator (user: User, companyId: number, jobId: number, body: JobProjectEstimatorDTO) {
+    async createProjectEstimator(user: User, companyId: number, jobId: number, body: JobProjectEstimatorDTO) {
         try {
             // Check if User is Admin of the Company.
             if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
@@ -235,7 +235,7 @@ export class JobProjectEstimatorService {
                         ...body
                     }
                 });
-                
+
                 return { projectEstimator }
             } else {
                 throw new ForbiddenException("Action Not Allowed");
@@ -258,7 +258,7 @@ export class JobProjectEstimatorService {
     }
 
     // update project estimator data row of a header
-    async updateProjectEstimator (user: User, companyId: number, jobId: number, projectEstimatorId: number, body: JobProjectEstimatorDTO) {
+    async updateProjectEstimator(user: User, companyId: number, jobId: number, projectEstimatorId: number, body: JobProjectEstimatorDTO) {
         try {
             // Check if User is Admin of the Company.
             if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
@@ -284,7 +284,7 @@ export class JobProjectEstimatorService {
                 });
 
                 return { projectEstimator }
-                
+
             } else {
                 throw new ForbiddenException("Action Not Allowed");
             }
@@ -306,7 +306,7 @@ export class JobProjectEstimatorService {
     }
 
     // delete project estimator data row of a header
-    async deleteProjectEstimator (user: User, companyId: number, jobId: number, projectEstimatorId: number) {
+    async deleteProjectEstimator(user: User, companyId: number, jobId: number, projectEstimatorId: number) {
         try {
             // Check if User is Admin of the Company.
             if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
@@ -353,7 +353,7 @@ export class JobProjectEstimatorService {
     }
 
     // create new project estimator data row for Accounting section
-    async createProjectEstimatorAccounting (user: User, companyId: number, jobId: number, body: JobProjectEstimatorAccountingDTO) {
+    async createProjectEstimatorAccounting(user: User, companyId: number, jobId: number, body: JobProjectEstimatorAccountingDTO) {
         try {
             // Check if User is Admin of the Company.
             if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
@@ -370,8 +370,8 @@ export class JobProjectEstimatorService {
                         isDeleted: false,
                     }
                 });
-                
-                if(!accountingHeader) {
+
+                if (!accountingHeader) {
                     let createdHeader = await this.databaseService.jobProjectEstimatorHeader.create({
                         data: {
                             companyId,
@@ -383,7 +383,7 @@ export class JobProjectEstimatorService {
                 }
 
                 const { headerName, ...projectEstimatorData } = body;
-                
+
                 // insert new row for accounting
                 let projectEstimator = await this.databaseService.jobProjectEstimator.create({
                     data: {
@@ -394,7 +394,7 @@ export class JobProjectEstimatorService {
                     }
                 });
                 // insert invoice id for change orders
-                if(projectEstimator.item === 'Change Order') {
+                if (projectEstimator.item === 'Change Order') {
                     // check for existing invoice ids
                     let items = await this.databaseService.jobProjectEstimator.findMany({
                         where: {
@@ -408,7 +408,7 @@ export class JobProjectEstimatorService {
                         },
                     });
 
-                    if(items.length == 0) {
+                    if (items.length == 0) {
                         await this.databaseService.jobProjectEstimator.update({
                             where: {
                                 id: projectEstimator.id,
@@ -420,7 +420,7 @@ export class JobProjectEstimatorService {
                     }
                     else {
                         let highestInvoiceId = items[0].invoiceId;
-                        if(highestInvoiceId) {
+                        if (highestInvoiceId) {
                             await this.databaseService.jobProjectEstimator.update({
                                 where: {
                                     id: projectEstimator.id,
@@ -432,7 +432,7 @@ export class JobProjectEstimatorService {
                         }
                     }
                 }
-                
+
                 return { projectEstimator }
             } else {
                 throw new ForbiddenException("Action Not Allowed");
@@ -455,7 +455,7 @@ export class JobProjectEstimatorService {
     }
 
     // project estimator bulk update
-    async projectEstimatorBulkUpdate (user: User, companyId: number, jobId: number, body: BulkUpdateProjectEstimatorDTO[]) {
+    async projectEstimatorBulkUpdate(user: User, companyId: number, jobId: number, body: BulkUpdateProjectEstimatorDTO[]) {
         try {
             // Check if User is Admin of the Company.
             if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
@@ -518,7 +518,7 @@ export class JobProjectEstimatorService {
     }
 
     // get all change orders
-    async getAllChangeOrders (user: User, companyId: number, jobId: number) {
+    async getAllChangeOrders(user: User, companyId: number, jobId: number) {
         try {
             // Check if User is Admin of the Company.
             if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
@@ -528,13 +528,13 @@ export class JobProjectEstimatorService {
 
                 const changeOrders = await this.databaseService.jobProjectEstimator.findMany({
                     where: {
-                      isDeleted: false,
-                      jobProjectEstimatorHeader: {
-                        name: "Change Orders",
-                        companyId,
-                        jobId,
-                        isDeleted: false
-                      },
+                        isDeleted: false,
+                        jobProjectEstimatorHeader: {
+                            name: "Change Orders",
+                            companyId,
+                            jobId,
+                            isDeleted: false
+                        },
                     },
                     select: {
                         id: true,
@@ -543,7 +543,7 @@ export class JobProjectEstimatorService {
                         createdAt: true,
                         invoiceId: true
                     },
-                });                                 
+                });
 
                 return { changeOrders }
             } else {
@@ -567,7 +567,7 @@ export class JobProjectEstimatorService {
     }
 
     // get specific estimator data for account statement
-    async getAllStatements (user: User, companyId: number, jobId: number) {
+    async getAllStatements(user: User, companyId: number, jobId: number) {
         try {
             // Check if User is Admin of the Company.
             if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
@@ -607,9 +607,9 @@ export class JobProjectEstimatorService {
                         ]
                     },
                     orderBy: {
-                        createdAt: 'asc' 
+                        createdAt: 'asc'
                     }
-                });        
+                });
 
                 return { statements }
             } else {
@@ -633,7 +633,7 @@ export class JobProjectEstimatorService {
     }
 
     // update statement row
-    async updateStatement (user: User, companyId: number, jobId: number, id: number, body: UpdateStatementDTO) {
+    async updateStatement(user: User, companyId: number, jobId: number, id: number, body: UpdateStatementDTO) {
         try {
             // Check if User is Admin of the Company.
             if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
@@ -661,7 +661,7 @@ export class JobProjectEstimatorService {
                 });
 
                 return { statement }
-                
+
             } else {
                 throw new ForbiddenException("Action Not Allowed");
             }
