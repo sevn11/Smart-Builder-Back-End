@@ -30,4 +30,6 @@ export class ResponseMessages {
     static FILE_NOT_FOUND = 'File not found'
     static ITEM_ORDER_UPDATED = 'Item order updated.'
     static TEMPLATE_DELETED_SUCCESSFULLY = 'Template deleted successfully.'
+    static QUESTION_ADDED = 'Question successfully saved.'
+    static QUESTION_ORDER_UPDATED = 'Question order updated.'
 }

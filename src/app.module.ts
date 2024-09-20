@@ -23,6 +23,9 @@ import { TermsAndConditionModule } from './terms-and-condition/terms-and-conditi
 import { CashFlowModule } from './cash-flow/cash-flow.module';
 import { ProjectEstimatorTemplateModule } from './project-estimator-template/project-estimator-template.module';
 
+import { QuestionnaireCategoryModule } from './questionnaire-category/questionnaire-category.module';
+import { TemplateQuestionModule } from './template-question/template-question.module';
+import { TemplateQuestionAnswerModule } from './template-question-answer/template-question-answer.module';
 @Module({
   imports: [
     ServeStaticModule.forRoot({
@@ -49,7 +52,10 @@ import { ProjectEstimatorTemplateModule } from './project-estimator-template/pro
     PaymentScheduleModule,
     TermsAndConditionModule,
     CashFlowModule,
-    ProjectEstimatorTemplateModule
+    ProjectEstimatorTemplateModule,
+    QuestionnaireCategoryModule,
+    TemplateQuestionModule,
+    TemplateQuestionAnswerModule
   ],
 })
 export class AppModule { }

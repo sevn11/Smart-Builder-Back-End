@@ -174,6 +174,8 @@ model Category {
   name                    String
   isDeleted               Boolean                @default(false) @map("is_deleted")
   linkToPhase             Boolean                @default(false) @map("link_to_phase")
+  phaseId                 Int?                   @map("phase_id")
+  phase                   ContractorPhase?       @relation(fields: [phaseId], references: [id])
   linkToInitalSelection   Boolean                @default(false) @map("link_to_initial_selection")
   linkToPaintSelection    Boolean                @default(false) @map("link_to_paint_selection")
   linkToQuestionnaire     Boolean                @default(true) @map("link_to_questionnaire")
@@ -218,16 +220,33 @@ model TemplateQuestion {
   question              String
   questionType          String
   multipleOptions       Json?
-
+  answers               TemplateQuestionAnswer[]                
   questionnaireTemplateId Int?                   @map("questionnaire_template_id")
   questionnaireTemplate   QuestionnaireTemplate? @relation(fields: [questionnaireTemplateId], references: [id], onDelete: Cascade)
   categoryId              Int?                   @map("category_id")
   category                Category?              @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  phaseId                 Int?                   @map("phase_id")
+  phase                   ContractorPhase?       @relation(fields: [phaseId], references: [id])
+  questionOrder           Int   @default(0)  @map("question_order")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("template_question")
+}
+
+model TemplateQuestionAnswer {
+  
+  id                    Int                      @id @default(autoincrement())
+  questionId            Int                      @unique @map("question_id") 
+  question              TemplateQuestion        @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  answerIds             String[]                @default([]) 
+  answerText            Json?                
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("template_question_answer")
 }
 
 model Contractor {
@@ -254,7 +273,7 @@ model JobContractor {
   jobId             Int?               @map("job_id")
   job               Job?               @relation(fields: [jobId], references: [id], onDelete: Cascade)
   contractorId      Int?               @map("contractor_id")
-  contractor         Contractor?        @relation(fields: [contractorId], references: [id], onDelete: Cascade)
+  contractor        Contractor?        @relation(fields: [contractorId], references: [id], onDelete: Cascade)
 
   @@map("job_contractors")
 }
@@ -267,6 +286,8 @@ model ContractorPhase {
   isDeleted         Boolean?           @default(false) @map("is_deleted")
 
   contractors       Contractor[]
+  categories        Category[]
+  templateQuestion  TemplateQuestion[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
