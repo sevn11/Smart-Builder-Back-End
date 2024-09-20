@@ -787,6 +787,21 @@ export class ProjectEstimatorTemplateService {
                             }
                         })
                     ])
+                } else {
+                    let result = await this.databaseService.$transaction([
+                        this.databaseService.projectEstimatorTemplateHeader.update({
+                            where: {
+                                id: headerId,
+                                companyId: user.companyId,
+                                petId: templateId,
+                                isDeleted: false
+                            },
+                            data: {
+                                headerOrder: body.headerOrder,
+                                name: body.name
+                            }
+                        })
+                    ])
                 }
 
                 header = await this.databaseService.projectEstimatorTemplateHeader.findFirstOrThrow({
