@@ -33,6 +33,10 @@ model User {
   passwordResetCode Int?    @map("password_reset_code")
   invitationToken   String? @map("invitation_token")
 
+  googleAccessToken String? @map("google_access_token")
+  googleRefreshToken String? @map("google_refresh_token")
+  calendarId        String? @map("calendar_id")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -162,6 +166,8 @@ model Job {
 
   startDate DateTime? @map("start_date")
   endDate   DateTime? @map("end_date")
+
+  eventId           String?   @map("event_id")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
