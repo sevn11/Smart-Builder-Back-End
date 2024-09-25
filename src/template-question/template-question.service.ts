@@ -5,6 +5,7 @@ import { DatabaseService } from 'src/database/database.service';
 import { CreateUpdateQuestionDTO } from './validators/create-update-question';
 import { User } from '@prisma/client';
 import { QuestionOrderDTO } from './validators/order';
+import { SelectionTemplates } from 'src/core/utils/selection-template';
 
 
 @Injectable()
@@ -50,11 +51,12 @@ export class TemplateQuestionService {
                         multipleOptions: body.multipleOptions,
                         linkToPhase: body.isQuestionLinkedPhase,
                         questionOrder: order,
-                        linkToInitalSelection: body.isQuestionLinkedSelections,
-                        linkToPaintSelection: body.isQuestionLinkedSelections,
+                        linkToInitalSelection: body.linkedSelections.includes(SelectionTemplates.INITIAL_SELECTION),
+                        linkToPaintSelection: body.linkedSelections.includes(SelectionTemplates.PAINT_SELECTION),
                         questionnaireTemplateId: templateId,
                         categoryId: categoryId,
-                        phaseId: body.linkedPhase || null
+                        phaseId: body.linkedPhase || null,
+                        contractorIds: body.contractorIds
                     },
                     omit: {
                         isDeleted: true,
@@ -208,9 +210,10 @@ export class TemplateQuestionService {
                         questionType: body.type,
                         multipleOptions: body.multipleOptions,
                         linkToPhase: body.isQuestionLinkedPhase,
-                        linkToInitalSelection: body.isQuestionLinkedSelections,
-                        linkToPaintSelection: body.isQuestionLinkedSelections,
-                        phaseId: body.linkedPhase || null
+                        linkToInitalSelection: body.linkedSelections.includes(SelectionTemplates.INITIAL_SELECTION),
+                        linkToPaintSelection: body.linkedSelections.includes(SelectionTemplates.PAINT_SELECTION),
+                        phaseId: body.linkedPhase || null,
+                        contractorIds: body.contractorIds
                     },
                     omit: {
                         isDeleted: true,
@@ -319,6 +322,7 @@ export class TemplateQuestionService {
                     where: {
                         questionnaireTemplateId: templateId,
                         isCompanyCategory: true,
+                        linkToQuestionnaire: true,
                         isDeleted: false,
                     },
                     include: {

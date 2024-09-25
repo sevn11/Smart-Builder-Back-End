@@ -34,4 +34,11 @@ export class CreateUpdateQuestionDTO {
     @IsNotEmpty()
     questionOrder: number
 
+    @IsArray()
+    @IsOptional()
+    linkedSelections?: string
+
+    @IsArray()
+    @IsOptional()
+    contractorIds?: number[]
 }

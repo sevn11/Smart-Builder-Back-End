@@ -36,4 +36,5 @@ export class ResponseMessages {
     static TEMPLATE_DELETED_SUCCESSFULLY = 'Template deleted successfully.'
     static QUESTION_ADDED = 'Question successfully saved.'
     static QUESTION_ORDER_UPDATED = 'Question order updated.'
+    static QUESTIONNAIRE_TEMPLATE_ADDED = 'Questionnaire Template added successfully.'
 }

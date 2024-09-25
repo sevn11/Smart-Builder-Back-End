@@ -1,6 +1,6 @@
 import { IsNotEmpty, IsString } from "class-validator";
 
-export class UpdateTemplateNameDTO {
+export class TemplateNameDTO {
     @IsString()
     @IsNotEmpty()
     name: string

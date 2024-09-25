@@ -108,7 +108,6 @@ export class QuestionnaireTemplateService {
                         companyId,
                         isCompanyTemplate: true,
                         isDeleted: false,
-                        templateType: TemplateType.QUESTIONNAIRE
                     },
                     omit: {
 
@@ -120,6 +119,7 @@ export class QuestionnaireTemplateService {
                             where: {
                                 isDeleted: false,
                                 isCompanyCategory: true,
+                                linkToQuestionnaire: true,
                             },
                             omit: {
                                 isDeleted: true,
