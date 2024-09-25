@@ -4,11 +4,10 @@ import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { PrismaErrorCodes, QuestionTypes, ResponseMessages, TemplateType, UserTypes } from 'src/core/utils';
 import { DatabaseService } from 'src/database/database.service';
 import { CreateCategoryDTO } from './validators/create-category';
-import { LabelDTO } from './validators/label';
-import e from 'express';
+import { QuestionDTO } from './validators/question';
 import { AnswerDTO } from './validators/answer';
 import { CategoryOrderDTO } from './validators/order';
-import { UpdateTemplateNameDTO } from './validators/template';
+import { TemplateNameDTO } from './validators/template';
 import { QuestionOrderDTO } from './validators/question-order';
 
 @Injectable()
@@ -453,7 +452,7 @@ export class SelectionTemplateService {
     }
 
     // Create question
-    async createLabel(user: User, type: string, companyId: number, templateId: number, categoryId: number, body: LabelDTO) {
+    async createLabel(user: User, type: string, companyId: number, templateId: number, categoryId: number, body: QuestionDTO) {
         try {
             // Check if User is Admin of the Company.
             if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
@@ -505,9 +504,9 @@ export class SelectionTemplateService {
 
                 let label = await this.databaseService.templateQuestion.create({
                     data: {
-                        question: body.label,
-                        questionType: QuestionTypes.TEXT,
-                        multipleOptions: null,
+                        question: body.question,
+                        questionType: body.type,
+                        multipleOptions: body.multipleOptions,
                         linkToPhase: body.isQuestionLinkedPhase,
                         linkToQuestionnaire: false,
                         linkToInitalSelection: isLinkedToInitialSelection,
@@ -515,7 +514,8 @@ export class SelectionTemplateService {
                         questionnaireTemplateId: templateId,
                         categoryId: categoryId,
                         phaseId: body.linkedPhase || null,
-                        questionOrder: order
+                        questionOrder: order,
+                        contractorIds: body.contractorIds || null
                     },
                     omit: {
                         isDeleted: true,
@@ -565,7 +565,7 @@ export class SelectionTemplateService {
     }
 
     // Update the label
-    async updateLabel(user: User, type: string, companyId: number, templateId: number, categoryId: number, labelId: number, body: LabelDTO) {
+    async updateLabel(user: User, type: string, companyId: number, templateId: number, categoryId: number, labelId: number, body: QuestionDTO) {
 
         try {
             // Check if User is Admin of the Company.
@@ -591,9 +591,10 @@ export class SelectionTemplateService {
                         categoryId
                     },
                     data: {
-                        question: body.label,
+                        question: body.question,
                         linkToPhase: body.isQuestionLinkedPhase,
-                        phaseId: body.isQuestionLinkedPhase ? body.linkedPhase : null
+                        phaseId: body.isQuestionLinkedPhase ? body.linkedPhase : null,
+                        contractorIds: body.contractorIds
                     },
                     omit: {
                         isDeleted: true,
@@ -1125,7 +1126,7 @@ export class SelectionTemplateService {
     }
 
     // update the template name
-    async updateTemplateName(user: User, type: string, companyId: number, templateId: number, body: UpdateTemplateNameDTO) {
+    async updateTemplateName(user: User, type: string, companyId: number, templateId: number, body: TemplateNameDTO) {
         try {
             // Check if User is Admin of the Company.
             if (user.userType == UserTypes.ADMIN || (user.userType == UserTypes.BUILDER && user.companyId === companyId)) {
@@ -1370,6 +1371,52 @@ export class SelectionTemplateService {
                         message: ResponseMessages.QUESTION_ORDER_UPDATED
                     }
                 }
+            } else {
+                throw new ForbiddenException("Action Not Allowed");
+            }
+        } catch (error) {
+            // Database Exceptions
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code == PrismaErrorCodes.NOT_FOUND)
+                    throw new BadRequestException(
+                        ResponseMessages.QUESTIONNAIRE_TEMPLATE_NOT_FOUND
+                    );
+                else {
+                    console.log(error.code);
+                }
+            }
+            throw new InternalServerErrorException();
+        }
+    }
+
+    async createTemplateName(user: User, companyId: number, type: string, body: TemplateNameDTO) {
+        try {
+            // Check if User is Admin of the Company.
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
+                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
+                    throw new ForbiddenException("Action Not Allowed");
+                }
+
+                const company = await this.databaseService.company.findUniqueOrThrow({
+                    where: {
+                        id: companyId,
+                        isDeleted: false,
+                    }
+                })
+
+                const template = await this.databaseService.questionnaireTemplate.create({
+                    data: {
+                        name: body.name,
+                        templateType: TemplateType.SELECTION_INITIAL,
+                        isCompanyTemplate: true,
+                        companyId,
+                    },
+                    omit: {
+                        isDeleted: false
+                    }
+                })
+
+                return { template, message: ResponseMessages.QUESTIONNAIRE_TEMPLATE_UPDATED }
             } else {
                 throw new ForbiddenException("Action Not Allowed");
             }

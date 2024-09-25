@@ -34,4 +34,5 @@ export class ResponseMessages {
     static FILE_NOT_FOUND = 'File not found'
     static QUESTION_ADDED = 'Question successfully saved.'
     static QUESTION_ORDER_UPDATED = 'Question order updated.'
+    static QUESTIONNAIRE_TEMPLATE_ADDED = 'Questionnaire Template added successfully.'
 }

@@ -4,10 +4,10 @@ import { GetUser } from 'src/core/decorators';
 import { User } from '@prisma/client';
 import { JwtGuard } from 'src/core/guards';
 import { CreateCategoryDTO } from './validators/create-category';
-import { LabelDTO } from './validators/label';
+import { QuestionDTO } from './validators/question';
 import { AnswerDTO } from './validators/answer';
 import { CategoryOrderDTO } from './validators/order';
-import { UpdateTemplateNameDTO } from './validators/template';
+import { TemplateNameDTO } from './validators/template';
 import { QuestionOrderDTO } from './validators/question-order';
 
 @UseGuards(JwtGuard)
@@ -17,13 +17,24 @@ export class SelectionTemplateController {
     constructor(private selectionTemplateService: SelectionTemplateService) { }
 
     @HttpCode(HttpStatus.OK)
+    @Post(':type')
+    createTemplateName(
+        @GetUser() user: User,
+        @Param('companyId', ParseIntPipe) companyId: number,
+        @Param('type') type: string,
+        @Body() body: TemplateNameDTO
+    ) {
+        return this.selectionTemplateService.createTemplateName(user, companyId, type, body);
+    }
+
+    @HttpCode(HttpStatus.OK)
     @Patch(':type/:templateId')
     updateTemplateName(
         @GetUser() user: User,
         @Param('companyId', ParseIntPipe) companyId: number,
         @Param('type') type: string,
         @Param('templateId', ParseIntPipe) templateId: number,
-        @Body() body: UpdateTemplateNameDTO
+        @Body() body: TemplateNameDTO
     ) {
         return this.selectionTemplateService.updateTemplateName(user, type, companyId, templateId, body);
     }
@@ -129,7 +140,7 @@ export class SelectionTemplateController {
         @Param('companyId', ParseIntPipe) companyId: number,
         @Param('templateId', ParseIntPipe) templateId: number,
         @Param('categoryId', ParseIntPipe) categoryId: number,
-        @Body() body: LabelDTO
+        @Body() body: QuestionDTO
     ) {
         return this.selectionTemplateService.createLabel(user, type, companyId, templateId, categoryId, body);
     }
@@ -144,7 +155,7 @@ export class SelectionTemplateController {
         @Param('templateId', ParseIntPipe) templateId: number,
         @Param('categoryId', ParseIntPipe) categoryId: number,
         @Param('labelId', ParseIntPipe) labelId: number,
-        @Body() body: LabelDTO
+        @Body() body: QuestionDTO
     ) {
         return this.selectionTemplateService.updateLabel(user, type, companyId, templateId, categoryId, labelId, body);
     }

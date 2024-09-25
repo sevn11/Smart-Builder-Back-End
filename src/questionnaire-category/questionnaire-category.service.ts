@@ -121,6 +121,7 @@ export class QuestionnaireCategoryService {
             questionnaireTemplateId: templateId,
             isCompanyCategory: true,
             isDeleted: false,
+            linkToQuestionnaire: true,
           },
           include: {
             questions: {
@@ -304,6 +305,7 @@ export class QuestionnaireCategoryService {
             questionnaireTemplateId: templateId,
             isCompanyCategory: true,
             isDeleted: false,
+            linkToQuestionnaire: true,
           },
           include: {
             questions: {
