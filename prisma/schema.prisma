@@ -25,7 +25,7 @@ model User {
   tosVersion        String?  @default("v1") @map("tos_version")
   companyId         Int?     @map("company_id")
   company           Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
-
+  suaSettings       SuaSettings[]
   isActive      Boolean        @default(true) @map("is_active")
   isDeleted     Boolean?       @default(false) @map("is_deleted")
   PermissionSet PermissionSet?
@@ -38,6 +38,19 @@ model User {
 
   @@map("users")
 }
+
+model SuaSettings {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  extraFee  Decimal  @map("extra_fee") @db.Decimal(10, 2) @default(0.00)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("sua_settings")
+}
+
 
 model Company {
   id                     Int                     @id @default(autoincrement())
