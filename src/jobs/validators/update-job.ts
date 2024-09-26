@@ -2,9 +2,9 @@ import { IsNotEmpty, IsNumber, IsString, IsOptional, IsDate, IsBoolean } from "c
 
 export class UpdateJobDTO {
 
-    @IsString()
+    @IsNumber()
     @IsOptional()
-    jobDescription: string
+    jobDescription: number
 
     @IsString()
     @IsOptional()
