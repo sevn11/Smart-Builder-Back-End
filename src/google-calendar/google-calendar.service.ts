@@ -15,6 +15,7 @@ export class GoogleCalendarService {
         private googleService: GoogleService
     ) {}
 
+    // Check google authentication status
     async checkAuthStatus(user: User, companyId: number) {
         try {
             // Check if User is Admin of the Company.
@@ -57,7 +58,7 @@ export class GoogleCalendarService {
         }
     }
 
-    // handle job syncing to google
+    // Handle job syncing to google
     async syncJobToGoogle(user: User, companyId: number, jobId: number) {
         try {
             // Check if User is Admin of the Company.
@@ -109,7 +110,7 @@ export class GoogleCalendarService {
         }
     }
 
-    // handle syncing of all jobs to google calendar
+    // Handle syncing of all jobs to google calendar
     async syncAllJobsToGoogle(user: User, companyId: number) {
         try {
             // Check if User is Admin of the Company.
