@@ -5,6 +5,7 @@ source /home/ubuntu/.profile
 
 # Explicitly set the path to include the Node and pm2 binaries
 export PATH=$PATH:/home/ubuntu/.nvm/versions/node/v18.17.0/bin
+export NODE_OPTIONS=--max-old-space-size=6000
 
 # Navigate to the application directory
 cd /home/ubuntu/Smart-Builder-Back-End
