@@ -394,12 +394,18 @@ export class SelectionTemplateService {
                     isDeleted: false,
                 }
 
+                let quesWhereClause: any = {
+                    isDeleted: false,
+                }
+
                 if (templateType === TemplateType.SELECTION_INITIAL) {
                     deleteWhereClause.linkToInitalSelection = true;
+                    quesWhereClause.linkToInitalSelection = true
                 }
 
                 if (templateType === TemplateType.SELECTION_PAINT) {
                     deleteWhereClause.linkToPaintSelection = true
+                    quesWhereClause.linkToPaintSelection = true
                 }
 
 
@@ -408,9 +414,7 @@ export class SelectionTemplateService {
                     where: deleteWhereClause,
                     include: {
                         questions: {
-                            where: {
-                                isDeleted: false,
-                            },
+                            where: quesWhereClause,
                             include: {
                                 answers: true,
                             },
@@ -522,6 +526,17 @@ export class SelectionTemplateService {
                     }
                 })
 
+                let quesWhere: any = {
+                    isDeleted: false,
+                }
+                if (templateType === TemplateType.SELECTION_INITIAL) {
+                    quesWhere.linkToInitalSelection = true;
+                }
+
+                if (templateType === TemplateType.SELECTION_PAINT) {
+                    quesWhere.linkToPaintSelection = true;
+                }
+
                 const category = await this.databaseService.category.findUniqueOrThrow({
                     where: {
                         id: categoryId,
@@ -530,9 +545,7 @@ export class SelectionTemplateService {
                     },
                     include: {
                         questions: {
-                            where: {
-                                isDeleted: false
-                            },
+                            where: quesWhere,
                             orderBy: {
                                 questionOrder: 'asc'
                             }
@@ -601,6 +614,23 @@ export class SelectionTemplateService {
                     }
                 });
 
+                // Determine template type
+                const templateType = {
+                    'initial-selection': TemplateType.SELECTION_INITIAL,
+                    'paint-selection': TemplateType.SELECTION_PAINT,
+                }[type];
+
+                let quesWhere: any = {
+                    isDeleted: false,
+                }
+                if (templateType === TemplateType.SELECTION_INITIAL) {
+                    quesWhere.linkToInitalSelection = true;
+                }
+
+                if (templateType === TemplateType.SELECTION_PAINT) {
+                    quesWhere.linkToPaintSelection = true;
+                }
+
                 const category = await this.databaseService.category.findUniqueOrThrow({
                     where: {
                         id: categoryId,
@@ -611,9 +641,7 @@ export class SelectionTemplateService {
                     },
                     include: {
                         questions: {
-                            where: {
-                                isDeleted: false
-                            },
+                            where: quesWhere,
                             orderBy: {
                                 questionOrder: 'asc'
                             }
@@ -742,7 +770,8 @@ export class SelectionTemplateService {
                     include: {
                         questions: {
                             where: {
-                                isDeleted: false
+                                isDeleted: false,
+                                ...whereClause
                             },
                             orderBy: {
                                 questionOrder: 'asc'
@@ -1425,7 +1454,121 @@ export class SelectionTemplateService {
             if (error instanceof PrismaClientKnownRequestError) {
                 if (error.code == PrismaErrorCodes.NOT_FOUND)
                     throw new BadRequestException(
-                        ResponseMessages.QUESTIONNAIRE_TEMPLATE_NOT_FOUND
+                        ResponseMessages.RESOURCE_NOT_FOUND
+                    );
+                else {
+                    console.log(error.code);
+                }
+            }
+            throw new InternalServerErrorException();
+        }
+    }
+
+    // delete the template.
+    async deleteTemplate(user: User, companyId: number, templateId: number, type: string) {
+        try {
+            // Check if User is Admin of the Company.
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
+                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
+                    throw new ForbiddenException("Action Not Allowed");
+                }
+
+                const templateType = {
+                    'initial-selection': TemplateType.SELECTION_INITIAL,
+                    'paint-selection': TemplateType.SELECTION_PAINT,
+                }[type];
+
+                if (!templateType) {
+                    throw new ForbiddenException("Action Not Allowed.");
+                }
+
+                await this.databaseService.questionnaireTemplate.findUniqueOrThrow({
+                    where: {
+                        id: templateId,
+                        isDeleted: false,
+                        isCompanyTemplate: true,
+                        companyId
+                    }
+                });
+
+                await this.databaseService.$transaction([
+                    this.databaseService.questionnaireTemplate.update({
+                        where: {
+                            id: templateId,
+                        },
+                        data: {
+                            isDeleted: true,
+                        }
+                    }),
+                    this.databaseService.category.updateMany({
+                        where: {
+                            questionnaireTemplateId: templateId,
+                            isDeleted: false,
+                        },
+                        data: {
+                            isDeleted: true,
+                        }
+                    }),
+                    this.databaseService.templateQuestion.updateMany({
+                        where: {
+                            questionnaireTemplateId: templateId,
+                            isDeleted: false,
+                        },
+                        data: {
+                            isDeleted: true,
+                        }
+                    }),
+                ]);
+
+                let whereClause: any = {
+                    isDeleted: false,
+                }
+
+                if (templateType === TemplateType.SELECTION_INITIAL) {
+                    whereClause.linkToInitalSelection = true;
+                }
+                if (templateType === TemplateType.SELECTION_PAINT) {
+                    whereClause.linkToPaintSelection = true
+                }
+
+                let template = await this.databaseService.questionnaireTemplate.findMany({
+                    where: {
+                        companyId,
+                        isCompanyTemplate: true,
+                        isDeleted: false,
+                    },
+                    include: {
+                        categories: {
+                            where: {
+                                isCompanyCategory: true,
+                                ...whereClause
+                            },
+                            include: {
+                                questions: {
+                                    where: whereClause,
+                                    orderBy: {
+                                        questionOrder: 'asc'
+                                    }
+                                }
+                            },
+                            orderBy: {
+                                questionnaireOrder: 'asc'
+                            }
+                        }
+                    }
+                })
+
+                return { template, message: ResponseMessages.SUCCESSFUL }
+
+            } else {
+                throw new ForbiddenException("Action Not Allowed");
+            }
+        } catch (error) {
+            // Database Exceptions
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code == PrismaErrorCodes.NOT_FOUND)
+                    throw new BadRequestException(
+                        ResponseMessages.RESOURCE_NOT_FOUND
                     );
                 else {
                     console.log(error.code);
