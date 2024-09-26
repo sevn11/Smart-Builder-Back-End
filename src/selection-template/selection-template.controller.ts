@@ -118,6 +118,17 @@ export class SelectionTemplateController {
         return this.selectionTemplateService.updateSelectionCategory(user, type, companyId, templateId, categoryId, body);
     }
 
+    @Delete('/:type/:templateId')
+    @HttpCode(HttpStatus.OK)
+    deleteTemplate(
+        @GetUser() user: User,
+        @Param('companyId', ParseIntPipe) companyId: number,
+        @Param('templateId', ParseIntPipe) templateId: number,
+        @Param('type') type: string,
+    ) {
+        return this.selectionTemplateService.deleteTemplate(user, companyId, templateId, type);
+    }
+
     // delete the category
     @Delete('/:type/:templateId/category/:categoryId')
     @HttpCode(HttpStatus.OK)
