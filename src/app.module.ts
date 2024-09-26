@@ -29,6 +29,7 @@ import { TemplateQuestionAnswerModule } from './template-question-answer/templat
 import { ProjectEstimatorTemplateModule } from './project-estimator-template/project-estimator-template.module';
 
 import { GoogleCalendarModule } from './google-calendar/google-calendar.module';
+import { ProjectDescriptionModule } from './project-description/project-description.module';
 @Module({
   imports: [
     ServeStaticModule.forRoot({
@@ -60,7 +61,8 @@ import { GoogleCalendarModule } from './google-calendar/google-calendar.module';
     TemplateQuestionAnswerModule,
     ProjectEstimatorTemplateModule,
     SelectionTemplateModule,
-    GoogleCalendarModule
+    GoogleCalendarModule,
+    ProjectDescriptionModule
   ],
 })
 export class AppModule { }

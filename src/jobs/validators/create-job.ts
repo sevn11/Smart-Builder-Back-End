@@ -2,9 +2,9 @@ import { IsNotEmpty, IsNumber, IsString } from "class-validator";
 
 export class CreateJobDTO {
 
-    @IsString()
+    @IsNumber()
     @IsNotEmpty()
-    description: string
+    description: number
 
     @IsNumber()
     @IsNotEmpty()

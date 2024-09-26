@@ -41,6 +41,13 @@ export class CashFlowService {
                                         where: { isDeleted: false }
                                     }
                                 }
+                            },
+                            description: {
+                                select: {
+                                    id: true,
+                                    name: true
+
+                                }
                             }
                         }
                     }),
@@ -52,7 +59,7 @@ export class CashFlowService {
                 // find total sales/contract price and profit from estimator 
                 const formattedProjects = projects.map(project => {
                     const customerName = project.customer.name;
-                    const description = project.description;
+                    const description = project.description ? project.description.name : "";
                 
                     // Initialize variables for aggregated values
                     let totalSales = 0;
