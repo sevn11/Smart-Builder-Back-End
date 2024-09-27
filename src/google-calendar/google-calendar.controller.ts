@@ -25,6 +25,12 @@ export class GoogleCalendarController {
         return this.googleService.handleGoogleAuthentication(user, companyId, body);
     }
 
+    @Get('/:companyId/get-authenticated-user')
+    @HttpCode(HttpStatus.OK)
+    getAuthenticatedUser(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number) {
+        return this.googleService.getAuthenticatedUserEmail(user);
+    }
+
     @Post('/:companyId/sync-to-google/:jobId')
     @HttpCode(HttpStatus.OK)
     syncJobToGoogle(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number, @Param('jobId', ParseIntPipe) jobId: number) {

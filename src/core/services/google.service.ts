@@ -94,6 +94,20 @@ export class GoogleService {
         }
     }
 
+    async getAuthenticatedUserEmail(user: User): Promise<string | null> {
+        this.setCredentials(user.googleAccessToken);
+
+        try {
+            const oauth2 = google.oauth2({ version: 'v2', auth: this.oauth2Client });
+            const userInfoResponse = await oauth2.userinfo.get();
+
+            return userInfoResponse.data.email || null;
+        } catch (error) {
+            console.error("Error fetching user email:", error);
+            return null;
+        }
+    }
+
     // Handle refresh token
     async refreshAccessToken(user: User) {
         this.oauth2Client.setCredentials({
