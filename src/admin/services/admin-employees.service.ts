@@ -3,7 +3,6 @@ import { PrismaErrorCodes, ResponseMessages, UserTypes } from 'src/core/utils';
 import { DatabaseService } from 'src/database/database.service';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { GetEmployeeListDTO } from '../validators/get-emloyee-list';
-import { CreateUpdateExtraFeeDTO } from '../validators/create-update-extra-fee';
 
 @Injectable()
 export class AdminEmployeeService {
@@ -99,74 +98,5 @@ export class AdminEmployeeService {
             throw new InternalServerErrorException();
         }
     }
-
-    async addUpdateExtraFee(body: CreateUpdateExtraFeeDTO) {
-        const { userId, extraFee } = body;
-
-        try {
-            // Check if there's already an entry for the user
-            const existingSetting = await this.databaseService.suaSettings.findFirst({
-                where: { userId },
-            });
-
-            if (existingSetting) {
-                // Update the existing record
-                await this.databaseService.suaSettings.update({
-                    where: { id: existingSetting.id },
-                    data: { extraFee: extraFee ?? 0.00 },
-                });
-            } else {
-                // Create a new record if none exists
-                await this.databaseService.suaSettings.create({
-                    data: {
-                        userId: userId,
-                        extraFee: extraFee ?? 0.00,
-                    },
-                });
-            }
-
-            return { message: 'Extra fee added/updated successfully' };
-        } catch (error) {
-            console.log(error);
-            // Database Exceptions
-            if (error instanceof PrismaClientKnownRequestError) {
-                if (error.code === PrismaErrorCodes.NOT_FOUND) {
-                    throw new BadRequestException(ResponseMessages.USER_NOT_FOUND);
-                } else {
-                    console.log(error.code);
-                }
-            }
-            throw new InternalServerErrorException();
-        }
-    }
-
-    async getExtraFee(userId: number) {
-        try {
-
-            const setting = await this.databaseService.suaSettings.findFirst({
-                where: { userId },
-            });
-
-            // If no setting is found, default the extraFee to 0
-            if (!setting) {
-                return { extraFee: 0.00 };
-            }
-
-            // Return the existing extraFee
-            return { extraFee: setting.extraFee };
-        } catch (error) {
-            console.log(error);
-            // Database Exceptions
-            if (error instanceof PrismaClientKnownRequestError) {
-                if (error.code === PrismaErrorCodes.NOT_FOUND) {
-                    throw new BadRequestException(ResponseMessages.USER_NOT_FOUND);
-                } else {
-                    console.log(error.code);
-                }
-            }
-            throw new InternalServerErrorException();
-        }
-    }
-
 
 }

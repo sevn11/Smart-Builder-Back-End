@@ -11,5 +11,5 @@ export class CreateUpdateExtraFeeDTO {
     @Type(() => Number)
     @IsNumber()
     @IsNotEmpty()
-    userId: number;
+    companyId: number;
 }
