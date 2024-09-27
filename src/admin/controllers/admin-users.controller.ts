@@ -1,6 +1,7 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Patch, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Patch, Post, Query } from '@nestjs/common';
 import { AdminUsersService } from '../services';
 import { ChangeBuilderAccessDTO, GetBuilderListDTO } from '../validators';
+import { CreateUpdateExtraFeeDTO } from '../validators/create-update-extra-fee';
 
 @Controller('admin/users')
 export class AdminUsersController {
@@ -27,4 +28,9 @@ export class AdminUsersController {
     }
 
 
+    @Post('/extra-fee')
+    @HttpCode(HttpStatus.OK)
+    addUpdateExtraFee(@Body() body: CreateUpdateExtraFeeDTO) {
+        return this.adminUserService.addUpdateExtraFee(body);
+    }
 }
