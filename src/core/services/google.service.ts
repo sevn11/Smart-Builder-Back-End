@@ -140,14 +140,14 @@ export class GoogleService {
             return { isAuthentcaited: true }
         } catch (error) {
             // Get new token using refresh token if it's exist
-            if(error.response.data.error == 'invalid_token') {
-                if(user.googleRefreshToken) {
-                    let res = await this.refreshAccessToken(user);
-                    if(res) {
-                        return { isAuthentcaited: true }
-                    }
-                }
-            }
+            // if(error.response.data.error == 'invalid_token') {
+            //     if(user.googleRefreshToken) {
+            //         let res = await this.refreshAccessToken(user);
+            //         if(res) {
+            //             return { isAuthentcaited: true }
+            //         }
+            //     }
+            // }
             return { isAuthentcaited: false }
         }
     }
@@ -170,6 +170,7 @@ export class GoogleService {
 
             // check is project already synced
             if (!eventId && await this.checkAlreadySynced(user, job)) {
+                response.status = true;
                 response.message = "Project already synced with google calendar";
                 return response;
             }
