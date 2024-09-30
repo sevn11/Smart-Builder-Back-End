@@ -322,8 +322,8 @@ export class JobsService {
                 job.financing = body.financing;
                 job.timeFrame = body.timeFrame;
                 job.referral = body.hearAbout;
-                job.startDate = body.startDate ? new Date(body.startDate) : null;
-                job.endDate = body.endDate ? new Date(body.endDate) : null;
+                job.startDate = body.startDate ? new Date(`${body.startDate}Z`) : null;
+                job.endDate = body.endDate ? new Date(`${body.endDate}Z`) : null;
                 job.isGasAtLot = body.isGas;
                 job.isElectricityAtLot = body.isElectric;
                 job.isWaterAtLot = body.isWater;
