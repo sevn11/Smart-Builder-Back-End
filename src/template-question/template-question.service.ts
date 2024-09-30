@@ -23,9 +23,7 @@ export class TemplateQuestionService {
                         isDeleted: false
                     }
                 });
-                if (!company) {
-                    throw new ForbiddenException("Action Not Allowed");
-                }
+                if (!company) throw new ForbiddenException("Action Not Allowed");
 
                 // Get the highest question order for the given templateId and categoryId
                 let maxOrder = await this.databaseService.templateQuestion.aggregate({
@@ -39,11 +37,35 @@ export class TemplateQuestionService {
                     }
                 })
 
+                // Find the category if it exists and is not deleted.
+                let categoryItem = await this.databaseService.category.findUniqueOrThrow({
+                    where: {
+                        id: categoryId,
+                        isDeleted: false,
+                    }
+                });
+                // set the update data.
+                const updateData = {
+                    ...(body.linkedSelections.includes(SelectionTemplates.INITIAL_SELECTION) && !categoryItem.linkToInitalSelection && { linkToInitalSelection: true }),
+                    ...(body.linkedSelections.includes(SelectionTemplates.PAINT_SELECTION) && !categoryItem.linkToPaintSelection && { linkToPaintSelection: true })
+                };
+
+                // Update the category if there are changes to be made.
+                if (Object.keys(updateData).length > 0) {
+                    categoryItem = await this.databaseService.category.update({
+                        where: {
+                            id: categoryId,
+                            isDeleted: false,
+                        },
+                        data: updateData
+                    });
+                }
+
                 // if body.questionOrder = 0 , set it to maxOrder + 1
                 let order = body.questionOrder === 0
                     ? (maxOrder._max.questionOrder ?? 0) + 1
                     : body.questionOrder
-
+                // create the question
                 let question = await this.databaseService.templateQuestion.create({
                     data: {
                         question: body.question,
@@ -55,7 +77,6 @@ export class TemplateQuestionService {
                         linkToPaintSelection: body.linkedSelections.includes(SelectionTemplates.PAINT_SELECTION),
                         questionnaireTemplateId: templateId,
                         categoryId: categoryId,
-                        phaseId: body.linkedPhase || null,
                         contractorIds: body.contractorIds
                     },
                     omit: {
@@ -70,11 +91,13 @@ export class TemplateQuestionService {
                         id: categoryId,
                         isCompanyCategory: true,
                         isDeleted: false,
+                        linkToQuestionnaire: true,
                     },
                     include: {
                         questions: {
                             where: {
                                 isDeleted: false,
+                                linkToQuestionnaire: true,
                             },
                             orderBy: {
                                 questionOrder: 'asc'
@@ -119,6 +142,7 @@ export class TemplateQuestionService {
                     where: {
                         categoryId: categoryId,
                         isDeleted: false,
+                        linkToQuestionnaire: true,
                     },
                     omit: {
                         isDeleted: true
@@ -161,6 +185,7 @@ export class TemplateQuestionService {
                         id: questionId,
                         categoryId: categoryId,
                         isDeleted: false,
+                        linkToQuestionnaire: true,
                     },
                     omit: {
                         isDeleted: true
@@ -199,6 +224,39 @@ export class TemplateQuestionService {
                     throw new ForbiddenException("Action Not Allowed");
                 }
 
+                let categoryItem = await this.databaseService.category.findUniqueOrThrow({
+                    where: {
+                        id: categoryId,
+                        isDeleted: false,
+                    }
+                });
+
+                if (!categoryItem.linkToInitalSelection || !categoryItem.linkToPaintSelection) {
+                    const updateData = {
+                        ...(
+                            body.linkedSelections.includes(SelectionTemplates.INITIAL_SELECTION) &&
+                            !categoryItem.linkToInitalSelection &&
+                            { linkToInitalSelection: true }
+                        ),
+                        ...(
+                            body.linkedSelections.includes(SelectionTemplates.PAINT_SELECTION) &&
+                            !categoryItem.linkToPaintSelection &&
+                            { linkToPaintSelection: true }
+                        )
+                    }
+
+                    // Update the category if there are changes to be made.
+                    if (Object.keys(updateData).length > 0) {
+                        categoryItem = await this.databaseService.category.update({
+                            where: {
+                                id: categoryId,
+                                isDeleted: false,
+                            },
+                            data: updateData
+                        });
+                    }
+                }
+
                 let question = await this.databaseService.templateQuestion.update({
                     where: {
                         id: questionId,
@@ -212,7 +270,6 @@ export class TemplateQuestionService {
                         linkToPhase: body.isQuestionLinkedPhase,
                         linkToInitalSelection: body.linkedSelections.includes(SelectionTemplates.INITIAL_SELECTION),
                         linkToPaintSelection: body.linkedSelections.includes(SelectionTemplates.PAINT_SELECTION),
-                        phaseId: body.linkedPhase || null,
                         contractorIds: body.contractorIds
                     },
                     omit: {
@@ -225,11 +282,13 @@ export class TemplateQuestionService {
                         id: categoryId,
                         isCompanyCategory: true,
                         isDeleted: false,
+                        linkToQuestionnaire: true,
                     },
                     include: {
                         questions: {
                             where: {
                                 isDeleted: false,
+                                linkToQuestionnaire: true,
                             },
                             orderBy: {
                                 questionOrder: 'asc'
@@ -329,6 +388,7 @@ export class TemplateQuestionService {
                         questions: {
                             where: {
                                 isDeleted: false,
+                                linkToQuestionnaire: true,
                             },
                             orderBy: {
                                 questionOrder: 'asc'
@@ -439,11 +499,13 @@ export class TemplateQuestionService {
                                 questionnaireTemplateId: templateId,
                                 isCompanyCategory: true,
                                 isDeleted: false,
+                                linkToQuestionnaire: true,
                             },
                             include: {
                                 questions: {
                                     where: {
                                         isDeleted: false,
+                                        linkToQuestionnaire: true,
                                     },
                                     orderBy: {
                                         questionOrder: 'asc'
@@ -494,11 +556,13 @@ export class TemplateQuestionService {
                                 questionnaireTemplateId: templateId,
                                 isCompanyCategory: true,
                                 isDeleted: false,
+                                linkToQuestionnaire: true,
                             },
                             include: {
                                 questions: {
                                     where: {
                                         isDeleted: false,
+                                        linkToQuestionnaire: true
                                     },
                                     orderBy: {
                                         questionOrder: 'asc'

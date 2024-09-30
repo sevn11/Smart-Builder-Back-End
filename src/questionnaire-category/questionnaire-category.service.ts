@@ -74,7 +74,6 @@ export class QuestionnaireCategoryService {
             linkToInitalSelection: body.isCategoryLinkedInitialSelections,
             linkToPaintSelection: body.isCategoryLinkedPaintSelections,
             questionnaireTemplateId: template.id,
-            phaseId: body.linkedPhase || null
           },
           omit: {
             isDeleted: true,
@@ -127,6 +126,7 @@ export class QuestionnaireCategoryService {
             questions: {
               where: {
                 isDeleted: false,
+                linkToQuestionnaire: true,
               },
               include: {
                 answers: true,
@@ -141,6 +141,9 @@ export class QuestionnaireCategoryService {
               }
             },
           },
+          orderBy: {
+            questionnaireOrder: 'asc'
+          }
         });
         return { categories };
       }
@@ -203,7 +206,6 @@ export class QuestionnaireCategoryService {
             linkToPhase: body.isCategoryLinkedPaintSelections,
             linkToInitalSelection: body.isCategoryLinkedInitialSelections,
             linkToPaintSelection: body.isCategoryLinkedPaintSelections,
-            phaseId: body.linkedPhase || null
           },
         });
         return { category, message: ResponseMessages.CATEGORY_UPDATED };
@@ -311,11 +313,15 @@ export class QuestionnaireCategoryService {
             questions: {
               where: {
                 isDeleted: false,
+                linkToQuestionnaire: true,
               },
               orderBy: {
                 questionOrder: 'asc'
               }
             }
+          },
+          orderBy: {
+            questionnaireOrder: 'asc'
           }
         });
 
@@ -424,6 +430,7 @@ export class QuestionnaireCategoryService {
                   where: {
                     isDeleted: false,
                     isCompanyCategory: true,
+                    linkToQuestionnaire: true,
                   },
                   omit: {
                     isDeleted: true,
@@ -434,6 +441,7 @@ export class QuestionnaireCategoryService {
                     questions: {
                       where: {
                         isDeleted: false,
+                        linkToQuestionnaire: true,
                       },
                       orderBy: {
                         questionOrder: 'asc'
@@ -498,6 +506,7 @@ export class QuestionnaireCategoryService {
                   where: {
                     isDeleted: false,
                     isCompanyCategory: true,
+                    linkToQuestionnaire: true,
                   },
                   omit: {
                     isDeleted: true,
@@ -508,6 +517,7 @@ export class QuestionnaireCategoryService {
                     questions: {
                       where: {
                         isDeleted: false,
+                        linkToQuestionnaire: true,
                       },
                       orderBy: {
                         questionOrder: 'asc'

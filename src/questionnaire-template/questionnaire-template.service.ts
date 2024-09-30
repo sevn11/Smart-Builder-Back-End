@@ -42,6 +42,7 @@ export class QuestionnaireTemplateService {
                             where: {
                                 isDeleted: false,
                                 isCompanyCategory: false,
+                                linkToQuestionnaire: true,
                             },
                             omit: {
                                 isDeleted: true,
@@ -53,7 +54,8 @@ export class QuestionnaireTemplateService {
                                     omit: {
                                         isDeleted: true,
                                         categoryId: true,
-                                        questionnaireTemplateId: true
+                                        questionnaireTemplateId: true,
+                                        linkToQuestionnaire: true,
                                     },
                                     orderBy: {
                                         questionOrder: 'asc'

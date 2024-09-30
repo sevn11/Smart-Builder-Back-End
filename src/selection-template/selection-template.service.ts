@@ -119,9 +119,6 @@ export class SelectionTemplateService {
                     include: {
                         questions: {
                             where: quesWhereClause,
-                            include: {
-                                answers: true,
-                            },
                             omit: {
                                 isDeleted: true,
                                 categoryId: true,
@@ -415,9 +412,6 @@ export class SelectionTemplateService {
                     include: {
                         questions: {
                             where: quesWhereClause,
-                            include: {
-                                answers: true,
-                            },
                             omit: {
                                 isDeleted: true,
                                 categoryId: true,
@@ -835,9 +829,6 @@ export class SelectionTemplateService {
                             where: {
                                 isDeleted: false,
                             },
-                            include: {
-                                answers: {},
-                            },
                             orderBy: {
                                 questionOrder: 'asc'
                             }
@@ -906,9 +897,6 @@ export class SelectionTemplateService {
                         questions: {
                             where: {
                                 isDeleted: false,
-                            },
-                            include: {
-                                answers: {},
                             },
                             orderBy: {
                                 questionOrder: "asc"
@@ -987,7 +975,7 @@ export class SelectionTemplateService {
 
                 let questionWhereClause: any = {
                     questionnaireTemplateId: templateId,
-                    categoryId: body.categoryId,
+                    isDeleted: false,
                 }
                 if (templateType === TemplateType.SELECTION_INITIAL) {
                     categoryWhereClause.linkToInitalSelection = true;

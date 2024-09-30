@@ -22,8 +22,4 @@ export class CreateUpdateCategoryDTO {
     @IsBoolean()
     @IsOptional()
     isCategoryLinkedPaintSelections: boolean
-
-    @IsNumber()
-    @IsOptional()
-    linkedPhase: number
 }
