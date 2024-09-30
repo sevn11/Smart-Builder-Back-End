@@ -3,6 +3,7 @@ import { PrismaErrorCodes, ResponseMessages, UserTypes } from 'src/core/utils';
 import { DatabaseService } from 'src/database/database.service';
 import { ChangeBuilderAccessDTO, GetBuilderListDTO } from '../validators';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
+import { CreateUpdateExtraFeeDTO } from '../validators/create-update-extra-fee';
 
 @Injectable()
 export class AdminUsersService {
@@ -36,7 +37,8 @@ export class AdminUsersService {
                         company: {
                             select: {
                                 name: true,
-                                id: true
+                                id: true,
+                                extraFee: true,
                             }
                         }
                     }
@@ -215,6 +217,42 @@ export class AdminUsersService {
                 }
             }
             throw new InternalServerErrorException();
+        }
+    }
+
+    async addUpdateExtraFee(body: CreateUpdateExtraFeeDTO) {
+        const { companyId, extraFee = 20.00 } = body;
+
+        try {
+            // Check if the company exists
+            const company = await this.databaseService.company.findFirst({
+                where: { id: companyId },
+            });
+
+            if (!company) {
+                throw new BadRequestException('Company not found');
+            }
+
+
+            // Convert company's extraFee (Decimal) to a number before comparing
+            if (company.extraFee.toNumber() !== extraFee) {
+                await this.databaseService.company.update({
+                    where: { id: companyId },
+                    data: { extraFee },
+                });
+            }
+            return { message: 'Extra fee updated successfully' };
+        } catch (error) {
+            console.error(error);
+
+            // Handle specific Prisma exceptions
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code === PrismaErrorCodes.NOT_FOUND) {
+                    throw new BadRequestException('Company not found');
+                }
+            }
+
+            throw new InternalServerErrorException('An error occurred while updating the extra fee.');
         }
     }
 }
