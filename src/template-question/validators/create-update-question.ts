@@ -21,10 +21,6 @@ export class CreateUpdateQuestionDTO {
     @IsOptional()
     isQuestionLinkedPhase: boolean = false
 
-    @IsNumber()
-    @IsOptional()
-    linkedPhase: number
-
     @IsBoolean()
     @IsOptional()
     isQuestionLinkedSelections: boolean = false
