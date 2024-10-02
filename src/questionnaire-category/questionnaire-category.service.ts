@@ -10,6 +10,7 @@ import { CreateUpdateCategoryDTO } from "./validators/create-update-category";
 import { PrismaErrorCodes, ResponseMessages, UserTypes } from "src/core/utils";
 import { DatabaseService } from "src/database/database.service";
 import { UpdateCategoryOrderDTO } from "./validators/update-questionnaire_order";
+import { SelectionTemplates } from "src/core/utils/selection-template";
 
 @Injectable()
 export class QuestionnaireCategoryService {
@@ -35,6 +36,15 @@ export class QuestionnaireCategoryService {
         });
         if (!company) {
           throw new ForbiddenException("Action Not Allowed");
+        }
+
+        let selectionTypes = { linkToInitalSelection: false, linkToPaintSelection: false };
+        if (body.isCategoryLinkedSelection && Array.isArray(body.linkedSelections)) {
+          selectionTypes = body.linkedSelections.reduce((acc: any, selection: string) => {
+            acc.linkToInitalSelection ||= selection === SelectionTemplates.INITIAL_SELECTION;
+            acc.linkToPaintSelection ||= selection === SelectionTemplates.PAINT_SELECTION;
+            return acc;
+          }, { ...selectionTypes });
         }
 
         // Validate template
@@ -70,10 +80,10 @@ export class QuestionnaireCategoryService {
             isCompanyCategory: true,
             companyId: company.id,
             questionnaireOrder: order,
-            linkToPhase: body.isCategoryLinkedPaintSelections,
-            linkToInitalSelection: body.isCategoryLinkedInitialSelections,
-            linkToPaintSelection: body.isCategoryLinkedPaintSelections,
             questionnaireTemplateId: template.id,
+            ...selectionTypes,
+            linkToPhase: body.isCategoryLinkedContractor,
+            contractorIds: body.isCategoryLinkedContractor ? body.contractorIds : []
           },
           omit: {
             isDeleted: true,
@@ -186,6 +196,16 @@ export class QuestionnaireCategoryService {
         if (!company) {
           throw new ForbiddenException("Action Not Allowed");
         }
+        let selectionTypes = { linkToInitalSelection: false, linkToPaintSelection: false };
+
+        if (body.isCategoryLinkedSelection && Array.isArray(body.linkedSelections)) {
+          selectionTypes = body.linkedSelections.reduce((acc: any, selection: string) => {
+            acc.linkToInitalSelection ||= selection === SelectionTemplates.INITIAL_SELECTION;
+            acc.linkToPaintSelection ||= selection === SelectionTemplates.PAINT_SELECTION;
+            return acc;
+          }, { ...selectionTypes });
+        }
+
         let category = await this.databaseService.category.findUniqueOrThrow({
           where: {
             id: categoryId,
@@ -203,9 +223,9 @@ export class QuestionnaireCategoryService {
           },
           data: {
             name: body.name,
-            linkToPhase: body.isCategoryLinkedPaintSelections,
-            linkToInitalSelection: body.isCategoryLinkedInitialSelections,
-            linkToPaintSelection: body.isCategoryLinkedPaintSelections,
+            ...selectionTypes,
+            linkToPhase: body.isCategoryLinkedContractor,
+            contractorIds: body.isCategoryLinkedContractor ? body.contractorIds : []
           },
         });
         return { category, message: ResponseMessages.CATEGORY_UPDATED };

@@ -214,6 +214,8 @@ model Category {
   questionnaireTemplate   QuestionnaireTemplate? @relation(fields: [questionnaireTemplateId], references: [id], onDelete: Cascade)
   questions               TemplateQuestion[]
 
+  contractorIds           Int[] @default([])
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
