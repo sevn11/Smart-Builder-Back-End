@@ -199,12 +199,12 @@ export class SelectionTemplateService {
                         isCompanyCategory: true,
                         questionnaireOrder: order,
                         companyId: companyId,
-                        linkToPhase: body.isCategoryLinkedPhase,
                         linkToQuestionnaire: false,
                         linkToInitalSelection: templateType === TemplateType.SELECTION_INITIAL ? true : false,
                         linkToPaintSelection: templateType === TemplateType.SELECTION_PAINT ? true : false,
                         questionnaireTemplateId: templateId,
-                        phaseId: body.linkedPhase || null
+                        linkToPhase: body.isCategoryLinkedPhase,
+                        contractorIds: body.isCategoryLinkedPhase ? body.contractorIds : []
                     },
                     omit: {
                         isDeleted: true,
@@ -279,7 +279,7 @@ export class SelectionTemplateService {
                     data: {
                         name: body.name,
                         linkToPhase: body.isCategoryLinkedPhase,
-                        phaseId: body.isCategoryLinkedPhase ? body.linkedPhase : null
+                        contractorIds: body.isCategoryLinkedPhase ? body.contractorIds : []
                     }
                 })
 

@@ -1,5 +1,5 @@
 import { Type } from "class-transformer";
-import { IsBoolean, IsNotEmpty, IsNumber, IsOptional, IsString } from "class-validator";
+import { IsArray, IsBoolean, IsNotEmpty, IsNumber, IsOptional, IsString, ValidateIf } from "class-validator";
 
 export class CreateCategoryDTO {
     @IsString()
@@ -14,4 +14,9 @@ export class CreateCategoryDTO {
     @IsBoolean()
     @IsOptional()
     isCategoryLinkedPhase: boolean = false
+
+    @ValidateIf(o => o.isCategoryLinkedPhase === true)
+    @IsArray()
+    @IsNotEmpty()
+    contractorIds?: number[];
 }
