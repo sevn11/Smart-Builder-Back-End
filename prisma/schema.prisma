@@ -116,7 +116,7 @@ model Customer {
   companyId      Int       @map("company_id")
   company        Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
   jobs           Job[]
-  projectDescription     ProjectDescription[]
+ 
   ContractorFiles        ContractorFiles[]
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -186,8 +186,7 @@ model ProjectDescription {
   companyId         Int?               @map("company_id")
   company           Company?           @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
-  customerId        Int                 @map("customer_id")
-  customer          Customer            @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
   jobs              Job[]
   
   createdAt DateTime @default(now()) @map("created_at")
