@@ -10,7 +10,7 @@ export class ProjectDescriptionService {
 
     constructor(private databaseService: DatabaseService) { }
 
-    async getProjectDescriptions(user: User, companyId: number, customerId: number) {
+    async getProjectDescriptions(user: User, companyId: number) {
         try {
             // Check if User is Admin of the Company.
             if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
@@ -22,7 +22,7 @@ export class ProjectDescriptionService {
                     where: {
                         companyId,
                         isDeleted: false,
-                        customerId,
+
                     },
 
                     orderBy: {
@@ -52,7 +52,7 @@ export class ProjectDescriptionService {
     }
 
 
-    async createProjectDescription(user: User, companyId: number, customerId: number, body: ProjectDescriptionDTO) {
+    async createProjectDescription(user: User, companyId: number, body: ProjectDescriptionDTO) {
         try {
             // Check if User is Admin of the Company.
             if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
@@ -63,7 +63,6 @@ export class ProjectDescriptionService {
                 let description = await this.databaseService.projectDescription.create({
                     data: {
                         companyId,
-                        customerId,
                         ...body,
                     }
                 })
@@ -90,7 +89,7 @@ export class ProjectDescriptionService {
 
 
     // update an existing phase
-    async updateProjectDescription(user: User, companyId: number, customerId: number, descriptionId: number, body: ProjectDescriptionDTO) {
+    async updateProjectDescription(user: User, companyId: number, descriptionId: number, body: ProjectDescriptionDTO) {
         try {
             // Check if User is Admin of the Company.
             if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
@@ -120,9 +119,11 @@ export class ProjectDescriptionService {
                 });
 
                 return { description };
+
             } else {
                 throw new ForbiddenException("Action Not Allowed");
             }
+
         } catch (error) {
             console.log(error);
             // Database Exceptions
@@ -137,9 +138,10 @@ export class ProjectDescriptionService {
             }
             throw new InternalServerErrorException();
         }
+
     }
 
-    async deleteProjectDescription(user: User, companyId: number, customerId: number, descriptionId: number) {
+    async deleteProjectDescription(user: User, companyId: number, descriptionId: number) {
         try {
             // Check if User is Admin or Builder of the Company
             if (user.userType === UserTypes.ADMIN || user.userType === UserTypes.BUILDER) {
@@ -152,27 +154,33 @@ export class ProjectDescriptionService {
                     where: {
                         id: descriptionId,
                         companyId,
-                        customerId,
                         isDeleted: false,
                     },
                 });
 
                 // Proceed to soft-delete the description
                 description = await this.databaseService.projectDescription.update({
-                    where: { id: descriptionId }, // id is sufficient since it's unique
+                    where: { id: descriptionId },
                     data: { isDeleted: true },
+                });
+
+                // Update jobs that reference the deleted description
+                const jobs = await this.databaseService.job.updateMany({
+                    where: {
+                        descriptionId: descriptionId,
+                    },
+                    data: {
+                        descriptionId: null,
+                    },
                 });
 
                 // Fetch the updated list of non-deleted project descriptions
                 const nonDeletedDescriptions = await this.databaseService.projectDescription.findMany({
                     where: {
                         companyId,
-                        customerId,
                         isDeleted: false,
                     },
                 });
-
-
 
                 return { descriptions: nonDeletedDescriptions, message: ResponseMessages.SUCCESSFUL };
             } else {
@@ -191,6 +199,7 @@ export class ProjectDescriptionService {
             throw new InternalServerErrorException("An unexpected error occurred.");
         }
     }
+
 
 
 }

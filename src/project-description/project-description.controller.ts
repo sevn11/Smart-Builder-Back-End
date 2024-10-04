@@ -7,7 +7,7 @@ import { ProjectDescriptionDTO } from './validators/create-update-project-descri
 
 
 @UseGuards(JwtGuard)
-@Controller('companies/:companyId/:customerId/project-description')
+@Controller('companies/:companyId/project-description')
 export class ProjectDescriptionController {
 
     constructor(private projectDescriptionService: ProjectDescriptionService) {
@@ -16,26 +16,26 @@ export class ProjectDescriptionController {
 
     @Get()
     @HttpCode(HttpStatus.OK)
-    getProjectDescriptions(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number, @Param('customerId', ParseIntPipe) customerId: number) {
-        return this.projectDescriptionService.getProjectDescriptions(user, companyId, customerId);
+    getProjectDescriptions(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number) {
+        return this.projectDescriptionService.getProjectDescriptions(user, companyId);
     }
 
     @Post()
     @HttpCode(HttpStatus.OK)
-    createProjectDescription(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number, @Param('customerId', ParseIntPipe) customerId: number, @Body() body: ProjectDescriptionDTO) {
-        return this.projectDescriptionService.createProjectDescription(user, companyId, customerId, body);
+    createProjectDescription(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number, @Body() body: ProjectDescriptionDTO) {
+        return this.projectDescriptionService.createProjectDescription(user, companyId, body);
     }
 
     @Patch('/:descriptionId')
     @HttpCode(HttpStatus.OK)
-    updateProjectDescription(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number, @Param('customerId', ParseIntPipe) customerId: number, @Param('descriptionId', ParseIntPipe) descriptionId: number, @Body() body: ProjectDescriptionDTO) {
-        return this.projectDescriptionService.updateProjectDescription(user, companyId, customerId, descriptionId, body);
+    updateProjectDescription(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number, @Param('descriptionId', ParseIntPipe) descriptionId: number, @Body() body: ProjectDescriptionDTO) {
+        return this.projectDescriptionService.updateProjectDescription(user, companyId, descriptionId, body);
     }
 
     @Delete('/:descriptionId')
     @HttpCode(HttpStatus.OK)
-    deleteProjectDescription(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number, @Param('customerId', ParseIntPipe) customerId: number, @Param('descriptionId', ParseIntPipe) descriptionId: number) {
-        return this.projectDescriptionService.deleteProjectDescription(user, companyId, customerId, descriptionId);
+    deleteProjectDescription(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number, @Param('descriptionId', ParseIntPipe) descriptionId: number) {
+        return this.projectDescriptionService.deleteProjectDescription(user, companyId, descriptionId);
     }
 
 }
