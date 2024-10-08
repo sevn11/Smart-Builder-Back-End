@@ -4,10 +4,11 @@ import { DatabaseService } from 'src/database/database.service';
 import { ChangeBuilderAccessDTO, GetBuilderListDTO } from '../validators';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { CreateUpdateExtraFeeDTO } from '../validators/create-update-extra-fee';
+import { StripeService } from 'src/core/services/stripe.service';
 
 @Injectable()
 export class AdminUsersService {
-    constructor(private databaseService: DatabaseService) {
+    constructor(private databaseService: DatabaseService, private stripeService: StripeService) {
 
     }
     async getBuilders(query: GetBuilderListDTO) {
@@ -240,6 +241,33 @@ export class AdminUsersService {
                     where: { id: companyId },
                     data: { extraFee },
                 });
+            }
+
+            // Update fee in stripe subscription
+            let builder = await this.databaseService.user.findFirst({
+                where: {
+                    companyId,
+                    userType: UserTypes.BUILDER
+                }
+            });
+            let employees = await this.databaseService.user.findMany({
+                where: {
+                    companyId,
+                    userType: UserTypes.EMPLOYEE
+                }
+            })
+            if (builder && builder.stripeCustomerId) {
+                if (employees.length > 0) {
+                    // Update subscription for each employee
+                    const updatePromises = employees.map(async (employee) => {
+                        if (employee.subscriptionId) {
+                            const newAmount = extraFee * 100;
+                            await this.stripeService.updateSubscriptionAmount(builder.stripeCustomerId, employee.subscriptionId, newAmount);
+                        }
+                    });
+            
+                    await Promise.all(updatePromises);
+                }
             }
             return { message: 'Extra fee updated successfully' };
         } catch (error) {
