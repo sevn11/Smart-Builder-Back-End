@@ -21,10 +21,6 @@ export class CreateUpdateQuestionDTO {
     @IsOptional()
     isQuestionLinkedPhase: boolean = false
 
-    @IsNumber()
-    @IsOptional()
-    linkedPhase: number
-
     @IsBoolean()
     @IsOptional()
     isQuestionLinkedSelections: boolean = false
@@ -34,4 +30,11 @@ export class CreateUpdateQuestionDTO {
     @IsNotEmpty()
     questionOrder: number
 
+    @IsArray()
+    @IsOptional()
+    linkedSelections?: string
+
+    @IsArray()
+    @IsOptional()
+    contractorIds?: number[]
 }

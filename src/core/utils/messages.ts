@@ -25,6 +25,10 @@ export class ResponseMessages {
     static QUESTION_DELETED = 'Question successfully deleted.'
     static QUESTION_UPDATED = 'Question successfully updated.'
     static QUESTION_NOT_FOUND = 'Question not found.'
+    static LABEL_CREATED = 'Label added successfully.'
+    static LABEL_UPDATED = 'Label updated successfully.'
+    static LABEL_DELETED = 'Label deleted successfully.'
+    static LABEL_NOT_FOUND = 'Label not found'
     static RESOURCE_NOT_FOUND = 'Resource not found'
     static FILE_NOT_UPLOADED = 'File not uploaded'
     static FILE_NOT_FOUND = 'File not found'
@@ -32,4 +36,5 @@ export class ResponseMessages {
     static TEMPLATE_DELETED_SUCCESSFULLY = 'Template deleted successfully.'
     static QUESTION_ADDED = 'Question successfully saved.'
     static QUESTION_ORDER_UPDATED = 'Question order updated.'
+    static QUESTIONNAIRE_TEMPLATE_ADDED = 'Questionnaire Template added successfully.'
 }

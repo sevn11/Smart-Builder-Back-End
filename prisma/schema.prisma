@@ -187,6 +187,8 @@ model Category {
   questionnaireTemplate   QuestionnaireTemplate? @relation(fields: [questionnaireTemplateId], references: [id], onDelete: Cascade)
   questions               TemplateQuestion[]
 
+  contractorIds           Int[] @default([])
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -229,6 +231,7 @@ model TemplateQuestion {
   phase                   ContractorPhase?       @relation(fields: [phaseId], references: [id])
   questionOrder           Int   @default(0)  @map("question_order")
 
+  contractorIds           Int[] @default([])
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
