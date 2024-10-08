@@ -27,6 +27,7 @@ import { ProjectEstimatorTemplateModule } from './project-estimator-template/pro
 import { QuestionnaireCategoryModule } from './questionnaire-category/questionnaire-category.module';
 import { TemplateQuestionModule } from './template-question/template-question.module';
 import { TemplateQuestionAnswerModule } from './template-question-answer/template-question-answer.module';
+import { ProjectDescriptionModule } from './project-description/project-description.module';
 @Module({
   imports: [
     ServeStaticModule.forRoot({
@@ -57,6 +58,7 @@ import { TemplateQuestionAnswerModule } from './template-question-answer/templat
     QuestionnaireCategoryModule,
     TemplateQuestionModule,
     TemplateQuestionAnswerModule,
+    ProjectDescriptionModule,
     SelectionTemplateModule
   ],
 })

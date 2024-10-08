@@ -51,6 +51,7 @@ model Company {
   users                  User[]
   customers              Customer[]
   jobs                   Job[]
+  projectDescription     ProjectDescription[]
   extraFee               Decimal                 @map("extra_fee") @db.Decimal(10, 2) @default(20.00)
   categories             Category[]
   contractors            Contractor[]
@@ -111,6 +112,7 @@ model Customer {
   companyId      Int       @map("company_id")
   company        Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
   jobs           Job[]
+ 
   ContractorFiles        ContractorFiles[]
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -123,7 +125,8 @@ model Job {
   id Int @id @default(autoincrement())
 
   status      String
-  description String?
+  descriptionId   Int?                  @map("description_id")
+  description     ProjectDescription?   @relation(fields: [descriptionId], references: [id], onDelete: SetNull)
   lotBudget   String? @map("lot_budget")
   totalBudget String? @map("total_budget")
   financing   String?
@@ -167,6 +170,23 @@ model Job {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("jobs")
+}
+
+model ProjectDescription {
+  id                Int                @id @default(autoincrement())
+  name              String
+  isDeleted         Boolean?           @default(false) @map("is_deleted")
+
+  companyId         Int?               @map("company_id")
+  company           Company?           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+
+  jobs              Job[]
+  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("project_description")
 }
 
 model Category {

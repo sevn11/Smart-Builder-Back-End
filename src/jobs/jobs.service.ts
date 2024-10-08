@@ -37,9 +37,9 @@ export class JobsService {
                 if (!customer) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
-                let job = await this.databaseService.job.create({
+                let jobData = await this.databaseService.job.create({
                     data: {
-                        description: body.description,
+                        descriptionId: body.description,
                         customerId: body.customerId,
                         status: JobStatus.OPEN,
                         companyId: company.id
@@ -52,9 +52,21 @@ export class JobsService {
                             omit: {
                                 isDeleted: true
                             },
+                        },
+                        description: {
+                            select: {
+                                id: true,
+                                name: true
+
+                            }
                         }
                     }
                 });
+                let job = {
+                    ...jobData,
+                    descriptionId: jobData.description ? jobData.description.id : null,
+                    description: jobData.description ? jobData.description.name : null
+                }
                 return { job }
 
             } else {
@@ -90,7 +102,7 @@ export class JobsService {
                     throw new ForbiddenException("Action Not Allowed");
                 }
                 query.page = query.page === 0 ? 0 : query.page - 1
-                let jobs = await this.databaseService.job.findMany({
+                let jobdata = await this.databaseService.job.findMany({
                     where: {
                         companyId,
                         isClosed: query.closed || false,
@@ -113,9 +125,22 @@ export class JobsService {
                             omit: {
                                 isDeleted: true
                             },
+                        },
+                        description: {
+                            select: {
+                                id: true,
+                                name: true
+
+                            }
                         }
                     }
                 });
+
+                let jobs = jobdata.map(job => ({
+                    ...job,
+                    descriptionId: job.description ? job.description.id : null,
+                    description: job.description ? job.description.name : null
+                }));
                 let totalCount = await this.databaseService.job.count({
                     where: {
                         companyId,
@@ -163,7 +188,7 @@ export class JobsService {
                 if (!company) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
-                let jobs = await this.databaseService.job.findUniqueOrThrow({
+                let jobsData = await this.databaseService.job.findUniqueOrThrow({
                     where: {
                         id: jobId,
                         companyId,
@@ -177,9 +202,21 @@ export class JobsService {
                             omit: {
                                 isDeleted: true
                             },
+                        },
+                        description: {
+                            select: {
+                                id: true,
+                                name: true
+
+                            }
                         }
                     }
                 });
+                let jobs = {
+                    ...jobsData,
+                    descriptionId: jobsData.description ? jobsData.description.id : null,
+                    description: jobsData.description ? jobsData.description.name : null
+                }
                 return { jobs }
             } else {
                 throw new ForbiddenException("Action Not Allowed");
@@ -306,7 +343,7 @@ export class JobsService {
                     },
                 });
 
-                job.description = body.jobDescription;
+                job.descriptionId = body.jobDescription;
                 job.projectAddress = body.projectLocation;
                 job.projectState = body.projectState;
                 job.projectCity = body.projectCity;
@@ -438,6 +475,12 @@ export class JobsService {
                             omit: {
                                 isDeleted: true
                             },
+                        },
+                        description: {
+                            select: {
+                                id: true,
+                                name: true
+                            }
                         }
                     }
                 });
@@ -445,7 +488,7 @@ export class JobsService {
                 const openJobs = jobs.map(item => {
                     return {
                         id: item.id,
-                        title: `${item.customer?.name}: ${item.description}`,
+                        title: `${item.customer?.name}: ${item.description.name ?? ""}`,
                         start: item.startDate,
                         end: item.endDate,
                         customerId: item.customer?.id,
