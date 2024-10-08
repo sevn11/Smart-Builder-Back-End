@@ -21,6 +21,7 @@ import { join } from 'path';
 import { PaymentScheduleModule } from './payment-schedule/payment-schedule.module';
 import { TermsAndConditionModule } from './terms-and-condition/terms-and-condition.module';
 import { CashFlowModule } from './cash-flow/cash-flow.module';
+import { SelectionTemplateModule } from './selection-template/selection-template.module';
 import { ProjectEstimatorTemplateModule } from './project-estimator-template/project-estimator-template.module';
 
 import { QuestionnaireCategoryModule } from './questionnaire-category/questionnaire-category.module';
@@ -57,7 +58,8 @@ import { ProjectDescriptionModule } from './project-description/project-descript
     QuestionnaireCategoryModule,
     TemplateQuestionModule,
     TemplateQuestionAnswerModule,
-    ProjectDescriptionModule
+    ProjectDescriptionModule,
+    SelectionTemplateModule
   ],
 })
 export class AppModule { }

@@ -1,5 +1,5 @@
 import { Type } from "class-transformer";
-import { IsBoolean, IsNotEmpty, IsNumber, IsOptional, IsString } from "class-validator";
+import { IsArray, IsBoolean, IsNotEmpty, IsNumber, IsOptional, IsString, ValidateIf } from "class-validator";
 
 export class CreateUpdateCategoryDTO {
     @IsNumber()
@@ -16,14 +16,17 @@ export class CreateUpdateCategoryDTO {
     questionnaireOrder: number
 
     @IsBoolean()
+    isCategoryLinkedSelection: boolean
+
+    @IsArray()
     @IsOptional()
-    isCategoryLinkedInitialSelections: boolean
+    linkedSelections?: string
 
     @IsBoolean()
-    @IsOptional()
-    isCategoryLinkedPaintSelections: boolean
+    isCategoryLinkedContractor: boolean
 
-    @IsNumber()
-    @IsOptional()
-    linkedPhase: number
+    @ValidateIf(o => o.isCategoryLinkedContractor === true)
+    @IsArray()
+    @IsNotEmpty() // Ensures that the array is not empty and contains values
+    contractorIds?: number[];
 }
