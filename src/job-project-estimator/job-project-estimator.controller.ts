@@ -13,7 +13,7 @@ import { UpdateStatementDTO } from './validators/update-statement';
 @Controller('companies/:companyId/jobs/:jobId/job-project-estimator')
 export class JobProjectEstimatorController {
 
-    constructor(private jobProjectEstimatorService: JobProjectEstimatorService) {}
+    constructor(private jobProjectEstimatorService: JobProjectEstimatorService) { }
 
     // get all project estimator data
     @Get()
@@ -32,7 +32,7 @@ export class JobProjectEstimatorController {
     createHeader(
         @GetUser() user: User,
         @Param('companyId', ParseIntPipe) companyId: number,
-        @Param('jobId', ParseIntPipe) jobId: number , 
+        @Param('jobId', ParseIntPipe) jobId: number,
         @Body() body: JobProjectEstimatorHeaderDTO
     ) {
         return this.jobProjectEstimatorService.createHeader(user, companyId, jobId, body);
@@ -44,11 +44,11 @@ export class JobProjectEstimatorController {
     editHeader(
         @GetUser() user: User,
         @Param('companyId', ParseIntPipe) companyId: number,
-        @Param('jobId', ParseIntPipe) jobId: number, 
-        @Param('headerId', ParseIntPipe) headerId: number, 
+        @Param('jobId', ParseIntPipe) jobId: number,
+        @Param('headerId', ParseIntPipe) headerId: number,
         @Body() body: JobProjectEstimatorHeaderDTO
     ) {
-        return this.jobProjectEstimatorService.editHeader(user, companyId, jobId,headerId, body);
+        return this.jobProjectEstimatorService.editHeader(user, companyId, jobId, headerId, body);
     }
 
     // delete project estimator header
@@ -57,8 +57,8 @@ export class JobProjectEstimatorController {
     deleteHeader(
         @GetUser() user: User,
         @Param('companyId', ParseIntPipe) companyId: number,
-        @Param('jobId', ParseIntPipe) jobId: number, 
-        @Param('headerId', ParseIntPipe) headerId: number, 
+        @Param('jobId', ParseIntPipe) jobId: number,
+        @Param('headerId', ParseIntPipe) headerId: number,
     ) {
         return this.jobProjectEstimatorService.deleteHeader(user, companyId, jobId, headerId);
     }
@@ -66,10 +66,10 @@ export class JobProjectEstimatorController {
     // insert new project estimator data
     @Post('')
     @HttpCode(HttpStatus.OK)
-    createProjectEstimator( 
-        @GetUser() user: User, 
-        @Param('companyId', ParseIntPipe) companyId: number, 
-        @Param('jobId', ParseIntPipe) jobId: number, 
+    createProjectEstimator(
+        @GetUser() user: User,
+        @Param('companyId', ParseIntPipe) companyId: number,
+        @Param('jobId', ParseIntPipe) jobId: number,
         @Body() body: JobProjectEstimatorDTO
     ) {
         return this.jobProjectEstimatorService.createProjectEstimator(user, companyId, jobId, body);
@@ -78,11 +78,11 @@ export class JobProjectEstimatorController {
     // edit existing project estimator data
     @Patch('/:projectEstimatorId')
     @HttpCode(HttpStatus.OK)
-    updateProjectEstimator( 
-        @GetUser() user: User, 
-        @Param('companyId', ParseIntPipe) companyId: number, 
-        @Param('jobId', ParseIntPipe) jobId: number, 
-        @Param('projectEstimatorId', ParseIntPipe) projectEstimatorId: number, 
+    updateProjectEstimator(
+        @GetUser() user: User,
+        @Param('companyId', ParseIntPipe) companyId: number,
+        @Param('jobId', ParseIntPipe) jobId: number,
+        @Param('projectEstimatorId', ParseIntPipe) projectEstimatorId: number,
         @Body() body: JobProjectEstimatorDTO
     ) {
         return this.jobProjectEstimatorService.updateProjectEstimator(user, companyId, jobId, projectEstimatorId, body);
@@ -91,10 +91,10 @@ export class JobProjectEstimatorController {
     // delete existing project estimator data
     @Delete('/:projectEstimatorId')
     @HttpCode(HttpStatus.OK)
-    deleteProjectEstimator( 
-        @GetUser() user: User, 
-        @Param('companyId', ParseIntPipe) companyId: number, 
-        @Param('jobId', ParseIntPipe) jobId: number, 
+    deleteProjectEstimator(
+        @GetUser() user: User,
+        @Param('companyId', ParseIntPipe) companyId: number,
+        @Param('jobId', ParseIntPipe) jobId: number,
         @Param('projectEstimatorId', ParseIntPipe) projectEstimatorId: number
     ) {
         return this.jobProjectEstimatorService.deleteProjectEstimator(user, companyId, jobId, projectEstimatorId);
@@ -103,10 +103,10 @@ export class JobProjectEstimatorController {
     // insert new data for Accounting section
     @Post('accounting')
     @HttpCode(HttpStatus.OK)
-    createProjectEstimatorAccounting( 
-        @GetUser() user: User, 
-        @Param('companyId', ParseIntPipe) companyId: number, 
-        @Param('jobId', ParseIntPipe) jobId: number, 
+    createProjectEstimatorAccounting(
+        @GetUser() user: User,
+        @Param('companyId', ParseIntPipe) companyId: number,
+        @Param('jobId', ParseIntPipe) jobId: number,
         @Body() body: JobProjectEstimatorAccountingDTO
     ) {
         return this.jobProjectEstimatorService.createProjectEstimatorAccounting(user, companyId, jobId, body);
@@ -116,9 +116,9 @@ export class JobProjectEstimatorController {
     @Post('bulk-update')
     @HttpCode(HttpStatus.OK)
     bulkUpdateEstimator(
-        @GetUser() user: User, 
-        @Param('companyId', ParseIntPipe) companyId: number, 
-        @Param('jobId', ParseIntPipe) jobId: number, 
+        @GetUser() user: User,
+        @Param('companyId', ParseIntPipe) companyId: number,
+        @Param('jobId', ParseIntPipe) jobId: number,
         @Body() body: BulkUpdateProjectEstimatorDTO[]
     ) {
         return this.jobProjectEstimatorService.projectEstimatorBulkUpdate(user, companyId, jobId, body);
@@ -128,34 +128,34 @@ export class JobProjectEstimatorController {
     @Get('change-orders')
     @HttpCode(HttpStatus.OK)
     getAllChangeOrders(
-        @GetUser() user: User, 
-        @Param('companyId', ParseIntPipe) companyId: number, 
+        @GetUser() user: User,
+        @Param('companyId', ParseIntPipe) companyId: number,
         @Param('jobId', ParseIntPipe) jobId: number
     ) {
         return this.jobProjectEstimatorService.getAllChangeOrders(user, companyId, jobId);
     }
-    
+
     // get specific estimator data for account statement
     @Get('statements')
     @HttpCode(HttpStatus.OK)
     getAllStatements(
-        @GetUser() user: User, 
-        @Param('companyId', ParseIntPipe) companyId: number, 
+        @GetUser() user: User,
+        @Param('companyId', ParseIntPipe) companyId: number,
         @Param('jobId', ParseIntPipe) jobId: number
     ) {
         return this.jobProjectEstimatorService.getAllStatements(user, companyId, jobId);
     }
 
-     // get specific estimator data for account statement
-     @Patch('statement/:id')
-     @HttpCode(HttpStatus.OK)
-     updateStatement(
-         @GetUser() user: User, 
-         @Param('companyId', ParseIntPipe) companyId: number, 
-         @Param('jobId', ParseIntPipe) jobId: number,
-         @Param('id', ParseIntPipe) id: number,
-         @Body() body: UpdateStatementDTO
-     ) {
-         return this.jobProjectEstimatorService.updateStatement(user, companyId, jobId, id, body);
-     }
+    // get specific estimator data for account statement
+    @Patch('statement/:id')
+    @HttpCode(HttpStatus.OK)
+    updateStatement(
+        @GetUser() user: User,
+        @Param('companyId', ParseIntPipe) companyId: number,
+        @Param('jobId', ParseIntPipe) jobId: number,
+        @Param('id', ParseIntPipe) id: number,
+        @Body() body: UpdateStatementDTO
+    ) {
+        return this.jobProjectEstimatorService.updateStatement(user, companyId, jobId, id, body);
+    }
 }
