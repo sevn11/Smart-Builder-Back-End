@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, IsObject, IsString, ValidateNested } from "class-validator";
+import { IsEmail, IsNotEmpty, IsObject, IsOptional, IsString, ValidateNested } from "class-validator";
 import { PermissionSetDTO } from "./permission-set";
 import { Type } from "class-transformer";
 
@@ -18,4 +18,7 @@ export class AddUserDTO {
     @Type(() => PermissionSetDTO)
     PermissionSet: PermissionSetDTO
 
+    @IsString()
+    @IsOptional()
+    paymentMethodId: string
 }

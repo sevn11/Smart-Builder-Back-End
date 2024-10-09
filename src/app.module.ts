@@ -62,7 +62,8 @@ import { ProjectDescriptionModule } from './project-description/project-descript
     ProjectEstimatorTemplateModule,
     SelectionTemplateModule,
     GoogleCalendarModule,
-    ProjectDescriptionModule
+    ProjectDescriptionModule,
+    SelectionTemplateModule
   ],
 })
 export class AppModule { }

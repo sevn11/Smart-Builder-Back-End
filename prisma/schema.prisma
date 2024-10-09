@@ -28,6 +28,9 @@ model User {
   isActive      Boolean        @default(true) @map("is_active")
   isDeleted     Boolean?       @default(false) @map("is_deleted")
   PermissionSet PermissionSet?
+  stripeCustomerId   String?  @map("stripe_customer_id")
+  subscriptionId    String?  @map("subscription_id")
+  productId         String?  @map("product_id")
 
   passwordResetCode Int?    @map("password_reset_code")
   invitationToken   String? @map("invitation_token")
@@ -39,6 +42,8 @@ model User {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  PaymentLog      PaymentLog[]
+  
   @@map("users")
 }
 
@@ -176,6 +181,22 @@ model Job {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("jobs")
+}
+
+model PaymentLog {
+    id              Int       @id @default(autoincrement())
+    userId          Int       @map("user_id")
+    user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+    paymentId       String?   @map("payment_id")
+    amount          Float?    @default(0)
+    paymentDate     DateTime? @map("payment_date")
+    status          String?  
+    response        Json?    
+
+    createdAt       DateTime @default(now()) @map("created_at")
+    updatedAt       DateTime @updatedAt @map("updated_at")
+
+    @@map("payment_logs")
 }
 
 model ProjectDescription {
