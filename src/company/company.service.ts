@@ -541,7 +541,7 @@ export class CompanyService {
     // Get all transactions of builder
     async getTransactions(user: User, companyId: number) {
         try {
-            if (user.userType == UserTypes.BUILDER) {
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
                 if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
