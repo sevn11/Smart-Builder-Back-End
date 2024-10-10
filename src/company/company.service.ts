@@ -250,6 +250,16 @@ export class CompanyService {
                     throw new ForbiddenException("Action Not Allowed");
                 }
 
+                // Check user already exist
+                let existingUser = await this.databaseService.user.findFirst({
+                    where: {
+                        email: body.email
+                    }
+                });
+                if(existingUser) {
+                    throw new ForbiddenException("User alredy exist!");
+                }
+
                 // Charge extra fee amount for adding new employee
                 let response = {
                     paymentStatus: false,
