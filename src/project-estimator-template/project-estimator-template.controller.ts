@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Patch, Post, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Patch, Post, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { JwtGuard } from 'src/core/guards';
 import { ProjectEstimatorTemplateService } from './project-estimator-template.service';
 import { GetUser } from 'src/core/decorators';
@@ -10,6 +10,7 @@ import { ProjectEstimatorTemplateDTO } from './validators/add-project-estimator-
 import { ProjectEstimatorAccountingTemplateDTO } from './validators/add-project-estimator-accounting';
 import { BulkUpdateProjectEstimatorTemplateDTO } from './validators/pet-bulk-update'
 import { ItemOrderDTO } from './validators/item-order';
+import { FileInterceptor } from '@nestjs/platform-express';
 
 @UseGuards(JwtGuard)
 @Controller('project-estimator-template')
@@ -172,4 +173,25 @@ export class ProjectEstimatorTemplateController {
         return this.projectEstimatorTemplateService.reorderItem(user, templateId, companyId, body)
     }
 
+    @Post(':companyId/import-template')
+    @HttpCode(HttpStatus.OK)
+    @UseInterceptors(
+        FileInterceptor('file', {
+            limits: { fileSize: 30 * 1024 * 1024 }, // Limit file size to 10MB
+            fileFilter: (req, file, cb) => {
+                if (file.mimetype !== 'text/csv') {
+                    return cb(new BadRequestException('Only CSV files are allowed!'), false);
+                }
+                cb(null, true);
+            },
+        }),
+    )
+    importTemplate(
+        @GetUser() user: User,
+        @UploadedFile() file: Express.Multer.File,
+        @Body() body: { templatename: string },
+        @Param('companyId', ParseIntPipe) companyId: number
+    ) {
+        return this.projectEstimatorTemplateService.importTemplate(user, file, body, companyId);
+    }
 }

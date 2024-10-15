@@ -1,20 +1,23 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, InternalServerErrorException, Res } from '@nestjs/common';
 import { User } from '@prisma/client';
 import { DatabaseService } from 'src/database/database.service';
-
+import * as csv from 'csv-parse';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
-import { PrismaErrorCodes, ResponseMessages, UserTypes } from 'src/core/utils';
+import { PrismaErrorCodes, ResponseMessages, TemplateType, UserTypes, toSnakeCase } from 'src/core/utils';
 import { ProjectEstimatorTemplateNameDTO } from './validators/templateName';
 import { ProjectEstimatorTemplateHeaderDTO } from './validators/header';
 import { ProjectEstimatorTemplateDTO } from './validators/add-project-estimator-template';
 import { ProjectEstimatorAccountingTemplateDTO } from './validators/add-project-estimator-accounting';
 import { BulkUpdateProjectEstimatorTemplateDTO } from './validators/pet-bulk-update';
 import { ItemOrderDTO } from './validators/item-order';
-
+import { ImportTemplateService } from './import-template/import-template.service';
 
 @Injectable()
 export class ProjectEstimatorTemplateService {
-    constructor(private databaseService: DatabaseService) { }
+    constructor(
+        private databaseService: DatabaseService,
+        private importTemplateService: ImportTemplateService
+    ) { }
 
     // create project estimator template name.
     async addProjectEstimatorTemplateName(user: User, companyId: number, body: ProjectEstimatorTemplateNameDTO,) {
@@ -25,14 +28,27 @@ export class ProjectEstimatorTemplateService {
                     throw new ForbiddenException("Action Not Allowed");
                 }
 
-                let projectEstimatorTemplate = await this.databaseService.projectEstimatorTemplate.create({
-                    data: {
-                        templateName: body.name,
-                        companyId: user.companyId
-                    }
+                let projectEstimator = await this.databaseService.$transaction(async (tx) => {
+                    const projectEstTemplate = await tx.projectEstimatorTemplate.create({
+                        data: {
+                            templateName: body.name,
+                            companyId: user.companyId
+                        }
+                    });
+
+                    const questTemplate = await tx.questionnaireTemplate.create({
+                        data: {
+                            name: body.name,
+                            companyId,
+                            isCompanyTemplate: true,
+                            templateType: TemplateType.PROJECT_ESTIMATOR,
+                            projectEstimatorTemplateId: projectEstTemplate.id
+                        }
+                    })
+                    return { projectEstTemplate, questTemplate }
                 })
 
-                return { projectEstimatorTemplate }
+                return projectEstimator?.projectEstTemplate
             } else {
                 throw new ForbiddenException("Action Not Allowed");
             }
@@ -71,17 +87,37 @@ export class ProjectEstimatorTemplateService {
                     throw new ForbiddenException('An error occurred with the template.')
                 }
 
-                template = await this.databaseService.projectEstimatorTemplate.update({
-                    where: {
-                        id: templateId,
-                        isDeleted: false,
-                    },
-                    data: {
-                        templateName: body.name
-                    }
-                })
+                const updateTemplate = await this.databaseService.$transaction(async (tx) => {
+                    const projectEstimator = await tx.projectEstimatorTemplate.update({
+                        where: {
+                            id: templateId,
+                            isDeleted: false,
+                        },
+                        data: {
+                            templateName: body.name
+                        }
+                    });
+                    const questionnaireTemplate = await tx.questionnaireTemplate.findFirst({
+                        where: {
+                            projectEstimatorTemplateId: templateId,
+                            isDeleted: false,
+                        },
+                    });
+                    const updateQuestionnaireTemplate = await tx.questionnaireTemplate.update({
+                        where: {
+                            id: questionnaireTemplate.id,
+                        },
+                        data: {
+                            name: body.name
+                        }
+                    })
 
-                return { template, message: 'Template updated successfully.' }
+                    return { projectEstimator, updateQuestionnaireTemplate }
+                });
+
+                return { template: updateTemplate.projectEstimator, message: 'Template update successfully' }
+
+                // return { template, message: 'Template updated successfully.' }
             } else {
                 throw new ForbiddenException("Action Not Allowed");
             }
@@ -108,8 +144,6 @@ export class ProjectEstimatorTemplateService {
                 if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
-
-
                 let template = await this.databaseService.projectEstimatorTemplate.findUnique({
                     where: {
                         id: templateId,
@@ -123,6 +157,29 @@ export class ProjectEstimatorTemplateService {
                 const templateToDelete = template.id;
 
                 const result = await this.databaseService.$transaction(async (tx) => {
+                    // deleting all selection and questionnaire template.
+                    const questionnaireTemplate = await tx.questionnaireTemplate.findFirst({
+                        where: { projectEstimatorTemplateId: templateToDelete }
+                    });
+
+                    if (questionnaireTemplate) {
+                        const questionnaireTemplateId = questionnaireTemplate.id
+                        await tx.questionnaireTemplate.update({
+                            where: { id: questionnaireTemplateId, },
+                            data: { isDeleted: true, }
+                        });
+
+                        await tx.category.updateMany({
+                            where: { questionnaireTemplateId: questionnaireTemplateId },
+                            data: { isDeleted: true, }
+                        })
+                        await tx.templateQuestion.updateMany({
+                            where: { questionnaireTemplateId: questionnaireTemplateId },
+                            data: { isDeleted: true, }
+                        })
+                    }
+                    // deleting all selection and questionnaire template ends here.
+
                     // get all the header data of the template.
                     const deleteHeaders = await tx.projectEstimatorTemplateHeader.findMany({
                         where: {
@@ -1019,6 +1076,75 @@ export class ProjectEstimatorTemplateService {
             } else if (error instanceof ForbiddenException || error instanceof ConflictException) {
                 throw error;
             }
+            throw new InternalServerErrorException();
+        }
+    }
+
+    async importTemplate(user: User, file: Express.Multer.File, body: { templatename: string }, companyId: number) {
+        try {
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
+                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
+                    throw new ForbiddenException("Action Not Allowed");
+                }
+
+                let company = await this.databaseService.company.findUniqueOrThrow({
+                    where: { id: companyId, isDeleted: false, }
+                });
+
+                if (!company) throw new ForbiddenException("Action Not Allowed");
+
+                const csvContent = file.buffer
+
+                const parsedData: any = await new Promise((resolve, reject) => {
+                    csv.parse(csvContent, { columns: true, relax_quotes: true, skip_empty_lines: true, cast: true }, (err, records) => {
+                        if (err) {
+                            reject(err);
+                            return { error: true, message: "Unable to parse file" }
+                        }
+
+                        const snakeCaseRecords = records.map(record => {
+                            const newRecord = {};
+                            Object.keys(record).forEach(key => {
+                                newRecord[toSnakeCase(key)] = record[key];
+                            });
+                            return newRecord;
+                        })
+
+                        resolve(snakeCaseRecords);
+                    });
+                });
+
+                if (!parsedData.length) throw new ForbiddenException('Could not read csv file. please check the format and retry.')
+                // group the content wrt the header name.
+                let groupedData = await this.importTemplateService.groupContent(parsedData);
+                if (!groupedData.length) throw new ForbiddenException('Could not read csv file. please check the format and retry.')
+
+                const template = await this.importTemplateService.createTemplate(body, companyId);
+                if (!template || !template.id) throw new ForbiddenException('Unable to create template.')
+                const templateId = template.id;
+            
+                groupedData.forEach(async (element: any) => {
+                    this.importTemplateService.processImport(element, templateId, companyId);
+                });
+
+                return { message: ResponseMessages.TEMPLATE_IMPORTED_SUCCESSFULLY }
+
+            } else {
+                throw new ForbiddenException("Action Not Allowed");
+            }
+        } catch (error) {
+            console.log(error);
+            // Database Exceptions
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code == PrismaErrorCodes.NOT_FOUND)
+                    throw new BadRequestException(ResponseMessages.USER_NOT_FOUND);
+                else {
+                    console.log(error.code);
+                }
+            } else if (error instanceof ForbiddenException) {
+                throw error;
+            }
+
             throw new InternalServerErrorException();
         }
     }
