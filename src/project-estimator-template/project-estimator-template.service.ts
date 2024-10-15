@@ -103,16 +103,20 @@ export class ProjectEstimatorTemplateService {
                             isDeleted: false,
                         },
                     });
-                    const updateQuestionnaireTemplate = await tx.questionnaireTemplate.update({
-                        where: {
-                            id: questionnaireTemplate.id,
-                        },
-                        data: {
-                            name: body.name
-                        }
-                    })
 
-                    return { projectEstimator, updateQuestionnaireTemplate }
+                    if (questionnaireTemplate) {
+                        const updateQuestionnaireTemplate = await tx.questionnaireTemplate.update({
+                            where: {
+                                id: questionnaireTemplate.id,
+                            },
+                            data: {
+                                name: body.name
+                            }
+                        })
+
+                        return { projectEstimator, updateQuestionnaireTemplate }
+                    }
+                    return { projectEstimator }
                 });
 
                 return { template: updateTemplate.projectEstimator, message: 'Template update successfully' }
@@ -122,6 +126,7 @@ export class ProjectEstimatorTemplateService {
                 throw new ForbiddenException("Action Not Allowed");
             }
         } catch (error) {
+            console.log(error)
             // Database Exceptions
             if (error instanceof PrismaClientKnownRequestError) {
                 if (error.code == PrismaErrorCodes.NOT_FOUND)
@@ -1122,7 +1127,7 @@ export class ProjectEstimatorTemplateService {
                 const template = await this.importTemplateService.createTemplate(body, companyId);
                 if (!template || !template.id) throw new ForbiddenException('Unable to create template.')
                 const templateId = template.id;
-            
+
                 groupedData.forEach(async (element: any) => {
                     this.importTemplateService.processImport(element, templateId, companyId);
                 });
