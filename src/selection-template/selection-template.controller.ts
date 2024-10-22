@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Patch, Post, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Patch, Post, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { SelectionTemplateService } from './selection-template.service';
 import { GetUser } from 'src/core/decorators';
 import { User } from '@prisma/client';
@@ -9,12 +9,15 @@ import { AnswerDTO } from './validators/answer';
 import { CategoryOrderDTO } from './validators/order';
 import { TemplateNameDTO } from './validators/template';
 import { QuestionOrderDTO } from './validators/question-order';
+import { FileInterceptor } from '@nestjs/platform-express';
 
 @UseGuards(JwtGuard)
 @Controller('companies/:companyId/selection-template')
 export class SelectionTemplateController {
 
     constructor(private selectionTemplateService: SelectionTemplateService) { }
+
+
 
     @HttpCode(HttpStatus.OK)
     @Post(':type')
@@ -211,5 +214,28 @@ export class SelectionTemplateController {
         @Body() body: AnswerDTO
     ) {
         return this.selectionTemplateService.updateAnswer(user, type, companyId, templateId, categoryId, body);
+    }
+
+    @Post('/:type/import-template')
+    @HttpCode(HttpStatus.OK)
+    @UseInterceptors(
+        FileInterceptor('file', {
+            limits: { fileSize: 30 * 1024 * 1024 }, // Limit file size to 10MB
+            fileFilter: (req, file, cb) => {
+                if (file.mimetype !== 'text/csv') {
+                    return cb(new BadRequestException('Only CSV files are allowed!'), false);
+                }
+                cb(null, true);
+            },
+        }),
+    )
+    importTemplate(
+        @GetUser() user: User,
+        @Param('companyId', ParseIntPipe) companyId: number,
+        @UploadedFile() file: Express.Multer.File,
+        @Body() body: { templatename: string },
+        @Param('type') type: string,
+    ) {
+        return this.selectionTemplateService.importTemplate(user, companyId, file, body, type)
     }
 }

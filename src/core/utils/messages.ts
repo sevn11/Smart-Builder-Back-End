@@ -37,4 +37,5 @@ export class ResponseMessages {
     static QUESTION_ADDED = 'Question successfully saved.'
     static QUESTION_ORDER_UPDATED = 'Question order updated.'
     static QUESTIONNAIRE_TEMPLATE_ADDED = 'Questionnaire Template added successfully.'
+    static TEMPLATE_IMPORTED_SUCCESSFULLY = 'Template imported successfully.'
 }
