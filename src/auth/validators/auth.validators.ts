@@ -1,4 +1,5 @@
-import { IsEmail, IsNotEmpty, IsString, IsOptional } from 'class-validator'
+import { IsEmail, IsNotEmpty, IsString, IsOptional, IsEnum } from 'class-validator'
+import { BuilderPlanTypes } from 'src/core/utils/builder-plan-types';
 
 export class SignUpDTO {
 
@@ -17,6 +18,21 @@ export class SignUpDTO {
   @IsString()
   @IsNotEmpty()
   companyName: string;
+
+  @IsString()
+  @IsNotEmpty()
+  address?: string
+
+  @IsString()
+  @IsNotEmpty()
+  phoneNumber?: string
+
+  @IsString()
+  @IsNotEmpty()
+  paymentMethodId?: string
+
+  @IsEnum(BuilderPlanTypes)
+  planType: BuilderPlanTypes;
 }
 
 

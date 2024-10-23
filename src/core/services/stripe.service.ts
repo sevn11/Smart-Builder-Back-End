@@ -1,9 +1,12 @@
 import { Injectable, InternalServerErrorException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { User } from "@prisma/client";
+import { SignUpDTO } from "src/auth/validators";
 import { AddUserDTO } from "src/company/validators";
 import { DatabaseService } from "src/database/database.service";
 import Stripe from "stripe";
+import { BuilderPlanTypes } from "../utils/builder-plan-types";
+import { UserTypes } from "../utils";
 
 
 @Injectable()
@@ -12,36 +15,9 @@ export class StripeService {
 
     constructor(
         private readonly config: ConfigService,
-        private databaseServive: DatabaseService
+        private databaseService: DatabaseService
     ) {
         this.StripeClient = new Stripe(config.get('STRIPE_API_KEY'))
-    }
-
-    // Creating new stripe customer
-    async createStripeCustomer(builder: any) {
-        try {
-            // Check already added to stripe customers
-            let existingCustomer = await this.getStripeCustomer(builder.stripeCustomerId);
-            if(!existingCustomer) {
-                let customer = await this.StripeClient.customers.create({
-                    name: builder.name,
-                    email: builder.email
-                });
-                // Insert stripe customer id into user's table
-                await this.databaseServive.user.update({
-                    where: { id: builder.id },
-                    data: {
-                        stripeCustomerId: customer.id
-                    }
-                });
-
-                return customer;
-            }
-            return existingCustomer;
-        } catch (error) {
-            console.log("Error creating stripe customer", error)
-            throw new InternalServerErrorException();
-        }
     }
 
     // Get stripe customer
@@ -59,39 +35,14 @@ export class StripeService {
     }
 
     // Create new subscription to builder for new employee
-    async createNewSubscription(builder: any, paymentMethodId: string, body: AddUserDTO) {
+    async createEmployeeSubscription(builder: any, body: AddUserDTO) {
         try {
-            let customer = await this.createStripeCustomer(builder);
-            const feeAmount = parseFloat(builder.company.extraFee) * 100;
-
-            if(!customer || (customer as any).deleted) {
-                return { status: false, message: "Something went wrong" };
-            }
-
-            // Check if the payment method is already attached
-            const attachedPaymentMethods = await this.StripeClient.paymentMethods.list({
-                customer: customer.id,
-                type: 'card',
-            });
-    
-            const isPaymentMethodAttached = attachedPaymentMethods.data.some(pm => pm.id === paymentMethodId);
-    
-            // Attach the payment method if it's not already attached
-            if (!isPaymentMethodAttached) {
-                await this.StripeClient.paymentMethods.attach(paymentMethodId, { customer: customer.id });
-                
-                // Check customer has a default payment method
-                const customerData = customer as Stripe.Customer;
-                const hasDefaultPaymentMethod = customerData.invoice_settings?.default_payment_method;
-
-                if (!hasDefaultPaymentMethod) {
-                    // Set this payment method as the default for future invoices
-                    await this.StripeClient.customers.update(customer.id, {
-                        invoice_settings: {
-                            default_payment_method: paymentMethodId,
-                        },
-                    });
-                }
+            let customer = await this.StripeClient.customers.retrieve(builder.stripeCustomerId);
+            let builderSubscription = await this.StripeClient.subscriptions.retrieve(builder.subscriptionId);
+            const planType = builder.company.planType == BuilderPlanTypes.MONTHLY ? 'month' : 'year'
+            let feeAmount = parseFloat(builder.company.extraFee) * 100;
+            if (planType === 'year') {
+                feeAmount *= 12;
             }
 
             // Create new product in stripe
@@ -103,16 +54,30 @@ export class StripeService {
             const price = await this.StripeClient.prices.create({
                 unit_amount: feeAmount,
                 currency: 'usd',
-                recurring: { interval: 'month' },
+                recurring: { interval: planType },
                 product: product.id,
             });
     
             // Create a subscription for the new employee
-            const subscription = await this.StripeClient.subscriptions.create({
-                customer: customer.id,
-                items: [{ price: price.id }],
-                default_payment_method: paymentMethodId,
-            });
+            let subscription: Stripe.Subscription;
+            const now = Math.floor(Date.now() / 1000);
+            if (builderSubscription.trial_end > now) {
+                // Adding employee subscription within builder's trial period
+                subscription = await this.StripeClient.subscriptions.create({
+                    customer: customer.id,
+                    items: [{ price: price.id }],
+                    trial_end: builderSubscription.trial_end,
+                    proration_behavior: 'create_prorations'
+                });
+            } else {
+                // Adding employee subscription after builder's trial ended
+                subscription = await this.StripeClient.subscriptions.create({
+                    customer: customer.id,
+                    items: [{ price: price.id }],
+                    billing_cycle_anchor: builderSubscription.current_period_end,
+                    proration_behavior: 'create_prorations'
+                });
+            }
 
             return { status: true, subscriptionId: subscription.id, productId: product.id , message: "Subscription added" };
         } catch (error) {
@@ -162,10 +127,10 @@ export class StripeService {
     }
 
      // Update subscription amount
-     async updateSubscriptionAmount(stripeCustomerId: string, employeeSubscriptionId: string, newAmount: number) {
+     async updateSubscriptionAmount(stripeCustomerId: string, user: User, newAmount: number, plantype: any) {
         try {
             let customer = await this.getStripeCustomer(stripeCustomerId);
-            let subscription = await this.StripeClient.subscriptions.retrieve(employeeSubscriptionId);
+            let subscription = await this.StripeClient.subscriptions.retrieve(user.subscriptionId);
             let productId = subscription.items.data[0].price.product;
             
             if(customer && subscription && productId) {
@@ -173,12 +138,12 @@ export class StripeService {
                 let newPrice = await this.StripeClient.prices.create({
                     unit_amount: newAmount,
                     currency: 'usd',
-                    recurring: { interval: 'month' },
+                    recurring: { interval: plantype },
                     product: productId as string,
                 });
                 if(newPrice.id) {
                     // Update new price in subscription
-                    await this.StripeClient.subscriptions.update(employeeSubscriptionId, {
+                    await this.StripeClient.subscriptions.update(user.subscriptionId, {
                         items: [{
                             id: subscription.items.data[0].id,
                             price: newPrice.id,
@@ -198,6 +163,17 @@ export class StripeService {
     async removeSubscription(subscriptionId: string) {
         try {
             await this.StripeClient.subscriptions.cancel(subscriptionId);
+            return true;
+        } catch (error) {
+            console.log(error)
+            throw new InternalServerErrorException();
+        }
+    }
+
+    // Function to remove a customer from stripe
+    async deleteStripeCustomer(customerId: string) {
+        try {
+            await this.StripeClient.customers.del(customerId);
             return true;
         } catch (error) {
             console.log(error)
@@ -267,6 +243,116 @@ export class StripeService {
         } catch (error) {
             console.log("error", error)
             return { status: false, message: error.raw.message };
+        }
+    }
+
+    // Function to create new subscription for builder
+    async createBuilderSubscription(body: SignUpDTO, planAmount: number) {
+        let customer: Stripe.Customer;
+        try {
+            const planType = body.planType == BuilderPlanTypes.MONTHLY ? 'month' : 'year'
+
+            // Create new customer in stripe
+            customer = await this.StripeClient.customers.create({
+                name: body.name,
+                email: body.email
+            });
+            // Attach payment method to customer
+            await this.StripeClient.paymentMethods.attach(body.paymentMethodId, { customer: customer.id });
+
+            // Set this payment method as the default for future invoices
+            await this.StripeClient.customers.update(customer.id, {
+                invoice_settings: {
+                    default_payment_method: body.paymentMethodId,
+                },
+            });
+
+            // Create new product in stripe
+            const product = await this.StripeClient.products.create({
+                name: `${body.companyName}-${body.name}`
+            });
+    
+            // Create a price for the product
+            const price = await this.StripeClient.prices.create({
+                unit_amount: planAmount * 100,
+                currency: 'usd',
+                recurring: { interval: planType },
+                product: product.id,
+            });
+    
+            // Create a subscription for the new employee
+            const subscription = await this.StripeClient.subscriptions.create({
+                customer: customer.id,
+                items: [{ price: price.id }],
+                default_payment_method: body.paymentMethodId,
+                trial_period_days: 30
+            });
+            return {
+                status: true,
+                stripeCustomerId: customer.id,
+                subscriptionId: subscription.id, 
+                productId: product.id , 
+                message: "Subscription added"
+            }
+        } catch (error) {
+            if(customer) {
+                // delete customer because payemnt failed
+                await this.StripeClient.customers.del(customer.id);
+            }
+            return { status: false, message: error.raw.message ?? "Someting went wrong" };
+        }
+    }
+
+    // Function to change user subscription/plan type
+    async changeUserSubscriptionType(user: User, planAmount: number, planType: any, employee?: any) {
+        try {
+            let subscription = await this.StripeClient.subscriptions.retrieve(employee ? employee.subscriptionId : user.subscriptionId);
+            const isTrialActive = subscription.trial_end && subscription.trial_end > Math.floor(Date.now() / 1000);
+    
+            // Create new price in stripe
+            let newPrice = await this.StripeClient.prices.create({
+                unit_amount: planAmount,
+                currency: 'usd',
+                recurring: { interval: planType },
+                product: employee ? employee.productId : user.productId,
+            });
+    
+            const newPlanStartDate = isTrialActive ? subscription.trial_end : subscription.current_period_end;
+
+            // Updating builder subscription / plan
+            await this.StripeClient.subscriptions.update(employee ? employee.subscriptionId : user.subscriptionId,
+                {
+                    items: [{
+                        id: subscription.items.data[0].id,
+                        price: newPrice.id,
+                    }],
+                    trial_end: newPlanStartDate,
+                    proration_behavior: 'none'
+                }
+            )            
+            return {status: true};
+        } catch (error) {
+            console.log("change plan error", error)
+            return {status: false};
+        }
+    }
+
+    // Function to get builder subscription info
+    async getBuilderSubscriptionInfo(user: User) {
+        try {
+            let subscription = await this.StripeClient.subscriptions.retrieve(user.subscriptionId);
+            if(subscription) {
+                const builderSubscription = {
+                    trial_end: subscription.trial_end,
+                    current_period_start: subscription.current_period_start,
+                    current_period_end: subscription.current_period_end
+                };
+                return { builderSubscription };
+            } else {
+                return null;
+            }
+        } catch (error) {
+            return null
         }
     }
 }

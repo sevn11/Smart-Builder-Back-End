@@ -21,4 +21,12 @@ export class AddUserDTO {
     @IsString()
     @IsOptional()
     paymentMethodId: string
+
+    @IsString()
+    @IsNotEmpty()
+    address?: string
+
+    @IsString()
+    @IsNotEmpty()
+    phoneNumber?: string
 }

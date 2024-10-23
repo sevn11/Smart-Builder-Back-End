@@ -95,4 +95,10 @@ export class CompanyController {
     ) {
         return this.companyService.renewEmployeeSubscription(user, employeeId, body);
     }
+
+    @HttpCode(HttpStatus.OK)
+    @Get(':id/subscription-info')
+    getBuilderSubscriptionInfo(@GetUser() user: User, @Param('id', ParseIntPipe) companyId: number) {
+        return this.companyService.getBuilderSubscriptionInfo(user);
+    }
 }

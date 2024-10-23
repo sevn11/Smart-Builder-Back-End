@@ -2,6 +2,8 @@ import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseIntPip
 import { AdminUsersService } from '../services';
 import { ChangeBuilderAccessDTO, GetBuilderListDTO } from '../validators';
 import { CreateUpdateExtraFeeDTO } from '../validators/create-update-extra-fee';
+import { UpdateBuilderPlanInfoDTO } from '../validators/update-plan-info';
+import { UpdateBuilderPlanAmountDTO } from '../validators/update-builder-plan';
 
 @Controller('admin/users')
 export class AdminUsersController {
@@ -32,5 +34,29 @@ export class AdminUsersController {
     @HttpCode(HttpStatus.OK)
     addUpdateExtraFee(@Body() body: CreateUpdateExtraFeeDTO) {
         return this.adminUserService.addUpdateExtraFee(body);
+    }
+
+    @Get('builders/plan-info')
+    @HttpCode(HttpStatus.OK)
+    getBuilderPlanInfo() {
+        return this.adminUserService.getBuilderPlanInfo();
+    }
+
+    @Post('builders/update-plan-info')
+    @HttpCode(HttpStatus.OK)
+    updateBuilderPlanInfo(@Body() body: UpdateBuilderPlanInfoDTO) {
+        return this.adminUserService.updateBuilderPlanInfo(body);
+    }
+
+    @Post('/plan-amount')
+    @HttpCode(HttpStatus.OK)
+    changeBuilderPlanAmount(@Body() body: UpdateBuilderPlanAmountDTO) {
+        return this.adminUserService.changeBuilderPlanAmount(body);
+    }
+
+    @Post('builders/update-global-employee-fee')
+    @HttpCode(HttpStatus.OK)
+    updateGlobalEmployeeFee(@Body() body: { employeeFee: number }) {
+        return this.adminUserService.updateGlobalEmployeeFee(body);
     }
 }

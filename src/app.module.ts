@@ -28,6 +28,7 @@ import { QuestionnaireCategoryModule } from './questionnaire-category/questionna
 import { TemplateQuestionModule } from './template-question/template-question.module';
 import { TemplateQuestionAnswerModule } from './template-question-answer/template-question-answer.module';
 import { ProjectDescriptionModule } from './project-description/project-description.module';
+import { SeoSettingsModule } from './seo-settings/seo-settings.module';
 @Module({
   imports: [
     ServeStaticModule.forRoot({
@@ -59,7 +60,8 @@ import { ProjectDescriptionModule } from './project-description/project-descript
     TemplateQuestionModule,
     TemplateQuestionAnswerModule,
     ProjectDescriptionModule,
-    SelectionTemplateModule
+    SelectionTemplateModule,
+    SeoSettingsModule
   ],
 })
 export class AppModule { }
