@@ -513,7 +513,7 @@ export class JobsService {
                         }
                         return {
                             id: item.id,
-                            title: `${item.customer?.name}: ${item.description}`,
+                            title: `${item.customer?.name}: ${item.description.name ?? ""}`,
                             start: item.startDate,
                             end: item.endDate,
                             customerId: item.customer?.id,
