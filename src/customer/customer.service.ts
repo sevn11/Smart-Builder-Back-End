@@ -4,10 +4,11 @@ import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { PrismaErrorCodes, ResponseMessages, UserTypes } from 'src/core/utils';
 import { DatabaseService } from 'src/database/database.service';
 import { AddCustomerDTO, SearchCustomerDTO, UpdateCustomerDTO } from './validators';
+import { GoogleService } from 'src/core/services/google.service';
 
 @Injectable()
 export class CustomerService {
-    constructor(private databaseService: DatabaseService) {
+    constructor(private databaseService: DatabaseService, private googleService: GoogleService) {
 
     }
 
@@ -182,6 +183,25 @@ export class CustomerService {
                         ...body,
                     }
                 });
+
+                let jobs = await this.databaseService.job.findMany({
+                    where: {
+                        customerId,
+                        isDeleted: false
+                    },
+                    include: {
+                        customer: true
+                    }
+                });
+                // reflect the change in google calendar for each (if already synced)
+                for (let job of jobs) {
+                    if(job.eventId) {
+                        let event = await this.googleService.getEventFromGoogleCalendar(user, job);
+                        if(event) {
+                            await this.googleService.syncToCalendar(user.id, job, job.eventId);
+                        }
+                    }
+                }
                 return { customer }
             } else {
                 throw new ForbiddenException("Action Not Allowed");

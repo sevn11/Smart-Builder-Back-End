@@ -6,11 +6,12 @@ import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { JobStatus, PrismaErrorCodes, ResponseMessages, UserTypes } from 'src/core/utils';
 import { UpdateJobStatusCalendarColorTemplateDto } from './validators/update-jobstatus-calendarcolor-template';
 import { UpdateJobDTO } from './validators/update-job';
+import { GoogleService } from 'src/core/services/google.service';
 
 @Injectable()
 export class JobsService {
 
-    constructor(private databaseService: DatabaseService) {
+    constructor(private databaseService: DatabaseService, private googleService: GoogleService) {
 
     }
 
@@ -291,6 +292,9 @@ export class JobsService {
                     },
                 });
 
+                // Reflect the change in google calendar also (if it's already synced)
+                await this.updateJobInGoogleCalendar(user, updatedJob.id);
+
                 return { updatedJob };
             } else {
                 throw new ForbiddenException("Action Not Allowed");
@@ -355,8 +359,8 @@ export class JobsService {
                 job.financing = body.financing;
                 job.timeFrame = body.timeFrame;
                 job.referral = body.hearAbout;
-                job.startDate = body.startDate ? new Date(body.startDate) : null;
-                job.endDate = body.endDate ? new Date(body.endDate) : null;
+                job.startDate = body.startDate ? new Date(`${body.startDate}Z`) : null;
+                job.endDate = body.endDate ? new Date(`${body.endDate}Z`) : null;
                 job.isGasAtLot = body.isGas;
                 job.isElectricityAtLot = body.isElectric;
                 job.isWaterAtLot = body.isWater;
@@ -373,6 +377,9 @@ export class JobsService {
                         ...job,
                     },
                 });
+
+                // Reflect the change in google calendar also (if it's already synced)
+                await this.updateJobInGoogleCalendar(user, updatedJob.id);
 
                 return { updatedJob };
             } else {
@@ -403,20 +410,30 @@ export class JobsService {
                     throw new ForbiddenException("Action Not Allowed");
                 }
                 // check job exist or not
-                await this.databaseService.job.findFirstOrThrow({
+                let job = await this.databaseService.job.findFirstOrThrow({
                     where: {
                         id: jobId,
                         companyId,
                         isDeleted: false
                     }
                 });
+                
+                // Delete the job / project from google calendar also
+                if(job.eventId) {
+                    let event = await this.googleService.getEventFromGoogleCalendar(user, job);
+                    if(event) {
+                        await this.googleService.deleteCalendarEvent(user, job.eventId)
+                    }
+                }
+
                 await this.databaseService.job.update({
                     where: {
                         id: jobId,
                         companyId,
                     },
                     data: {
-                        isDeleted: true
+                        isDeleted: true,
+                        eventId: null
                     }
 
                 })
@@ -485,16 +502,26 @@ export class JobsService {
                     }
                 });
 
-                const openJobs = jobs.map(item => {
-                    return {
-                        id: item.id,
-                        title: `${item.customer?.name}: ${item.description.name ?? ""}`,
-                        start: item.startDate,
-                        end: item.endDate,
-                        customerId: item.customer?.id,
-                        color: item.calendarColor
-                    };
-                });
+                const openJobs = await Promise.all(
+                    jobs.map(async (item) => {
+                        let isSynced = false;
+                        if(item.eventId) {
+                            let event = await this.googleService.getEventFromGoogleCalendar(user, item);
+                            if(event) {
+                                isSynced = true;
+                            }
+                        }
+                        return {
+                            id: item.id,
+                            title: `${item.customer?.name}: ${item.description}`,
+                            start: item.startDate,
+                            end: item.endDate,
+                            customerId: item.customer?.id,
+                            color: item.calendarColor,
+                            isSynced
+                        };
+                    })
+                );
                 return { openJobs }
             } else {
                 throw new ForbiddenException("Action Not Allowed");
@@ -565,6 +592,29 @@ export class JobsService {
                 throw error;
             } else {
                 throw new InternalServerErrorException();
+            }
+        }
+    }
+
+    // Function to reflect the change in project / job in google calendar event also
+    async updateJobInGoogleCalendar(user: User, jobId: number) {
+        let latestJob = await this.databaseService.job.findFirst({
+            where: { id: jobId, isDeleted: false },
+            include: {
+                customer: {
+                    select: {
+                        id: true,
+                        name: true
+                    }
+                }
+            }
+        });
+
+        // reflect the change in google calendar (if already synced)
+        if(latestJob.eventId) {
+            let event = await this.googleService.getEventFromGoogleCalendar(user, latestJob);
+            if(event) {
+                await this.googleService.syncToCalendar(user.id, latestJob, latestJob.eventId);
             }
         }
     }

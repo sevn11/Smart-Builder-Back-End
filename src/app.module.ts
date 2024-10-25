@@ -27,6 +27,7 @@ import { ProjectEstimatorTemplateModule } from './project-estimator-template/pro
 import { QuestionnaireCategoryModule } from './questionnaire-category/questionnaire-category.module';
 import { TemplateQuestionModule } from './template-question/template-question.module';
 import { TemplateQuestionAnswerModule } from './template-question-answer/template-question-answer.module';
+import { GoogleCalendarModule } from './google-calendar/google-calendar.module';
 import { ProjectDescriptionModule } from './project-description/project-description.module';
 @Module({
   imports: [
@@ -58,6 +59,7 @@ import { ProjectDescriptionModule } from './project-description/project-descript
     QuestionnaireCategoryModule,
     TemplateQuestionModule,
     TemplateQuestionAnswerModule,
+    GoogleCalendarModule,
     ProjectDescriptionModule,
     SelectionTemplateModule
   ],
