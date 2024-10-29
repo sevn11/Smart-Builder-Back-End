@@ -229,6 +229,66 @@ export class GoogleService {
         }
     }
 
+    async syncJobSchedule (userId: number, schedule: any, eventId?: string) {
+        let user = await this.databaseService.user.findFirstOrThrow({
+            where: { id: userId }
+        });
+
+        try {
+
+            // Check already sycned or not
+            if(eventId || schedule.eventId) {
+                // Check authentication status
+                await this.checkAuthStatus(user);
+                let updatedUser = await this.databaseService.user.findFirst({
+                    where:{ id: user.id }
+                });
+                this.setCredentials(updatedUser.googleAccessToken);
+                let event = await this.getEventFromGoogleCalendar(updatedUser, schedule);
+                if(!event) {
+                    return { status: false };
+                }
+            }
+
+            this.setCredentials(user.googleAccessToken);
+
+            let requestBody:RequestBody = {
+                summary: `${schedule.contractor.phase.name} - ${schedule.contractor.name} (${schedule.job.customer.name})`,
+                description: schedule.job.description.name ?? "",
+                start: {
+                    'dateTime': schedule.startDate
+                },
+                end: {
+                    'dateTime': schedule.endDate
+                }
+            }
+
+            // Insert or Update schedule to google calendar
+            let res = null;
+            if(eventId) {
+                res = await this.calendar.events.update({
+                    calendarId: user.calendarId,
+                    eventId: eventId,
+                    requestBody
+                });    
+            } 
+            else {
+                res = await this.calendar.events.insert({
+                    calendarId: user.calendarId,
+                    requestBody
+                });
+            }
+
+            return {
+                status: true,
+                eventId: res.data.id
+            }
+        } catch (error) {
+            console.log(error);
+            return { status: false };
+        }
+    }
+
     // Fn to create new calendar
     async createCalendar(user: User) {
         try {  
@@ -299,7 +359,7 @@ export class GoogleService {
     }
 
     // Fn to retrive event from google calendar
-    async getEventFromGoogleCalendar(user: User, job: any) {
+    async getEventFromGoogleCalendar(user: User, evt: any) {
         // Check authentication status
         await this.checkAuthStatus(user);
         let updatedUser = await this.databaseService.user.findFirst({
@@ -309,7 +369,7 @@ export class GoogleService {
             this.setCredentials(updatedUser.googleAccessToken);
             let event = await this.calendar.events.get({
                 calendarId: updatedUser.calendarId,
-                eventId: job.eventId
+                eventId: evt.eventId
             });
             if(event.data.status == 'confirmed') {
                 return event;

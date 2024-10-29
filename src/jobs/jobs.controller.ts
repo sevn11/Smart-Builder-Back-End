@@ -77,4 +77,10 @@ export class JobsController {
     deleteJob(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number, @Param('jobId', ParseIntPipe) jobId: number) {
         return this.jobService.deleteJob(user, companyId, jobId);
     }
+
+    @HttpCode(HttpStatus.OK)
+    @Get('/:jobId/job-schedules')
+    getJobAndSchedules(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number, @Param('jobId', ParseIntPipe) jobId: number) {
+        return this.jobService.getJobAndSchedules(user, companyId, jobId);
+    }
 }

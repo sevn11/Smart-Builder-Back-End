@@ -28,7 +28,11 @@ export class GoogleCalendarController {
     @Get('/:companyId/get-authenticated-user')
     @HttpCode(HttpStatus.OK)
     getAuthenticatedUser(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number) {
-        return this.googleService.getAuthenticatedUserEmail(user);
+        if(user.googleAccessToken) {
+            return this.googleService.getAuthenticatedUserEmail(user);
+        } else {
+            return null;
+        }
     }
 
     @Post('/:companyId/sync-to-google/:jobId')

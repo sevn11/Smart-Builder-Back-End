@@ -80,7 +80,48 @@ export class GoogleCalendarService {
                 });
                 if(job.startDate && job.endDate) {
                     let response = await this.googleService.syncToCalendar(user.id, job);
-                    if(response) {
+                    if(response.status) {
+                        let jobSchedules = await this.databaseService.jobSchedule.findMany({
+                            where: {
+                                companyId,
+                                jobId,
+                                isDeleted: false
+                            },
+                            include: {
+                                contractor: {
+                                    include: {
+                                        phase: true
+                                    }
+                                },
+                                job: {
+                                    include: {
+                                        customer: {
+                                            select: {
+                                                name: true
+                                            }
+                                        },
+                                        description: {
+                                            select: {
+                                                name: true
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        });
+
+                        if(jobSchedules.length > 0) {
+                            for(const jobSchedule of jobSchedules) {
+                                let response = await this.googleService.syncJobSchedule(user.id,  jobSchedule);
+                                console.log(response)
+                                if(response.status && response.eventId) {
+                                    await this.databaseService.jobSchedule.update({
+                                        where: { id: jobSchedule.id },
+                                        data: { eventId: response.eventId }
+                                    })
+                                }
+                            }
+                        }
                         return { status: response.status, message: response.message }
                     } else {
                         throw new InternalServerErrorException(); 
@@ -149,6 +190,45 @@ export class GoogleCalendarService {
                         if(job.startDate && job.endDate) {
                             let response = await this.googleService.syncToCalendar(user.id, job);
                             if(response.status) {
+                                let jobSchedules = await this.databaseService.jobSchedule.findMany({
+                                    where: {
+                                        companyId,
+                                        jobId: job.id,
+                                        isDeleted: false,
+                                    },
+                                    include: {
+                                        contractor: {
+                                            include: {
+                                                phase: true
+                                            }
+                                        },
+                                        job: {
+                                            include: {
+                                                customer: {
+                                                    select: {
+                                                        name: true
+                                                    }
+                                                },
+                                                description: {
+                                                    select: {
+                                                        name: true
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                });
+                                if(jobSchedules.length > 0) {
+                                    for(const jobSchedule of jobSchedules) {
+                                        let response = await this.googleService.syncJobSchedule(user.id,  jobSchedule);
+                                        if(response.status && response.eventId) {
+                                            await this.databaseService.jobSchedule.update({
+                                                where: { id: jobSchedule.id },
+                                                data: { eventId: response.eventId }
+                                            })
+                                        }
+                                    }
+                                }
                                 synced.push(job);
                             } else {
                                 skipped.push(job);
