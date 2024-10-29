@@ -827,7 +827,13 @@ export class JobsService {
                 });
 
                 let estData = header.ProjectEstimatorTemplateData;
+                let invoiceId = 1100;
                 await Promise.all(estData.map(async (x) => {
+                    let currentInvoiceId = null;
+                    if(x.item == 'Change Order') {
+                        currentInvoiceId = invoiceId;
+                        invoiceId += 1;
+                    }
                     await tx.jobProjectEstimator.create({
                         data: {
                             jobProjectEstimatorHeaderId: projectHeader.id,
@@ -839,7 +845,8 @@ export class JobsService {
                             actualCost: x.actualCost,
                             grossProfit: x.grossProfit,
                             contractPrice: x.contractPrice,
-                            order: x.order
+                            order: x.order,
+                            invoiceId: currentInvoiceId
                         }
                     })
                 }));
