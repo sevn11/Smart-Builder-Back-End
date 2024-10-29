@@ -359,8 +359,8 @@ export class JobsService {
                 job.financing = body.financing;
                 job.timeFrame = body.timeFrame;
                 job.referral = body.hearAbout;
-                job.startDate = body.startDate ? new Date(`${body.startDate}Z`) : null;
-                job.endDate = body.endDate ? new Date(`${body.endDate}Z`) : null;
+                job.startDate = body.startDate;
+                job.endDate = body.endDate;
                 job.isGasAtLot = body.isGas;
                 job.isElectricityAtLot = body.isElectric;
                 job.isWaterAtLot = body.isWater;
@@ -488,6 +488,18 @@ export class JobsService {
                         isDeleted: true
                     },
                     include: {
+                        JobSchedule: {
+                            where: {
+                                isDeleted: false,
+                            },
+                            include: {
+                                contractor: {
+                                    include: {
+                                        phase: true
+                                    }
+                                }
+                            }
+                        },
                         customer: {
                             omit: {
                                 isDeleted: true
@@ -511,7 +523,7 @@ export class JobsService {
                                 isSynced = true;
                             }
                         }
-                        return {
+                        const jobEvent = {
                             id: item.id,
                             title: `${item.customer?.name}: ${item.description.name ?? ""}`,
                             start: item.startDate,
@@ -520,9 +532,34 @@ export class JobsService {
                             color: item.calendarColor,
                             isSynced
                         };
+
+                        const scheduleEvents = await Promise.all(item.JobSchedule.map(async (schedule) => {
+                            let isScheduleSynced = false;
+                            if (schedule.eventId) {
+                                const event = await this.googleService.getEventFromGoogleCalendar(user, schedule);
+                                if (event) {
+                                    isScheduleSynced = true;
+                                }
+                            }
+    
+                            return {
+                                id: schedule.id,
+                                title: `${schedule.contractor.phase.name} - ${schedule.contractor.name} (${item.customer.name})`,
+                                start: schedule.startDate,
+                                end: schedule.endDate,
+                                customerId: item.customer?.id,
+                                contractorId: schedule.contractorId,
+                                color: item.calendarColor,
+                                isSynced: isScheduleSynced,
+                                type: 'schedule'
+                            };
+                        }));
+
+                        return [jobEvent, ...scheduleEvents];
                     })
                 );
-                return { openJobs }
+                const allEvents = openJobs.flat();
+                return { openJobs: allEvents }
             } else {
                 throw new ForbiddenException("Action Not Allowed");
             }
@@ -615,6 +652,133 @@ export class JobsService {
             let event = await this.googleService.getEventFromGoogleCalendar(user, latestJob);
             if(event) {
                 await this.googleService.syncToCalendar(user.id, latestJob, latestJob.eventId);
+            }
+        }
+    }
+
+    async getJobAndSchedules (user: User, companyId: number, jobId: number) {
+        try {
+            // Check if User is Admin of the Company.
+            if (user.userType == UserTypes.ADMIN || (user.userType == UserTypes.BUILDER && user.companyId === companyId)) {
+                let company = await this.databaseService.company.findUnique({
+                    where: {
+                        id: companyId,
+                        isDeleted: false
+                    }
+                });
+                if (!company) {
+                    throw new ForbiddenException("Action Not Allowed");
+                }
+                let job = await this.databaseService.job.findUnique({
+                    where: {
+                        id: jobId, 
+                        companyId,
+                        isDeleted: false,
+                        isClosed: false,
+                        startDate: {
+                            not: null,
+                        },
+                        endDate: {
+                            not: null
+                        }
+                    },
+                    omit: {
+                        isDeleted: true
+                    },
+                    include: {
+                        JobSchedule: {
+                            where: {
+                                isDeleted: false
+                            },
+                            include: {
+                                contractor: {
+                                    include: {
+                                        phase: true
+                                    }
+                                }
+                            }
+                        },
+                        customer: {
+                            omit: {
+                                isDeleted: true
+                            },
+                        },
+                        description: {
+                            select: {
+                                id: true,
+                                name: true
+                            }
+                        }
+                    }
+                });
+                
+                if (!job) {
+                    return { error: 'Job not found' };
+                }
+                
+                let isSynced = false;
+                if (job.eventId) {
+                    let event = await this.googleService.getEventFromGoogleCalendar(user, job);
+                    if (event) {
+                        isSynced = true;
+                    }
+                }
+                
+                const openJob = {
+                    id: job.id,
+                    title: `${job.customer?.name}: ${job.description.name ?? ""}`,
+                    start: job.startDate,
+                    end: job.endDate,
+                    customerId: job.customer?.id,
+                    color: job.calendarColor,
+                    isSynced
+                };
+
+                // Check sync status for each schedule
+                const schedulesWithSyncStatus = await Promise.all(
+                    job.JobSchedule.map(async (schedule) => {
+                        let isScheduleSynced = false;
+                        if (schedule.eventId) {
+                            let event = await this.googleService.getEventFromGoogleCalendar(user, schedule);
+                            if (event) {
+                                isScheduleSynced = true;
+                            }
+                        }
+                
+                        return {
+                            id: schedule.id,
+                            title: `${schedule.contractor.phase.name} - ${schedule.contractor.name}`,
+                            start: schedule.startDate,
+                            end: schedule.endDate, 
+                            customerId: job.customer?.id,
+                            contractorId: schedule.contractorId,
+                            color: job.calendarColor,
+                            isSynced: isScheduleSynced,
+                            type: 'schedule'
+                        };
+                    })
+                );
+
+                const result = [openJob, ...schedulesWithSyncStatus];
+                
+                return { jobAndSchedules: result };
+                
+            } else {
+                throw new ForbiddenException("Action Not Allowed");
+            }
+        } catch (error) {
+
+            // Database Exceptions
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code == PrismaErrorCodes.UNIQUE_CONSTRAINT_ERROR)
+                    throw new BadRequestException(ResponseMessages.UNIQUE_EMAIL_ERROR);
+                else {
+                    console.log(error.code);
+                }
+            } else if (error instanceof ForbiddenException) {
+                throw error;
+            } else {
+                throw new InternalServerErrorException();
             }
         }
     }
