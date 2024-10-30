@@ -35,6 +35,12 @@ export class GoogleCalendarController {
         }
     }
 
+    @Get('/:companyId/disconnect-authenticated-user')
+    @HttpCode(HttpStatus.OK)
+    disconnectAuthenticatedUser(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number) {
+        return this.googleService.disconnectAuthenticatedUser(user);
+    }
+
     @Post('/:companyId/sync-to-google/:jobId')
     @HttpCode(HttpStatus.OK)
     syncJobToGoogle(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number, @Param('jobId', ParseIntPipe) jobId: number) {
