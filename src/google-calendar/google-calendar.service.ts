@@ -113,7 +113,6 @@ export class GoogleCalendarService {
                         if(jobSchedules.length > 0) {
                             for(const jobSchedule of jobSchedules) {
                                 let response = await this.googleService.syncJobSchedule(user.id,  jobSchedule);
-                                console.log(response)
                                 if(response.status && response.eventId) {
                                     await this.databaseService.jobSchedule.update({
                                         where: { id: jobSchedule.id },

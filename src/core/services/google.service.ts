@@ -108,6 +108,22 @@ export class GoogleService {
         }
     }
 
+    async disconnectAuthenticatedUser(user: User) {
+        try {
+            await this.databaseService.user.update({
+                where: { id: user.id },
+                data: {
+                    googleAccessToken: null,
+                    googleRefreshToken: null
+                }
+            });
+            return ResponseMessages.SUCCESSFUL;
+        } catch (error) {
+            console.log(error)
+            throw new InternalServerErrorException();
+        }
+    }
+
     // Handle refresh token
     async refreshAccessToken(user: User) {
         this.oauth2Client.setCredentials({
@@ -140,14 +156,14 @@ export class GoogleService {
             return { isAuthentcaited: true }
         } catch (error) {
             // Get new token using refresh token if it's exist
-            // if(error.response.data.error == 'invalid_token') {
-            //     if(user.googleRefreshToken) {
-            //         let res = await this.refreshAccessToken(user);
-            //         if(res) {
-            //             return { isAuthentcaited: true }
-            //         }
-            //     }
-            // }
+            if(error.response.data.error == 'invalid_token') {
+                if(user.googleRefreshToken) {
+                    let res = await this.refreshAccessToken(user);
+                    if(res) {
+                        return { isAuthentcaited: true }
+                    }
+                }
+            }
             return { isAuthentcaited: false }
         }
     }
