@@ -105,11 +105,15 @@ export class JobProjectEstimatorService {
                 if (body.name.toLowerCase().replace(/\s/g, '') === "changeorders") {
                     throw new ConflictException("Change Orders header already exist")
                 }
+                let job = await this.databaseService.job.findUnique({
+                    where: { id: jobId }
+                });
 
                 let projectEstimatorHeader = await this.databaseService.jobProjectEstimatorHeader.create({
                     data: {
                         companyId,
                         jobId,
+                        clientTemplateId: job.templateId,
                         name: body.name
                     }
                 })
@@ -381,11 +385,15 @@ export class JobProjectEstimatorService {
                     throw new ForbiddenException("Action Not Allowed");
                 }
 
+                let job = await this.databaseService.job.findUnique({
+                    where: { id: jobId }
+                });
                 // check header already exist or not else create new one
                 let accountingHeader = await this.databaseService.jobProjectEstimatorHeader.findFirst({
                     where: {
                         companyId,
                         jobId,
+                        clientTemplateId: job.templateId,
                         name: body.headerName,
                         isDeleted: false,
                     }
@@ -396,6 +404,7 @@ export class JobProjectEstimatorService {
                         data: {
                             companyId,
                             jobId,
+                            clientTemplateId: job.templateId,
                             name: body.headerName
                         }
                     });
