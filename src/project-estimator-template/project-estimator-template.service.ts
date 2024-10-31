@@ -1085,7 +1085,7 @@ export class ProjectEstimatorTemplateService {
         }
     }
 
-    async importTemplate(user: User, file: Express.Multer.File, body: { templatename: string }, companyId: number) {
+    async importTemplate(user: User, file: Express.Multer.File, body: { templateId: string }, companyId: number) {
         try {
             if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
                 if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
@@ -1123,8 +1123,8 @@ export class ProjectEstimatorTemplateService {
                 // group the content wrt the header name.
                 let groupedData = await this.importTemplateService.groupContent(parsedData);
                 if (!groupedData.length) throw new ForbiddenException('Could not read csv file. please check the format and retry.')
+                const template = await this.importTemplateService.checkTemplateExist('project-estimator', body, companyId);
 
-                const template = await this.importTemplateService.createTemplate(body, companyId);
                 if (!template || !template.id) throw new ForbiddenException('Unable to create template.')
                 const templateId = template.id;
 

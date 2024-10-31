@@ -214,4 +214,33 @@ export class ImportTemplateService {
             throw new InternalServerErrorException();
         }
     }
+
+    async checkTemplateExist(type: string, body: { templateId: string }, company: number, selectionType: string) {
+        try {
+            const template = await this.databaseService.questionnaireTemplate.findUnique({
+                where: {
+                    id: Number(body.templateId),
+                    isDeleted: false,
+                }
+            })
+
+            if (!template || !template.id) {
+                throw new ForbiddenException('Template not found');
+            }
+
+            return { ...template }
+        } catch (error) {
+            // Database Exceptions
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code == PrismaErrorCodes.NOT_FOUND)
+                    throw new BadRequestException(ResponseMessages.RESOURCE_NOT_FOUND);
+                else {
+                    console.log(error.code);
+                }
+            } else if (error instanceof ForbiddenException || error instanceof ConflictException) {
+                throw error;
+            }
+            throw new InternalServerErrorException();
+        }
+    }
 }
