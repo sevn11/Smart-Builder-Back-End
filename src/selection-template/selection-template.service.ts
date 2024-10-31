@@ -1133,7 +1133,7 @@ export class SelectionTemplateService {
 
 
     // import template
-    async importTemplate(user: User, companyId: number, file: Express.Multer.File, body: { templatename: string }, type: string) {
+    async importTemplate(user: User, companyId: number, file: Express.Multer.File, body: { templateId: string }, type: string) {
         try {
             if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
                 if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
@@ -1184,7 +1184,7 @@ export class SelectionTemplateService {
                 const selectionType = templateType === TemplateType.SELECTION_INITIAL ? TemplateType.SELECTION_INITIAL : TemplateType.SELECTION_PAINT
 
                 // create template.
-                let template = await this.importTemplateService.createTemplate(body, companyId, selectionType);
+                let template = await this.importTemplateService.checkTemplateExist('selection', body, companyId, selectionType);
 
                 let whereClause: any = {}
                 if (templateType === TemplateType.SELECTION_INITIAL) { whereClause.linkToInitalSelection = true; }
