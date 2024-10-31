@@ -20,6 +20,7 @@ export class TemplateService {
                 const response = await this.databaseService.questionnaireTemplate.findMany({
                     where: {
                         isDeleted: false,
+                        companyId,
                         projectEstimatorTemplateId: {
                             not: null
                         }
