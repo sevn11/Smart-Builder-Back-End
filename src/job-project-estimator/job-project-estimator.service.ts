@@ -115,6 +115,7 @@ export class JobProjectEstimatorService {
                         customerId: job.customerId,
                         companyId,
                         isDeleted: false,
+                        questionnaireTemplateId: job.templateId
                     },
                     orderBy: { id: 'desc' },
                     take: 1,
@@ -410,6 +411,7 @@ export class JobProjectEstimatorService {
                         customerId: job.customerId,
                         companyId,
                         isDeleted: false,
+                        questionnaireTemplateId: job.templateId
                     },
                     orderBy: { id: 'desc' },
                     take: 1,
