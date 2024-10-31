@@ -31,6 +31,8 @@ import { ProjectEstimatorTemplateModule } from './project-estimator-template/pro
 import { GoogleCalendarModule } from './google-calendar/google-calendar.module';
 import { ProjectDescriptionModule } from './project-description/project-description.module';
 import { JobScheduleModule } from './job-schedule/job-schedule.module';
+import { TemplateModule } from './template/template.module';
+import { ClientTemplateModule } from './client-template/client-template.module';
 @Module({
   imports: [
     ServeStaticModule.forRoot({
@@ -65,7 +67,9 @@ import { JobScheduleModule } from './job-schedule/job-schedule.module';
     GoogleCalendarModule,
     ProjectDescriptionModule,
     SelectionTemplateModule,
-    JobScheduleModule
+    JobScheduleModule,
+    TemplateModule,
+    ClientTemplateModule
   ],
 })
 export class AppModule { }

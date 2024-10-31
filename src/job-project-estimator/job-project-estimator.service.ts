@@ -28,10 +28,30 @@ export class JobProjectEstimatorService {
                         jobId,
                         isDeleted: false
                     },
-                    include: {
+                    select: {
+                        id: true,
+                        name: true,
+                        companyId: true,
+                        jobId: true,
+                        isDeleted: true,
                         JobProjectEstimator: {
                             where: {
                                 isDeleted: false
+                            },
+                            select: {
+                                id: true,
+                                item: true,
+                                description: true,
+                                costType: true,
+                                quantity: true,
+                                unitCost: true,
+                                actualCost: true,
+                                grossProfit: true,
+                                contractPrice: true,
+                                invoiceId: true,
+                                isLootCost: true,
+                                isDeleted: true,
+                                jobProjectEstimatorHeaderId: true,
                             }
                         }
                     },
