@@ -105,11 +105,30 @@ export class JobProjectEstimatorService {
                 if (body.name.toLowerCase().replace(/\s/g, '') === "changeorders") {
                     throw new ConflictException("Change Orders header already exist")
                 }
+                let job = await this.databaseService.job.findUnique({
+                    where: { id: jobId }
+                });
+
+                let clientTemplate = await this.databaseService.clientTemplate.findFirst({
+                    where: {
+                        jobId: job.id,
+                        customerId: job.customerId,
+                        companyId,
+                        isDeleted: false,
+                    },
+                    orderBy: { id: 'desc' },
+                    take: 1,
+                });
+
+                if (!clientTemplate || !clientTemplate?.id) {
+                    throw new ForbiddenException('Template not found');
+                }
 
                 let projectEstimatorHeader = await this.databaseService.jobProjectEstimatorHeader.create({
                     data: {
                         companyId,
                         jobId,
+                        clientTemplateId: clientTemplate.id,
                         name: body.name
                     }
                 })
@@ -381,11 +400,30 @@ export class JobProjectEstimatorService {
                     throw new ForbiddenException("Action Not Allowed");
                 }
 
+                let job = await this.databaseService.job.findUnique({
+                    where: { id: jobId }
+                });
+
+                let clientTemplate = await this.databaseService.clientTemplate.findFirst({
+                    where: {
+                        jobId: job.id,
+                        customerId: job.customerId,
+                        companyId,
+                        isDeleted: false,
+                    },
+                    orderBy: { id: 'desc' },
+                    take: 1,
+                });
+
+                if (!clientTemplate || !clientTemplate?.id) {
+                    throw new ForbiddenException('Template not found');
+                }
                 // check header already exist or not else create new one
                 let accountingHeader = await this.databaseService.jobProjectEstimatorHeader.findFirst({
                     where: {
                         companyId,
                         jobId,
+                        clientTemplateId: clientTemplate.id,
                         name: body.headerName,
                         isDeleted: false,
                     }
@@ -396,6 +434,7 @@ export class JobProjectEstimatorService {
                         data: {
                             companyId,
                             jobId,
+                            clientTemplateId: job.templateId,
                             name: body.headerName
                         }
                     });
