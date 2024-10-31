@@ -436,7 +436,7 @@ export class JobProjectEstimatorService {
                         data: {
                             companyId,
                             jobId,
-                            clientTemplateId: job.templateId,
+                            clientTemplateId: clientTemplate.id,
                             name: body.headerName
                         }
                     });
