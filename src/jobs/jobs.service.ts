@@ -692,6 +692,9 @@ export class JobsService {
                     },
                     include: {
                         JobSchedule: {
+                            orderBy: {
+                                startDate: 'asc'
+                            },
                             where: {
                                 isDeleted: false
                             },
@@ -701,7 +704,7 @@ export class JobsService {
                                         phase: true
                                     }
                                 }
-                            }
+                            },
                         },
                         customer: {
                             omit: {
@@ -728,9 +731,10 @@ export class JobsService {
                         isSynced = true;
                     }
                 }
-                
+                let uniqueId = 1;
                 const openJob = {
-                    id: job.id,
+                    id: uniqueId,
+                    jobId: job.id,
                     title: `${job.customer?.name}: ${job.description.name ?? ""}`,
                     start: job.startDate,
                     end: job.endDate,
@@ -741,7 +745,7 @@ export class JobsService {
 
                 // Check sync status for each schedule
                 const schedulesWithSyncStatus = await Promise.all(
-                    job.JobSchedule.map(async (schedule) => {
+                    job.JobSchedule.map(async (schedule, index) => {
                         let isScheduleSynced = false;
                         if (schedule.eventId) {
                             let event = await this.googleService.getEventFromGoogleCalendar(user, schedule);
@@ -749,9 +753,10 @@ export class JobsService {
                                 isScheduleSynced = true;
                             }
                         }
-                
+                        uniqueId += 1;
                         return {
-                            id: schedule.id,
+                            id: uniqueId,
+                            scheduleId: schedule.id,
                             title: `${schedule.contractor.phase.name} - ${schedule.contractor.name}`,
                             start: schedule.startDate,
                             end: schedule.endDate, 
@@ -759,7 +764,8 @@ export class JobsService {
                             contractorId: schedule.contractorId,
                             color: job.calendarColor,
                             isSynced: isScheduleSynced,
-                            type: 'schedule'
+                            type: 'schedule',
+                            dependencies: index > 0 ? [uniqueId - 1] : []
                         };
                     })
                 );
@@ -772,7 +778,7 @@ export class JobsService {
                 throw new ForbiddenException("Action Not Allowed");
             }
         } catch (error) {
-
+            console.log(error);
             // Database Exceptions
             if (error instanceof PrismaClientKnownRequestError) {
                 if (error.code == PrismaErrorCodes.UNIQUE_CONSTRAINT_ERROR)
