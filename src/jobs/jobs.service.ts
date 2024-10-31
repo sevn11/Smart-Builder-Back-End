@@ -481,13 +481,7 @@ export class JobsService {
                     where: {
                         companyId,
                         isDeleted: false,
-                        isClosed: false,
-                        startDate: {
-                            not: null,
-                        },
-                        endDate: {
-                            not: null
-                        }
+                        isClosed: false
                     },
                     omit: {
                         isDeleted: true
@@ -679,13 +673,7 @@ export class JobsService {
                         id: jobId, 
                         companyId,
                         isDeleted: false,
-                        isClosed: false,
-                        startDate: {
-                            not: null,
-                        },
-                        endDate: {
-                            not: null
-                        }
+                        isClosed: false
                     },
                     omit: {
                         isDeleted: true
