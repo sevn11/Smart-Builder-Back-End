@@ -138,4 +138,33 @@ export class ImportTemplateService {
             throw new InternalServerErrorException();
         }
     }
+
+    async checkTemplateExist(type: string, body: { templateId: string }, companyId: number) {
+        try {
+            const projectEst = await this.databaseService.projectEstimatorTemplate.findUnique({
+                where: {
+                    id: Number(body.templateId)
+                }
+            })
+            if (!projectEst || !projectEst.id) {
+                throw new ForbiddenException('Template not found')
+            }
+            return { ...projectEst }
+
+        } catch (error) {
+            console.log(error);
+            // Database Exceptions
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code == PrismaErrorCodes.NOT_FOUND)
+                    throw new BadRequestException(ResponseMessages.RESOURCE_NOT_FOUND);
+                else {
+                    console.log(error.code);
+                }
+            } else if (error instanceof ForbiddenException) {
+                throw error;
+            }
+
+            throw new InternalServerErrorException();
+        }
+    }
 }

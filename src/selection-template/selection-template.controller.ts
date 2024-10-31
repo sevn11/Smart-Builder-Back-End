@@ -233,7 +233,7 @@ export class SelectionTemplateController {
         @GetUser() user: User,
         @Param('companyId', ParseIntPipe) companyId: number,
         @UploadedFile() file: Express.Multer.File,
-        @Body() body: { templatename: string },
+        @Body() body: { templateId: string },
         @Param('type') type: string,
     ) {
         return this.selectionTemplateService.importTemplate(user, companyId, file, body, type)

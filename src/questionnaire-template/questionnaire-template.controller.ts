@@ -61,7 +61,7 @@ export class QuestionnaireTemplateController {
     @GetUser() user: User,
     @Param('companyId', ParseIntPipe) companyId: number,
     @UploadedFile() file: Express.Multer.File,
-    @Body() body: { templatename: string },
+    @Body() body: { templateId: string },
   ) {
     return this.questionnaireTemplateService.importTemplate(user, file, companyId, body);
   }
