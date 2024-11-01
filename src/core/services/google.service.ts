@@ -251,7 +251,13 @@ export class GoogleService {
         });
 
         try {
-
+            if (!await this.checkCalendarExist(user)) {
+                await this.createCalendar(user);
+                // fetch latest udpated user
+                user = await this.databaseService.user.findUnique({
+                    where: { id: user.id },
+                });
+            }
             // Check already sycned or not
             if(eventId || schedule.eventId) {
                 // Check authentication status
@@ -300,7 +306,7 @@ export class GoogleService {
                 eventId: res.data.id
             }
         } catch (error) {
-            console.log(error);
+            console.log("job schedule sync error", error);
             return { status: false };
         }
     }

@@ -126,7 +126,57 @@ export class GoogleCalendarService {
                         throw new InternalServerErrorException(); 
                     }
                 } else {
-                    return { status: false, message: "Project start date and end date not specified."}
+                    let jobSchedules = await this.databaseService.jobSchedule.findMany({
+                        where: {
+                            companyId,
+                            jobId,
+                            isDeleted: false
+                        },
+                        include: {
+                            contractor: {
+                                include: {
+                                    phase: true
+                                }
+                            },
+                            job: {
+                                include: {
+                                    customer: {
+                                        select: {
+                                            name: true
+                                        }
+                                    },
+                                    description: {
+                                        select: {
+                                            name: true
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                    let notSynced = 0;
+                    let synced = 0;
+                    if(jobSchedules.length > 0) {
+                        for(const jobSchedule of jobSchedules) {
+                            let response = await this.googleService.syncJobSchedule(user.id,  jobSchedule);
+                            if(response.status && response.eventId) {
+                                synced += 1;
+                                await this.databaseService.jobSchedule.update({
+                                    where: { id: jobSchedule.id },
+                                    data: { eventId: response.eventId }
+                                })
+                            } else {
+                                notSynced += 1;
+                            }
+                        }
+                    }
+                    if(synced == jobSchedules.length) {
+                        return { status: true, message: "Syncing success"}
+                    } else if(synced == 0) {
+                        return { status: false, message: "Syncing failed"}
+                    } else {
+                        return { status: true, message: "Some events are synced"}
+                    }
                 }
 
                 
@@ -234,7 +284,57 @@ export class GoogleCalendarService {
                             }
                         }
                         else {
-                            skipped.push(job);
+                            let jobSchedules = await this.databaseService.jobSchedule.findMany({
+                                where: {
+                                    companyId,
+                                    jobId: job.id,
+                                    isDeleted: false,
+                                },
+                                include: {
+                                    contractor: {
+                                        include: {
+                                            phase: true
+                                        }
+                                    },
+                                    job: {
+                                        include: {
+                                            customer: {
+                                                select: {
+                                                    name: true
+                                                }
+                                            },
+                                            description: {
+                                                select: {
+                                                    name: true
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            });
+                            let notSynced = 0;
+                            let synced = 0;
+                            if(jobSchedules.length > 0) {
+                                for(const jobSchedule of jobSchedules) {
+                                    let response = await this.googleService.syncJobSchedule(user.id,  jobSchedule);
+                                    if(response.status && response.eventId) {
+                                        synced += 1;
+                                        await this.databaseService.jobSchedule.update({
+                                            where: { id: jobSchedule.id },
+                                            data: { eventId: response.eventId }
+                                        })
+                                    } else {
+                                        notSynced += 1;
+                                    }
+                                }
+                            }
+                            if(synced == jobSchedules.length) {
+                                return { status: true, message: "Syncing success"}
+                            } else if(synced == 0) {
+                                return { status: false, message: "Syncing failed"}
+                            } else {
+                                return { status: true, message: "Some events are synced"}
+                            }
                         }
                     }
                 } else {
