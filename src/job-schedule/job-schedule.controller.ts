@@ -4,6 +4,7 @@ import { JwtGuard } from 'src/core/guards';
 import { GetUser } from 'src/core/decorators';
 import { User } from '@prisma/client';
 import { JobScheduleDTO } from './validators/job-schedule';
+import { BulkUpdateJobScheduleDTO } from './validators/bulk-update-job-schedule';
 
 @UseGuards(JwtGuard)
 @Controller('companies/:companyId/job/:jobId/job-schedule')
@@ -29,6 +30,16 @@ export class JobScheduleController {
         @Body() body: JobScheduleDTO,
     ) {
         return this.jobScheduleService.updateJobSchedule(user, companyId, jobId, scheduleId, body);
+    }
+
+    @Post('/bulk-update')
+    bulkUpdateJobSchedule(
+        @GetUser() user: User,
+        @Param('companyId', ParseIntPipe) companyId: number,
+        @Param('jobId', ParseIntPipe) jobId: number,
+        @Body() body: BulkUpdateJobScheduleDTO[],
+    ) {
+        return this.jobScheduleService.bulkUpdateJobSchedule(user, companyId, jobId, body);
     }
 
     @Delete(':scheduleId')
