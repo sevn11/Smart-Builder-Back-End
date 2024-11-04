@@ -5,6 +5,7 @@ import { JobScheduleDTO } from './validators/job-schedule';
 import { PrismaErrorCodes, ResponseMessages, UserTypes } from 'src/core/utils';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { GoogleService } from 'src/core/services/google.service';
+import { BulkUpdateJobScheduleDTO } from './validators/bulk-update-job-schedule';
 
 @Injectable()
 export class JobScheduleService {
@@ -93,6 +94,54 @@ export class JobScheduleService {
 
                 await this.updateJobScheduleInGoogleCalendar(user, scheduleId);
                 
+                return { message: ResponseMessages.SUCCESSFUL }
+            }
+        } catch (error) {
+            console.log(error)
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code == PrismaErrorCodes.NOT_FOUND) {
+                    throw new BadRequestException(ResponseMessages.RESOURCE_NOT_FOUND);
+                }
+            }
+            throw new InternalServerErrorException();
+        }
+    }
+
+    async bulkUpdateJobSchedule(
+        user: User, 
+        companyId: number, 
+        jobId: number, 
+        body: BulkUpdateJobScheduleDTO[]) 
+    {
+        try {
+            if (user.userType == UserTypes.ADMIN || (user.userType == UserTypes.BUILDER && user.companyId === companyId)) {
+                await this.databaseService.company.findFirstOrThrow({
+                    where: {
+                        id: companyId,
+                        isDeleted: false
+                    }
+                });
+
+                // Formatting dates
+                for(let event of body) {
+                    event.startDate = `${event.startDate}Z`;
+                    event.endDate = `${event.endDate}Z`;
+                }
+
+                await Promise.all(body.map(async (event) => {
+                    await this.databaseService.jobSchedule.update({
+                        where: {
+                            id: event.scheduleId,
+                            companyId,
+                            jobId,
+                            isDeleted: false
+                        },
+                        data: {
+                            startDate: event.startDate,
+                            endDate: event.endDate,
+                        }
+                    });
+                }));
                 return { message: ResponseMessages.SUCCESSFUL }
             }
         } catch (error) {
