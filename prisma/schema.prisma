@@ -73,7 +73,9 @@ model Company {
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
-
+  ClientCategory         ClientCategory[]
+  ClientTemplate         ClientTemplate[]
+  clientQuestionAnswer   ClientQuestionAnswer[]
   @@map("companies")
 }
 
@@ -118,10 +120,12 @@ model Customer {
   jobs           Job[]
  
   ContractorFiles        ContractorFiles[]
-
+  ClientCategory         ClientCategory[]
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
-
+  ClientTemplate         ClientTemplate[]
+  ClientTemplateQuestion ClientTemplateQuestion[]
+  clientQuestionAnswer   ClientQuestionAnswer[]
   @@map("customers")
 }
 
@@ -156,6 +160,9 @@ model Job {
   referral           String?
   salesTaxStatus     Boolean? @map("sales_tax_status") @default(false)
 
+  templateId         Int?   @map("template_id")
+  template           QuestionnaireTemplate? @relation(fields: [templateId], references: [id])
+
   JobContractor     JobContractor[]
   JobProjectEstimatorHeader JobProjectEstimatorHeader[]
   ContractorFiles        ContractorFiles[]
@@ -174,7 +181,10 @@ model Job {
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
-
+  ClientTemplate         ClientTemplate[]
+  ClientCategory         ClientCategory[]
+  ClientTemplateQuestion ClientTemplateQuestion[]
+  ClientQuestionAnswer   ClientQuestionAnswer[]
   @@map("jobs")
 }
 
@@ -232,12 +242,14 @@ model QuestionnaireTemplate {
   questions         TemplateQuestion[]
   categories        Category[]
 
+  jobs           Job[]
+
   projectEstimatorTemplateId   Int?      @map("pet_id")
   projectEstimatorTemplate     ProjectEstimatorTemplate? @relation(fields: [projectEstimatorTemplateId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
-
+  clientTemplate          ClientTemplate[]
   @@map("questionnaire_template")
 }
 
@@ -320,10 +332,10 @@ model ContractorPhase {
   contractors       Contractor[]
   categories        Category[]
   templateQuestion  TemplateQuestion[]
-
+  clientCategory    ClientCategory[]
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
-
+  ClientTemplateQuestion ClientTemplateQuestion[]
   @@map("contractor_phase")
 }
 
@@ -340,7 +352,10 @@ model JobProjectEstimatorHeader {
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
-
+  headerOrder       Int?  @default(0) @map("header_order")
+  clientTemplateId Int?             @map("client_template_id")
+  clientTemplate  ClientTemplate?   @relation(fields: [clientTemplateId], references: [id], onDelete: Cascade)
+  
   @@map("job_project_estimator_header")
 }
 
@@ -357,7 +372,7 @@ model JobProjectEstimator {
   invoiceId         Int?               @map("invoice_id")
   isLootCost        Boolean?           @default(false) @map("is_loot_cost")
   isDeleted         Boolean?           @default(false) @map("is_deleted")
-
+  order             Int?               @default(0) @map("order")
   jobProjectEstimatorHeaderId          Int? @map("job_project_estimator_header_id")
   jobProjectEstimatorHeader            JobProjectEstimatorHeader? @relation(fields: [jobProjectEstimatorHeaderId], references: [id], onDelete: Cascade)
 
@@ -445,7 +460,7 @@ model ProjectEstimatorTemplate {
   questionnaireTemplates  QuestionnaireTemplate[]  
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
-
+  clientTemplate          ClientTemplate[]
   @@map("project_estimator_template")
 }
 
@@ -492,3 +507,121 @@ model ProjectEstimatorTemplateData {
   @@map("project_estimator_template_data")
 }
 
+model ClientTemplate {
+  id                      Int                      @id @default(autoincrement())
+  
+  questionnaireTemplateId Int?                   @map("questionnaire_template_id")
+  questionnaireTemplate   QuestionnaireTemplate? @relation(fields: [questionnaireTemplateId], references: [id], onDelete: Cascade)
+
+  projectEstimatorTemplateId   Int?      @map("pet_id")
+  projectEstimatorTemplate     ProjectEstimatorTemplate? @relation(fields: [projectEstimatorTemplateId], references: [id], onDelete: Cascade)
+
+  jobId             Int?               @map("job_id")
+  job               Job?               @relation(fields: [jobId], references: [id], onDelete: Cascade)                   
+
+  companyId         Int?               @map("company_id")
+  company           Company?           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  customerId        Int                 @map("customer_id")
+  customer          Customer            @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  isDeleted               Boolean                  @default(false) @map("is_deleted")
+
+  clientCategory          ClientCategory[]
+  clientTemplateQuestion  ClientTemplateQuestion[]
+  clientQuestionAnswer    ClientQuestionAnswer[]
+  createdAt               DateTime                 @default(now()) @map("created_at")
+  updatedAt               DateTime                 @updatedAt @map("updated_at")
+
+  jobProjectEstimatorHeader JobProjectEstimatorHeader[]
+  @@map("client_template")
+}
+
+model ClientCategory {
+  id                      Int                      @id @default(autoincrement())
+  clientTemplateId        Int                      @map("client_template_id")
+  clientTemplate          ClientTemplate           @relation(fields: [clientTemplateId], references: [id], onDelete: Cascade)
+  name                    String
+  isDeleted               Boolean                  @default(false) @map("is_deleted")
+  linkToPhase             Boolean                  @default(false) @map("link_to_phase")
+  phaseId                 Int?                     @map("phase_id")
+  phase                   ContractorPhase?         @relation(fields: [phaseId], references: [id])
+  linkToInitalSelection   Boolean                  @default(false) @map("link_to_initial_selection")
+  linkToPaintSelection    Boolean                  @default(false) @map("link_to_paint_selection")
+  linkToQuestionnaire     Boolean                  @default(true) @map("link_to_questionnaire")
+  isCompanyCategory       Boolean                  @default(false) @map("is_company_category")
+  companyId               Int?                     @map("company_id")
+  company                 Company?                 @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  questionnaireOrder      Int                      @map("questionnaire_order")
+  contractorIds           Int[]                    @default([])
+  createdAt               DateTime                 @default(now()) @map("created_at")
+  updatedAt               DateTime                 @updatedAt @map("updated_at")
+
+  customerId Int      @map("customer_id")
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  jobId Int? @map("job_id")
+  job   Job? @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  ClientTemplateQuestion ClientTemplateQuestion[]
+  clientQuestionAnswer  ClientQuestionAnswer[]
+  @@map("client_categories")
+}
+
+
+model ClientTemplateQuestion {
+  id                      Int                    @id @default(autoincrement())
+  isDeleted               Boolean                @default(false) @map("is_deleted")
+  linkToPhase             Boolean                @default(false) @map("link_to_phase")
+  linkToInitalSelection   Boolean                @default(false) @map("link_to_initial_selection")
+  linkToPaintSelection    Boolean                @default(false) @map("link_to_paint_selection")
+  linkToQuestionnaire     Boolean                @default(true) @map("link_to_questionnaire")
+  question                String
+  questionType            String
+  multipleOptions         Json?
+  clientCategoryId        Int?                   @map("client_category_id")
+  clientCategory          ClientCategory?        @relation(fields: [clientCategoryId], references: [id], onDelete: Cascade)
+  phaseId                 Int?                   @map("phase_id")
+  phase                   ContractorPhase?       @relation(fields: [phaseId], references: [id])
+  questionOrder           Int                    @default(0) @map("question_order")
+  customerId              Int                    @map("customer_id")
+  customer                Customer               @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  jobId                  Int?                     @map("job_id")
+  job                    Job?                     @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  contractorIds          Int[]                    @default([])
+  createdAt              DateTime                 @default(now()) @map("created_at")
+  updatedAt              DateTime                 @updatedAt @map("updated_at")
+  clientTemplateId       Int                      @map("client_template_id")
+  clientTemplate         ClientTemplate           @relation(fields: [clientTemplateId], references: [id], onDelete: Cascade)
+  answer                ClientQuestionAnswer?
+  @@map("client_template_question")
+}
+
+model ClientQuestionAnswer {
+  
+  id                    Int                      @id @default(autoincrement())
+  questionId            Int                      @unique @map("question_id") 
+  question              ClientTemplateQuestion   @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  answerIds             String[]                @default([]) 
+  answerText            Json?                
+  
+  jobId                  Int?                     @map("job_id")
+  job                    Job?                     @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  customerId              Int                    @map("customer_id")
+  customer                Customer               @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  isCompanyCategory       Boolean                  @default(false) @map("is_company_category")
+  companyId               Int?                     @map("company_id")
+  company                 Company?                 @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  clientTemplateId        Int                      @map("client_template_id")
+  clientTemplate          ClientTemplate           @relation(fields: [clientTemplateId], references: [id], onDelete: Cascade)
+
+  clientCategoryId        Int                      @map("client_category_id")
+  clientCategory          ClientCategory           @relation(fields: [clientCategoryId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("client_question_answer")
+}
