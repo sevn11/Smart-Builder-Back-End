@@ -16,7 +16,7 @@ export class SeoSettingsService {
                 yearlyPlanAmount: seoSettings.yearlyPlanAmount,
                 monthlyPlanAmount: seoSettings.monthlyPlanAmount
             }
-            return builderPlanInfo;
+            return { builderPlanInfo };
         } catch (error) {
             throw new InternalServerErrorException();
         }
