@@ -621,15 +621,15 @@ export class CompanyService {
                     throw new ForbiddenException("Action Not Allowed");
                 }
 
-                const employees = await this.databaseService.user.findMany({
-                    where: { companyId: companyId, userType: 'Employee', isActive: true },
+                const users = await this.databaseService.user.findMany({
+                    where: { companyId: companyId, isActive: true },
                     select: { id: true },
                 });
             
-                const employeeIds = employees.map(employee => employee.id);
+                const usersIds = users.map(users => users.id);
 
                 const transactionLogs = await this.databaseService.paymentLog.findMany({
-                    where: { userId: { in: employeeIds } },
+                    where: { userId: { in: usersIds } },
                     orderBy: { paymentDate: 'desc' },
                     include: {
                         user: {
