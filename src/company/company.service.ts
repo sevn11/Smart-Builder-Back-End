@@ -8,6 +8,7 @@ import { ConfigService } from '@nestjs/config';
 import { AWSService, SendgridService } from 'src/core/services';
 import { StripeService } from 'src/core/services/stripe.service';
 import { PaymentMethodDTO } from './validators/payment-method';
+import { BuilderPlanTypes } from 'src/core/utils/builder-plan-types';
 
 @Injectable()
 export class CompanyService {
@@ -273,7 +274,7 @@ export class CompanyService {
                         company: true
                     }
                 });
-                let res =  await this.stripeService.createNewSubscription(builder, body.paymentMethodId, body);
+                let res =  await this.stripeService.createEmployeeSubscription(builder, body);
                 
                 if(res.status) {
                     // After successfull payment insert employee
@@ -296,7 +297,13 @@ export class CompanyService {
                                 }
                             },
                             productId: res.productId,
-                            subscriptionId: res.subscriptionId
+                            subscriptionId: res.subscriptionId,
+                            EmployeeDetails: {
+                                create: {
+                                    address: body.address,
+                                    phoneNumber: body.phoneNumber
+                                }
+                            }
                         },
                         omit: {
                             hash: true,
@@ -347,7 +354,7 @@ export class CompanyService {
                         company_name: employee.company.name,
                         password_link: `${this.config.get("FRONTEND_BASEURL")}/auth/create-password?token=${invitationToken}`
                     }
-                    this.sendgridService.sendEmailWithTemplate(employee.email, this.config.get('EMPLOYEE_PASSWORD_SET_TEMPLATE_ID'), templateData)
+                    // this.sendgridService.sendEmailWithTemplate(employee.email, this.config.get('EMPLOYEE_PASSWORD_SET_TEMPLATE_ID'), templateData)
                 } else {
                     response.paymentStatus = false;
                     response.payementMessage = res.message;
@@ -452,6 +459,10 @@ export class CompanyService {
         }
     }
 
+    async getBuilderSubscriptionInfo(user: User) {
+        return this.stripeService.getBuilderSubscriptionInfo(user)
+    }
+
     async getUploadLogoSignedUrl(user: User, companyId: number, body: UploadLogoDTO) {
         try {
             if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
@@ -504,6 +515,60 @@ export class CompanyService {
                 if (!company) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
+                // Check is plan updated or not
+                let sentPlanUpdateMessage = false;
+                if(company.planType !== body.planType) {
+                    let planAmount = 0;
+                    const planType = body.planType == BuilderPlanTypes.MONTHLY ? 'month' : 'year';
+
+                    let data = await this.databaseService.seoSettings.findMany();
+                    let seoSettings = data[0];
+                    body.planType == BuilderPlanTypes.MONTHLY 
+                        ? planAmount = seoSettings.monthlyPlanAmount.toNumber() 
+                        : planAmount = seoSettings.yearlyPlanAmount.toNumber()
+
+                    let res = await this.stripeService.changeUserSubscriptionType(user, planAmount * 100, planType);
+
+                    if(res.status) {
+                        // Update company with new price
+                        sentPlanUpdateMessage = true;
+                        company = await this.databaseService.company.update({
+                            where: {
+                                id: companyId,
+                                isActive: true,
+                                isDeleted: false
+                            },
+                            omit: {
+                                isDeleted: true
+                            },
+                            data: {
+                                planAmount
+                            }
+                        });
+                        // Update plan for each employee under builder
+                        let employees = await this.databaseService.user.findMany({
+                            where: {
+                                isActive: true,
+                                isDeleted: false,
+                                companyId: user.companyId,
+                                userType: UserTypes.EMPLOYEE
+                            }
+                        });
+                        if (employees.length > 0) {
+                            let builder = await this.databaseService.user.findFirst({
+                                where: { id: user.id },
+                                include: { company: true }
+                            })
+                            let feeAmount = builder.company.extraFee.toNumber() * 100;
+                            if (planType === 'year') {
+                                feeAmount *= 12;
+                            }
+                            for (const employee of employees) {
+                                await this.stripeService.changeUserSubscriptionType(user, feeAmount, planType, employee);
+                            }
+                        }
+                    }
+                }
                 company = await this.databaseService.company.update({
                     where: {
                         id: companyId,
@@ -517,7 +582,7 @@ export class CompanyService {
                         ...body
                     }
                 });
-                return { company }
+                return { company, isPlanChanged:sentPlanUpdateMessage  }
             } else {
                 throw new ForbiddenException("Action Not Allowed");
             }
@@ -556,15 +621,15 @@ export class CompanyService {
                     throw new ForbiddenException("Action Not Allowed");
                 }
 
-                const employees = await this.databaseService.user.findMany({
-                    where: { companyId: companyId, userType: 'Employee', isActive: true },
+                const users = await this.databaseService.user.findMany({
+                    where: { companyId: companyId, isActive: true },
                     select: { id: true },
                 });
             
-                const employeeIds = employees.map(employee => employee.id);
+                const usersIds = users.map(users => users.id);
 
                 const transactionLogs = await this.databaseService.paymentLog.findMany({
-                    where: { userId: { in: employeeIds } },
+                    where: { userId: { in: usersIds } },
                     orderBy: { paymentDate: 'desc' },
                     include: {
                         user: {

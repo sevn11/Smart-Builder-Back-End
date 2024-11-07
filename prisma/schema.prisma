@@ -43,8 +43,18 @@ model User {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   PaymentLog      PaymentLog[]
+  EmployeeDetails EmployeeDetails?
   
   @@map("users")
+}
+
+model SeoSettings {
+  id                    Int             @id @default(autoincrement())
+  yearlyPlanAmount      Decimal         @map("yearly_plan_amount") @db.Decimal(10, 2)
+  monthlyPlanAmount     Decimal         @map("monthly_plan_amount") @db.Decimal(10, 2)
+  additionalEmployeeFee Decimal         @map("additional_employee_fee") @db.Decimal(10, 2) 
+
+  @@map("seo_settings")
 }
 
 model Company {
@@ -61,7 +71,9 @@ model Company {
   customers              Customer[]
   jobs                   Job[]
   projectDescription     ProjectDescription[]
-  extraFee               Decimal                 @map("extra_fee") @db.Decimal(10, 2) @default(20.00)
+  extraFee               Decimal                 @map("extra_fee") @db.Decimal(10, 2) @default(0.00)
+  planType               PlanType?               @map("plan_type")        
+  planAmount             Decimal                 @map("plan_amount") @db.Decimal(10, 2) @default(0.00)
   categories             Category[]
   contractors            Contractor[]
   JobContractor          JobContractor[]
@@ -83,6 +95,21 @@ model Company {
   ClientTemplate         ClientTemplate[]
   clientQuestionAnswer   ClientQuestionAnswer[]
   @@map("companies")
+}
+
+enum PlanType {
+  MONTHLY
+  YEARLY
+}
+
+model EmployeeDetails {
+  id             Int      @id @default(autoincrement())
+  userId         Int      @unique @map("user_id")
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  address        String?
+  phoneNumber    String?  @map("phone_number")
+
+  @@map("employee_details")
 }
 
 model PermissionSet {

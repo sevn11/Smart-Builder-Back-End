@@ -7,6 +7,8 @@ import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { PrismaErrorCodes, HelperFunctions, ResponseMessages, UserTypes } from 'src/core/utils';
 import { SendgridService } from 'src/core/services';
 import { ConfigService } from '@nestjs/config';
+import { StripeService } from 'src/core/services/stripe.service';
+import { BuilderPlanTypes } from 'src/core/utils/builder-plan-types';
 
 
 @Injectable()
@@ -15,66 +17,100 @@ export class AuthService {
         private databaseService: DatabaseService,
         private jwtService: JwtService,
         private sendgridService: SendgridService,
+        private stripeService: StripeService,
         private config: ConfigService) {
     }
 
     async signup(body: SignUpDTO) {
         try {
-            const hash = await argon.hash(body.password);
-            const user = await this.databaseService.user.create({
-                data: {
-                    email: body.email.toLowerCase(),
-                    hash,
-                    name: body.name,
-                    userType: UserTypes.BUILDER,
-                    tosAcceptanceTime: new Date().toISOString(),
-                    isTosAccepted: true,
-                    tosVersion: HelperFunctions.getTosVersion(),
-                    company: {
-                        create: {
-                            name: body.companyName
-                        }
-                    },
-                    PermissionSet: {
-                        create: {
-                            fullAccess: true,
-                            viewOnly: false
-                        }
-                    }
-                },
-                omit: {
-                    hash: true,
-                    invitationToken: true,
-                    passwordResetCode: true,
-                    isDeleted: true
-                },
-                include: {
-                    company: {
-                        omit: {
-                            isDeleted: true
-                        }
-                    },
-                    PermissionSet: {
-                        omit: {
-                            userId: true,
-                            isDeleted: true,
-                        }
-                    }
+            let existingUser = await this.databaseService.user.findUnique({
+                where: {
+                    email: body.email,
+                    isActive: true,
+                    isDeleted: false
                 }
             });
-            const payload = { sub: user.id, email: user.email, companyId: user.company.id };
-            const access_token = await this.jwtService.signAsync(payload);
-            return { user, access_token };
+            if (existingUser) {
+                throw new BadRequestException();
+            }
+
+            let data = await this.databaseService.seoSettings.findMany();
+            let seoSettings = data[0];
+            
+            let planAmount = 0;
+            body.planType == BuilderPlanTypes.MONTHLY 
+                ? planAmount = seoSettings.monthlyPlanAmount.toNumber() 
+                : planAmount = seoSettings.yearlyPlanAmount.toNumber()
+
+            if(data) {
+                // Create new customer and add card details inside stripe
+                let response = await this.stripeService.createBuilderSubscription(body, planAmount);
+                if(response.status) {
+                    const hash = await argon.hash(body.password);
+                    const user = await this.databaseService.user.create({
+                        data: {
+                            email: body.email.toLowerCase(),
+                            hash,
+                            name: body.name,
+                            userType: UserTypes.BUILDER,
+                            tosAcceptanceTime: new Date().toISOString(),
+                            isTosAccepted: true,
+                            tosVersion: HelperFunctions.getTosVersion(),
+                            stripeCustomerId: response.stripeCustomerId,
+                            productId: response.productId,
+                            subscriptionId: response.subscriptionId,
+                            company: {
+                                create: {
+                                    name: body.companyName,
+                                    address: body.address,
+                                    phoneNumber: body.phoneNumber,
+                                    planType: body.planType,
+                                    planAmount,
+                                    extraFee: seoSettings.additionalEmployeeFee
+                                }
+                            },
+                            PermissionSet: {
+                                create: {
+                                    fullAccess: true,
+                                    viewOnly: false
+                                }
+                            }
+                        },
+                        omit: {
+                            hash: true,
+                            invitationToken: true,
+                            passwordResetCode: true,
+                            isDeleted: true
+                        },
+                        include: {
+                            company: {
+                                omit: {
+                                    isDeleted: true
+                                }
+                            },
+                            PermissionSet: {
+                                omit: {
+                                    userId: true,
+                                    isDeleted: true,
+                                }
+                            }
+                        }
+                    });
+                    const payload = { sub: user.id, email: user.email, companyId: user.company.id };
+                    const access_token = await this.jwtService.signAsync(payload);
+                    return { status: true, user, access_token };
+                }
+                else {
+                    return response;
+                }
+            } else {
+                throw new InternalServerErrorException()
+            }
         } catch (ex) {
             // Database Exceptions
-            if (ex instanceof PrismaClientKnownRequestError) {
-                if (ex.code == PrismaErrorCodes.UNIQUE_CONSTRAINT_ERROR)
-                    throw new BadRequestException(ResponseMessages.UNIQUE_EMAIL_ERROR);
-                else {
-                    console.log(ex.code);
-                }
+            if(ex instanceof BadRequestException) {
+                throw new BadRequestException(ResponseMessages.UNIQUE_EMAIL_ERROR);
             }
-            console.log(ex);
             throw new InternalServerErrorException()
         }
     }

@@ -33,6 +33,7 @@ import { ProjectDescriptionModule } from './project-description/project-descript
 import { JobScheduleModule } from './job-schedule/job-schedule.module';
 import { TemplateModule } from './template/template.module';
 import { ClientTemplateModule } from './client-template/client-template.module';
+import { SeoSettingsModule } from './seo-settings/seo-settings.module';
 @Module({
   imports: [
     ServeStaticModule.forRoot({
@@ -69,7 +70,8 @@ import { ClientTemplateModule } from './client-template/client-template.module';
     SelectionTemplateModule,
     JobScheduleModule,
     TemplateModule,
-    ClientTemplateModule
+    ClientTemplateModule,
+    SeoSettingsModule
   ],
 })
 export class AppModule { }

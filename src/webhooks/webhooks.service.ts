@@ -44,16 +44,16 @@ export class WebhooksService {
         if(body.type == 'customer.subscription.deleted') {
             let canceledDate = new Date(body.data.object.canceled_at * 1000);
             let subscriptionId = body.data.object.id;
-            let employee = await this.databaseService.user.findFirst({
-                where: { userType: UserTypes.EMPLOYEE, subscriptionId }
+            let user = await this.databaseService.user.findFirst({
+                where: { subscriptionId }
             });
-            if(employee) {
+            if(user) {
                 const month = canceledDate.getMonth() + 1;
                 const year = canceledDate.getFullYear();
 
                 let existingLog = await this.databaseService.paymentLog.findFirst({
                     where: {
-                        userId: employee.id,
+                        userId: user.id,
                         paymentDate: {
                             gte: new Date(year, month - 1, 1),
                             lte: new Date(year, month, 1)
@@ -75,7 +75,7 @@ export class WebhooksService {
                 } else {
                     await this.databaseService.paymentLog.create({
                         data: {
-                            userId: employee.id,
+                            userId: user.id,
                             paymentDate: canceledDate,
                             paymentId: body.data.object.id,
                             amount: body.data.object.plan.amount,
@@ -87,7 +87,7 @@ export class WebhooksService {
                 // Make employee as incactive
                 await this.databaseService.user.update({
                     where: {
-                        id: employee.id
+                        id: user.id
                     },
                     data: {
                         isActive: false
@@ -99,16 +99,16 @@ export class WebhooksService {
 
 
         let paymentDate = new Date(body.data.object.created * 1000)
-        let employee = await this.databaseService.user.findFirst({
-            where: { userType: UserTypes.EMPLOYEE, subscriptionId: body.data.object.subscription }
+        let user = await this.databaseService.user.findFirst({
+            where: { subscriptionId: body.data.object.subscription }
         });
-        if(employee) {
+        if(user) {
             const month = paymentDate.getMonth() + 1;
             const year = paymentDate.getFullYear();
 
             let existingLog = await this.databaseService.paymentLog.findFirst({
                 where: {
-                    userId: employee.id,
+                    userId: user.id,
                     paymentDate: {
                         gte: new Date(year, month - 1, 1),
                         lte: new Date(year, month, 1)
@@ -144,7 +144,7 @@ export class WebhooksService {
             } else {
                 await this.databaseService.paymentLog.create({
                     data: {
-                        userId: employee.id,
+                        userId: user.id,
                         paymentDate,
                         paymentId: body.data.object.id,
                         amount: body.data.object.amount_due,
