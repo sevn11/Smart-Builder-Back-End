@@ -25,10 +25,14 @@ export class CustomizedContentService {
                 const specificationsContent = await this.databaseService.customizedContent.findFirst({
                     where: { pageType: 'specifications', companyId },
                 });
+                const selectionContent = await this.databaseService.customizedContent.findFirst({
+                    where: { pageType: 'selections', companyId },
+                });
 
                 return {
                     proposalContent: proposalContent ? proposalContent.content : '',
-                    specificationsContent: specificationsContent ? specificationsContent.content : ''
+                    specificationsContent: specificationsContent ? specificationsContent.content : '',
+                    selectionContent: selectionContent ? selectionContent.content : '',
                 };
             } else {
                 throw new ForbiddenException("Action Not Allowed");
