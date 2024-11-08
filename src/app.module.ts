@@ -31,6 +31,7 @@ import { GoogleCalendarModule } from './google-calendar/google-calendar.module';
 import { ProjectDescriptionModule } from './project-description/project-description.module';
 import { TemplateModule } from './template/template.module';
 import { ClientTemplateModule } from './client-template/client-template.module';
+import { CustomizedContentModule } from './customized-content/customized-content.module';
 @Module({
   imports: [
     ServeStaticModule.forRoot({
@@ -65,7 +66,8 @@ import { ClientTemplateModule } from './client-template/client-template.module';
     ProjectDescriptionModule,
     SelectionTemplateModule,
     TemplateModule,
-    ClientTemplateModule
+    ClientTemplateModule,
+    CustomizedContentModule
   ],
 })
 export class AppModule { }
