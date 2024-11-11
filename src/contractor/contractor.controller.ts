@@ -41,4 +41,9 @@ export class ContractorController {
         return this.contractorService.deleteContractor(user, companyId, contractorId);
     }
 
+    @Get('/:contractorId/categories')
+    @HttpCode(HttpStatus.OK)
+    getContractorCategories(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number, @Param('contractorId', ParseIntPipe) contractorId: number) {
+        return this.contractorService.getContractorCategories(user, companyId, contractorId);
+    }
 }

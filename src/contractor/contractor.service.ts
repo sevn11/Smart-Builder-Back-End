@@ -222,4 +222,110 @@ export class ContractorService {
             throw new InternalServerErrorException();
         }
     }
+
+    // Fn to fetch all categories under each project particular contractor assigend to
+    async getContractorCategories(user: User, companyId: number, contractorId: number) {
+        try {
+            // Check if User is Admin of the Company.
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
+                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
+                    throw new ForbiddenException("Action Not Allowed");
+                }
+                let contractor = await this.databaseService.contractor.findFirstOrThrow({
+                    where: {
+                        id: contractorId,
+                        companyId,
+                        isDeleted: false,
+                    },
+                    include: {
+                        phase: {
+                            select: {
+                                id: true,
+                                name: true,
+                            }
+                        },
+                        JobContractor: {
+                            include: {
+                                job: {
+                                    include: {
+                                        ClientTemplate: {
+                                            include: {
+                                                clientCategory: {
+                                                    where: {
+                                                        isDeleted: false,
+                                                        linkToQuestionnaire: true,
+                                                        companyId,
+                                                    },
+                                                    omit: { createdAt: true, updatedAt: true },
+                                                    orderBy: { questionnaireOrder: 'asc' },
+                                                    include: {
+                                                        ClientTemplateQuestion: {
+                                                            where: {
+                                                                isDeleted: false,
+                                                                linkToQuestionnaire: true,
+                                                            },
+                                                            select: { id: true, question: true, questionType: true },
+                                                            orderBy: { questionOrder: 'asc' },
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+
+                const jobDetails = contractor.JobContractor.map(jobContractor => {
+                    const jobId = jobContractor.job.id;
+                    const customerId = jobContractor.job.customerId;
+
+                    // Gather all categories and questions under this job's client template
+                    const categoriesWithQuestions = jobContractor.job.ClientTemplate.flatMap(clientTemplate =>
+                        clientTemplate.clientCategory.map(category => ({
+                            jobId,
+                            customerId,
+                            categoryId: category.id,
+                            categoryName: category.name,
+                            questions: category.ClientTemplateQuestion.map(question => ({
+                                questionId: question.id,
+                                questionText: question.question,
+                                questionType: question.questionType
+                            }))
+                        }))
+                    );
+
+                    return categoriesWithQuestions;
+                }).flat();
+
+                // Prepare the contractor response
+                const contractorResponse = {
+                    id: contractor.id,
+                    name: contractor.name,
+                    phase: contractor.phase,
+                    categories: jobDetails,
+                };
+
+                return { contractor: contractorResponse };
+            } else {
+                throw new ForbiddenException("Action Not Allowed");
+            }
+
+        } catch (error) {
+            console.log(error);
+            // Database Exceptions
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code == PrismaErrorCodes.NOT_FOUND)
+                    throw new BadRequestException(ResponseMessages.USER_NOT_FOUND);
+                else {
+                    console.log(error.code);
+                }
+            } else if (error instanceof ForbiddenException) {
+                throw error;
+            }
+            throw new InternalServerErrorException();
+        }
+    }
 }
