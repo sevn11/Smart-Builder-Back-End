@@ -68,6 +68,7 @@ model Company {
   CashFlow               CashFlow[]
   projectEstimatorTemplates     ProjectEstimatorTemplate[]
   projectEstimatorTemplateHeader ProjectEstimatorTemplateHeader[]
+  CustomizedContent      CustomizedContent[]
   isActive               Boolean                 @default(true) @map("is_active")
   isDeleted              Boolean?                @default(false) @map("is_deleted")
 
@@ -625,4 +626,17 @@ model ClientQuestionAnswer {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("client_question_answer")
+}
+
+model CustomizedContent {
+  id                 Int        @id @default(autoincrement())
+  pageType           String?    @map("page_type")
+  content            String?    
+  companyId          Int?       @map("company_id")
+  company            Company?   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+
+  @@map("customized_contents")
+  @@unique([companyId, pageType])  
 }
