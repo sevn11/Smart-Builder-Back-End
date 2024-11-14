@@ -253,8 +253,10 @@ export class ContractorService {
                                                 clientCategory: {
                                                     where: {
                                                         isDeleted: false,
-                                                        linkToQuestionnaire: true,
-                                                        companyId,
+                                                        linkToPhase: true,
+                                                        contractorIds: {
+                                                            has: contractorId
+                                                        },
                                                     },
                                                     omit: { createdAt: true, updatedAt: true },
                                                     orderBy: { questionnaireOrder: 'asc' },
@@ -262,7 +264,10 @@ export class ContractorService {
                                                         ClientTemplateQuestion: {
                                                             where: {
                                                                 isDeleted: false,
-                                                                linkToQuestionnaire: true,
+                                                                linkToPhase: true,
+                                                                contractorIds: {
+                                                                    has: contractorId
+                                                                },
                                                             },
                                                             select: { id: true, question: true, questionType: true },
                                                             orderBy: { questionOrder: 'asc' },
