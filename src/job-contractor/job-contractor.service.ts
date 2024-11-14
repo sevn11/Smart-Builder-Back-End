@@ -235,7 +235,8 @@ export class JobContractorService {
                             where: { id: jobId, companyId, isDeleted: false},
                             include: {
                                 customer: true,
-                                description: true
+                                description: true,
+                                company: true
                             }
                         });
                         let contractorDetails = await this.databaseService.clientTemplate.findFirstOrThrow({
@@ -311,13 +312,21 @@ export class JobContractorService {
 
     private generateDetailsHtml(jobDetails: any, contractorDetails: any) {
 
+        let logo = jobDetails.company.log ? jobDetails.company.log : "https://smart-builder-asset.s3.us-east-1.amazonaws.com/companies/53/logos/smartbuilder-logo.png"
+
         let htmlContent = `
             <div style="display: flex; justify-content: center; align-items: center;">
                 <div style="width: 900px; padding: 20px;">
+                    <div style="margin-bottom: 10px;">
+                        <img src="${logo}" style="width: 100px" />
+                    </div>
                     <div style="display: flex; flex-direction: column; justify-content: start; width: 100%;">
-                        <h4 style="margin: 0; padding: 5px 0;">${jobDetails.customer.name}</h4>
-                        <h4 style="margin: 0; padding: 5px 0;">${jobDetails.projectAddress}</h4>
-                        <h4 style="margin: 0; padding: 5px 0;">${jobDetails.projectCity}, ${jobDetails.projectState} ${jobDetails.projectZip}</h4>
+                        <h4 style="margin: 0">${jobDetails.customer.name}</h4>
+                        <h4 style="margin: 0">${jobDetails.projectAddress}</h4>
+                        <h4 style="margin: 0">
+                            ${jobDetails.projectCity ? `${jobDetails.projectCity}, ` : ''}
+                            ${jobDetails.projectState} ${jobDetails.projectZip}
+                        </h4>
                     </div>
         `;
 
@@ -326,7 +335,7 @@ export class JobContractorService {
                 <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
                    <thead>
                         <tr>
-                            <th colspan="2" style="background-color: rgb(38, 67, 115); color: white; padding: 8px; text-align: left;border: 1px solid #ddd;">${category.name}</th>
+                            <th colspan="2" style="background-color: rgb(38, 67, 115); color: white; padding: 8px; text-align: center;border: 1px solid #ddd;">${category.name}</th>
                         </tr>
                     </thead>
                     <tbody>
