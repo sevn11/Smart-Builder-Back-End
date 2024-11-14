@@ -209,22 +209,73 @@ export class JobContractorService {
                     };
                 }));
 
-                await Promise.all(jobContractors.map(async (jobContractorId) => {
+                await Promise.all(jobContractors.map(async (jobContractor) => {
                     // Retrieve job contractor data from database
                     const jobContractorData = await this.databaseService.jobContractor.findFirstOrThrow({
-                        where: { id: jobContractorId }
+                        where: { id: Number(jobContractor.id) }
                     });
 
                     // Retrieve contractor data using contractorId from job contractor data
                     const contractor = await this.databaseService.contractor.findFirstOrThrow({
-                        where: { id: jobContractorData.contractorId }
+                        where: { id: jobContractorData.contractorId },
+                        include: { phase: true }
                     });
 
                     // Prepare template data for email
+                    let detailsHTML = '';
                     const templateData = {
                         user_name: contractor.name,
-                        subject: subject
+                        subject: subject,
+                        detailsHTML
                     };
+
+                    // Fetch linked informations if send details is checked
+                    if(jobContractor.sendDetails) {
+                        let jobDetails = await this.databaseService.job.findFirst({
+                            where: { id: jobId, companyId, isDeleted: false},
+                            include: {
+                                customer: true,
+                                description: true,
+                                company: true
+                            }
+                        });
+                        let contractorDetails = await this.databaseService.clientTemplate.findFirstOrThrow({
+                            where: { companyId, jobId, isDeleted: false},
+                            include: {
+                                clientCategory: {
+                                    where: {
+                                        isDeleted: false,
+                                        linkToPhase: true,
+                                        contractorIds: {
+                                            has: contractor.id
+                                        },
+                                        companyId,
+                                    },
+                                    omit: { createdAt: true, updatedAt: true },
+                                    orderBy: { questionnaireOrder: 'asc' },
+                                    include: {
+                                        ClientTemplateQuestion: {
+                                            where: {
+                                                isDeleted: false,
+                                                linkToPhase: true,
+                                                contractorIds: {
+                                                    has: contractor.id
+                                                },
+                                            },
+                                            orderBy: { questionOrder: 'asc' },
+                                            include: {
+                                                answer: {
+                                                    where: { jobId, companyId },
+                                                    omit: { createdAt: true, updatedAt: true }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                        templateData.detailsHTML = this.generateDetailsHtml(jobDetails, contractorDetails);
+                    }
 
                     // Send emails with template and attachments
                     await this.sendgridService.sendEmailWithTemplate(
@@ -258,4 +309,84 @@ export class JobContractorService {
             throw new InternalServerErrorException();
         }
     }
+
+    private generateDetailsHtml(jobDetails: any, contractorDetails: any) {
+
+        let logo = jobDetails.company.log ? jobDetails.company.log : "https://smart-builder-asset.s3.us-east-1.amazonaws.com/companies/53/logos/smartbuilder-logo.png"
+
+        let htmlContent = `
+            <div style="display: flex; justify-content: center; align-items: center;">
+                <div style="width: 900px; padding: 20px;">
+                    <div style="margin-bottom: 10px;">
+                        <img src="${logo}" style="width: 100px" />
+                    </div>
+                    <div style="display: flex; flex-direction: column; justify-content: start; width: 100%;">
+                        <h4 style="margin: 0">${jobDetails.customer.name}</h4>
+                        <h4 style="margin: 0">${jobDetails.projectAddress}</h4>
+                        <h4 style="margin: 0">
+                            ${jobDetails.projectCity ? `${jobDetails.projectCity}, ` : ''}
+                            ${jobDetails.projectState} ${jobDetails.projectZip}
+                        </h4>
+                    </div>
+        `;
+
+        contractorDetails.clientCategory.forEach((category: any) => {
+            htmlContent += `
+                <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+                   <thead>
+                        <tr>
+                            <th colspan="2" style="background-color: rgb(38, 67, 115); color: white; padding: 8px; text-align: center;border: 1px solid #ddd;">${category.name}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                `
+            category.ClientTemplateQuestion.forEach((question: any) => {
+              let answer = "-";
+        
+              // Format answer based on question type
+              if (question.questionType === "Allowance") {
+                answer = `$${this.formatNumberWithCommas(question?.answer?.answerText ?? 0)}`;
+              } else if (question.questionType === "Multiple Choice Question" && question?.multipleOptions) {
+                if (question?.answer?.answerIds?.length > 0) {
+                  answer = question?.multipleOptions
+                    .filter((option, index) => question.answer.answerIds.includes(String(index)))
+                    .map(option => option.text)
+                    .join(", ");
+                } else {
+                  answer = "-";
+                }
+              } else {
+                answer = question?.answer?.answerText ?? "-";
+              }
+        
+              htmlContent += `
+                    <tr>
+                        <td style="width: 50%; text-align: left; font-weight: bold; padding: 8px;border: 1px solid #ddd;">${question.question}</td>
+                        <td style="width: 50%; text-align: left; padding: 8px;border: 1px solid #ddd;">${answer}</td>
+                    </tr>
+              `;
+            });
+        });
+        
+        htmlContent += `
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        `;
+    
+        return htmlContent;
+    }
+
+    private  formatNumberWithCommas = (number: number | string) => {
+        if (isNaN(Number(number))) {
+          return 0;
+        }
+      
+        let numberString = number.toString();
+      
+        numberString = numberString.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+      
+        return numberString;
+    };
 }
