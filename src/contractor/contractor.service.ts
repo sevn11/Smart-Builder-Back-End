@@ -27,7 +27,7 @@ export class ContractorService {
                         phase: true
                     },
                     orderBy: {
-                        name: 'asc' 
+                        contractorOrder: 'asc' 
                     }
                 });
                 return { contractors }
@@ -330,6 +330,157 @@ export class ContractorService {
             } else if (error instanceof ForbiddenException) {
                 throw error;
             }
+            throw new InternalServerErrorException();
+        }
+    }
+
+    async updateOrder(user: User, companyId: number, contractorId: number, body: {contractorOrder: number}) {
+        try {
+
+            // Check if User is Admin of the Company.
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
+                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
+                    throw new ForbiddenException("Action Not Allowed");
+                }
+
+                let company = await this.databaseService.company.findUnique({
+                    where: {
+                        id: companyId,
+                        isDeleted: false,
+                    }
+                })
+
+                if (!company) {
+                    throw new ForbiddenException("Company not found");
+                }
+
+                let contractor = await this.databaseService.contractor.findUniqueOrThrow({
+                    where: {
+                        id: contractorId,
+                        companyId,
+                        isDeleted: false
+                    }
+                })
+
+                const currentOrder = contractor.contractorOrder
+
+                if (currentOrder > body.contractorOrder) {
+                    // Contractor is moving up
+                    await this.databaseService.$transaction([
+                        this.databaseService.contractor.updateMany({
+                            where: {
+                                id: {
+                                    not: contractorId
+                                },
+                                companyId,
+                                isDeleted: false,
+                                contractorOrder: {
+                                    gte: body.contractorOrder,
+                                    lt: currentOrder,
+                                }
+                            },
+                            data: {
+                                contractorOrder: {
+                                    increment: 1,
+                                }
+                            }
+                        }),
+                        this.databaseService.contractor.update({
+                            where: {
+                                id: contractorId,
+                                companyId,
+                                isDeleted: false,
+                            },
+                            data: {
+                                contractorOrder: body.contractorOrder
+                            }
+                        }),
+                    ]);
+                    let updatedContractors = await this.databaseService.contractor.findMany({
+                        where: {
+                            companyId,
+                            isDeleted: false
+                        },
+                        include: {
+                            phase: true
+                        },
+                        orderBy: {
+                            contractorOrder: 'asc' 
+                        }
+                    })
+
+                    return {
+                        contractors: updatedContractors,
+                        message: ResponseMessages.CONTRACTOR_ORDER_UPDATED,
+                    }
+                } else if (currentOrder < body.contractorOrder) {
+                    // Contractor is moving down
+                    await this.databaseService.$transaction([
+                        this.databaseService.contractor.updateMany({
+                            where: {
+                                id: {
+                                    not: contractorId
+                                },
+                                companyId,
+                                isDeleted: false,
+                                contractorOrder: {
+                                    gt: currentOrder,
+                                    lte: body.contractorOrder
+                                }
+                            },
+                            data: {
+                                contractorOrder: {
+                                    decrement: 1,
+                                }
+                            }
+                        }),
+                        this.databaseService.contractor.update({
+                            where: {
+                                id: contractorId,
+                                companyId,
+                                isDeleted: false,
+                            },
+                            data: {
+                                contractorOrder: body.contractorOrder
+                            }
+                        }),
+                    ])
+                    let updatedContractors = await this.databaseService.contractor.findMany({
+                        where: {
+                            companyId,
+                            isDeleted: false
+                        },
+                        include: {
+                            phase: true
+                        },
+                        orderBy: {
+                            contractorOrder: 'asc' 
+                        }
+                    })
+
+                    return {
+                        contractors: updatedContractors,
+                        message: ResponseMessages.CONTRACTOR_ORDER_UPDATED,
+                    }
+                } else {
+                    throw new ForbiddenException("Unable to change the order.");
+                }
+
+            } else {
+                throw new ForbiddenException("Action Not Allowed");
+            }
+        } catch (error) {
+            console.log(error);
+
+            // Database Exceptions
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code === PrismaErrorCodes.NOT_FOUND) {
+                    throw new BadRequestException(ResponseMessages.RESOURCE_NOT_FOUND);
+                } else {
+                    console.log(error.code);
+                }
+            }
+
             throw new InternalServerErrorException();
         }
     }

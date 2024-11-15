@@ -8,6 +8,7 @@ import { SendInfoToContractorDTO } from './validators/send-info-mail';
 import { readFile } from 'fs/promises';
 import { SendgridService } from 'src/core/services';
 import { ConfigService } from '@nestjs/config';
+import * as htmlPdf from 'html-pdf-node';
 
 @Injectable()
 export class JobContractorService {
@@ -222,11 +223,9 @@ export class JobContractorService {
                     });
 
                     // Prepare template data for email
-                    let detailsHTML = '';
                     const templateData = {
                         user_name: contractor.name,
                         subject: subject,
-                        detailsHTML
                     };
 
                     // Fetch linked informations if send details is checked
@@ -274,7 +273,23 @@ export class JobContractorService {
                                 }
                             }
                         });
-                        templateData.detailsHTML = this.generateDetailsHtml(jobDetails, contractorDetails);
+                        let htmlContent = this.generateDetailsHtml(jobDetails, contractorDetails);
+                        const pdfOptions = {
+                            format: 'A4',
+                            printBackground: true,
+                            margin: {
+                              top: 20,   
+                              left: 20,
+                              bottom: 20,
+                              right: 20
+                            }
+                        };
+                        // Generate pdf from HTML and add as attachment
+                        const pdfBuffer = await htmlPdf.generatePdf({ content: htmlContent }, pdfOptions);
+                        attachments.push({
+                            content: pdfBuffer.toString('base64'),
+                            filename: 'Contractor_Details.pdf',
+                        });
                     }
 
                     // Send emails with template and attachments
@@ -312,7 +327,7 @@ export class JobContractorService {
 
     private generateDetailsHtml(jobDetails: any, contractorDetails: any) {
 
-        let logo = jobDetails.company.log ? jobDetails.company.log : "https://smart-builder-asset.s3.us-east-1.amazonaws.com/companies/53/logos/smartbuilder-logo.png"
+        let logo = jobDetails.company.logo ? jobDetails.company.logo : "https://smart-builder-asset.s3.us-east-1.amazonaws.com/companies/53/logos/smartbuilder-logo.png"
 
         let htmlContent = `
             <div style="display: flex; justify-content: center; align-items: center;">
