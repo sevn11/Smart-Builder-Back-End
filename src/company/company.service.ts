@@ -93,6 +93,7 @@ export class CompanyService {
                     },
                     data: {
                         name: body.name,
+                        email: body.email,
                         PermissionSet: {
                             update: {
                                 fullAccess: body.PermissionSet.fullAccess,
