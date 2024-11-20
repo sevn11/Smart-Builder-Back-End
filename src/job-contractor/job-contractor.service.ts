@@ -174,7 +174,6 @@ export class JobContractorService {
                 }
 
                 const jobContractors = body.jobContractors;
-                const fileIds = body.files;
                 const sendCC = body.sendCC;
                 const subject = body.subject
                 let ccMail = null;
@@ -194,21 +193,25 @@ export class JobContractorService {
                 replyTo = ccMail = company.email;
 
                 // Prepare attachments array
-                const attachments = await Promise.all(fileIds.map(async (fileId) => {
-                    // Retrieve file data from database
-                    const file = await this.databaseService.contractorFiles.findFirstOrThrow({
-                        where: { id: fileId }
-                    });
+                let attachments = [];
+                if(body.files) {
+                    const fileIds = body.files;
+                    attachments = await Promise.all(fileIds.map(async (fileId) => {
+                        // Retrieve file data from database
+                        const file = await this.databaseService.contractorFiles.findFirstOrThrow({
+                            where: { id: fileId }
+                        });
 
-                    // Read file content asynchronously
-                    const fileContent = await readFile(file.filePath);
+                        // Read file content asynchronously
+                        const fileContent = await readFile(file.filePath);
 
-                    // Return attachment object
-                    return {
-                        content: fileContent.toString('base64'),
-                        filename: file.fileName,
-                    };
-                }));
+                        // Return attachment object
+                        return {
+                            content: fileContent.toString('base64'),
+                            filename: file.fileName,
+                        };
+                    }));
+                }
 
                 await Promise.all(jobContractors.map(async (jobContractor) => {
                     // Retrieve job contractor data from database
