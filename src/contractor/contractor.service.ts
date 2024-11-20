@@ -59,6 +59,12 @@ export class ContractorService {
                 if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
+
+                const maxOrder = await this.databaseService.contractor.aggregate({
+                    _max: { contractorOrder: true, },
+                    where: { companyId, isDeleted: false }
+                });
+                let order = maxOrder._max.contractorOrder ? maxOrder._max.contractorOrder + 1 : 1;
                 
                 let contractor = await this.databaseService.contractor.create({
                     data: {
@@ -66,6 +72,7 @@ export class ContractorService {
                         name: body.name,
                         email: body.email,
                         phaseId: body.phaseId,
+                        contractorOrder: order
                     }
                 })
                 return { contractor }
