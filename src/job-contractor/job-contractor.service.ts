@@ -241,7 +241,7 @@ export class JobContractorService {
                                 company: true
                             }
                         });
-                        let contractorDetails = await this.databaseService.clientTemplate.findFirstOrThrow({
+                        let contractorDetails = await this.databaseService.clientTemplate.findFirst({
                             where: { companyId, jobId, isDeleted: false},
                             include: {
                                 clientCategory: {
@@ -348,6 +348,14 @@ export class JobContractorService {
                     </div>
         `;
 
+        if (contractorDetails.clientCategory.length === 0) {
+            htmlContent += `
+                <div style="text-align: center; margin-top: 20px; font-weight: bold;">
+                    No data found
+                </div>
+            `;
+        }
+        else {
         contractorDetails.clientCategory.forEach((category: any) => {
             htmlContent += `
                 <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
@@ -385,6 +393,7 @@ export class JobContractorService {
               `;
             });
         });
+        }
         
         htmlContent += `
                     </tbody>
