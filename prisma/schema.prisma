@@ -355,6 +355,8 @@ model Contractor {
   isDeleted         Boolean?           @default(false) @map("is_deleted")
   JobContractor     JobContractor[]
   JobSchedule       JobSchedule[]
+  contractorOrder   Int?               @map("contractor_order")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
