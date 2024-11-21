@@ -313,6 +313,10 @@ export class JobContractorService {
             }
 
         } catch (error) {
+            // Debugging
+            return {
+                error
+            }
             console.log(error);
             // Database Exceptions
             if (error instanceof PrismaClientKnownRequestError) {
