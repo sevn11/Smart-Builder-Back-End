@@ -313,10 +313,6 @@ export class JobContractorService {
             }
 
         } catch (error) {
-            throw new InternalServerErrorException({
-                message: 'An unexpected error occurred.',
-                errorDetails: error.message,
-            });
             console.log(error);
             // Database Exceptions
             if (error instanceof PrismaClientKnownRequestError) {
@@ -328,7 +324,10 @@ export class JobContractorService {
             } else if (error instanceof ForbiddenException) {
                 throw error;
             }
-            throw new InternalServerErrorException();
+            throw new InternalServerErrorException({
+                message: 'An unexpected error occurred.',
+                errorDetails: error.message,
+            });
         }
     }
 
