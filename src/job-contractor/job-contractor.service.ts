@@ -326,7 +326,7 @@ export class JobContractorService {
             }
             throw new InternalServerErrorException({
                 message: 'An unexpected error occurred.',
-                errorDetails: error.message,
+                details: error.message,
             });
         }
     }
