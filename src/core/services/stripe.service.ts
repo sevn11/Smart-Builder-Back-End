@@ -343,6 +343,7 @@ export class StripeService {
             let subscription = await this.StripeClient.subscriptions.retrieve(user.subscriptionId);
             if(subscription) {
                 const builderSubscription = {
+                    subscription_status: subscription.status,
                     trial_end: subscription.trial_end,
                     current_period_start: subscription.current_period_start,
                     current_period_end: subscription.current_period_end
