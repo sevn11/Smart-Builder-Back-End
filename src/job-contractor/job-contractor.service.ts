@@ -288,11 +288,11 @@ export class JobContractorService {
                             }
                         };
                         // Generate pdf from HTML and add as attachment
-                        const pdfBuffer = await htmlPdf.generatePdf({ content: htmlContent }, pdfOptions);
-                        attachments.push({
-                            content: pdfBuffer.toString('base64'),
-                            filename: 'Contractor_Details.pdf',
-                        });
+                        // const pdfBuffer = await htmlPdf.generatePdf({ content: htmlContent }, pdfOptions);
+                        // attachments.push({
+                        //     content: pdfBuffer.toString('base64'),
+                        //     filename: 'Contractor_Details.pdf',
+                        // });
                     }
 
                     // Send emails with template and attachments
@@ -333,18 +333,19 @@ export class JobContractorService {
 
     private async generateDetailsHtml(jobDetails: any, contractorDetails: any) {
 
-        // let logo = jobDetails.company.logo ? jobDetails.company.logo : "https://smart-builder-asset.s3.us-east-1.amazonaws.com/companies/53/logos/smartbuilder-logo.png"
-        // const response = await fetch(logo);
-        // const arrayBuffer = await response.arrayBuffer();
-        // const buffer = Buffer.from(arrayBuffer);
-        // const base64Image = buffer.toString('base64');
-        // const mimeType = response.headers.get('content-type');
-        // let logoBase64 = `data:${mimeType};base64,${base64Image}`;
+        let logo = jobDetails.company.logo ? jobDetails.company.logo : "https://smart-builder-asset.s3.us-east-1.amazonaws.com/companies/53/logos/smartbuilder-logo.png"
+        const response = await fetch(logo);
+        const arrayBuffer = await response.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        const base64Image = buffer.toString('base64');
+        const mimeType = response.headers.get('content-type');
+        let logoBase64 = `data:${mimeType};base64,${base64Image}`;
 
         let htmlContent = `
             <div style="display: flex; justify-content: center; align-items: center;">
                 <div style="width: 900px; padding: 20px;">
                     <div style="margin-bottom: 10px;">
+                        <img src="${logoBase64}" style="width: 100px" />
                     </div>
                     <div style="display: flex; flex-direction: column; justify-content: start; width: 100%;">
                         <h4 style="margin: 0">${jobDetails.customer.name}</h4>
