@@ -61,13 +61,17 @@ export class StripeService {
             // Create a subscription for the new employee
             let subscription: Stripe.Subscription;
             const now = Math.floor(Date.now() / 1000);
+            const trialEndDateObj = new Date(builderSubscription.trial_end * 1000);
+            const firstOfNextMonthAfterTrial = new Date(trialEndDateObj.getFullYear(), trialEndDateObj.getMonth() + 1, 1); 
+            const firstOfNextMonthAfterTrialTimestamp = Math.floor(firstOfNextMonthAfterTrial.getTime() / 1000);
             if (builderSubscription.trial_end > now) {
                 // Adding employee subscription within builder's trial period
                 subscription = await this.StripeClient.subscriptions.create({
                     customer: customer.id,
                     items: [{ price: price.id }],
                     trial_end: builderSubscription.trial_end,
-                    proration_behavior: 'create_prorations'
+                    billing_cycle_anchor: firstOfNextMonthAfterTrialTimestamp,
+                    proration_behavior: 'create_prorations',
                 });
             } else {
                 // Adding employee subscription after builder's trial ended
@@ -279,13 +283,19 @@ export class StripeService {
                 recurring: { interval: planType },
                 product: product.id,
             });
+            const trialEndDate = Math.floor((new Date().getTime() + 30 * 24 * 60 * 60 * 1000) / 1000);
+            const trialEndDateObj = new Date(trialEndDate * 1000);
+            const firstOfNextMonthAfterTrial = new Date(trialEndDateObj.getFullYear(), trialEndDateObj.getMonth() + 1, 1); 
+            const firstOfNextMonthAfterTrialTimestamp = Math.floor(firstOfNextMonthAfterTrial.getTime() / 1000);
     
             // Create a subscription for the new employee
             const subscription = await this.StripeClient.subscriptions.create({
                 customer: customer.id,
                 items: [{ price: price.id }],
                 default_payment_method: body.paymentMethodId,
-                trial_period_days: 30
+                trial_end: trialEndDate,    
+                billing_cycle_anchor: firstOfNextMonthAfterTrialTimestamp,
+                proration_behavior: 'create_prorations',
             });
             return {
                 status: true,
