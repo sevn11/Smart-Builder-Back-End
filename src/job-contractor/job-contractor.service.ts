@@ -345,7 +345,7 @@ export class JobContractorService {
             <div style="display: flex; justify-content: center; align-items: center;">
                 <div style="width: 900px; padding: 20px;">
                     <div style="margin-bottom: 10px;">
-                        <img src="${logoBase64}" style="width: 100px" />
+                        <img src="https://www.getautismactive.com/wp-content/uploads/2021/01/Test-Logo-Circle-black-transparent.png" style="width: 100px" />
                     </div>
                     <div style="display: flex; flex-direction: column; justify-content: start; width: 100%;">
                         <h4 style="margin: 0">${jobDetails.customer.name}</h4>
