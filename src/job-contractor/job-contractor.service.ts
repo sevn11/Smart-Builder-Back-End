@@ -8,7 +8,7 @@ import { SendInfoToContractorDTO } from './validators/send-info-mail';
 import { readFile } from 'fs/promises';
 import { SendgridService } from 'src/core/services';
 import { ConfigService } from '@nestjs/config';
-import * as pdf from 'html-pdf';
+import * as htmlPdf from 'html-pdf-node';
 
 @Injectable()
 export class JobContractorService {
@@ -288,12 +288,7 @@ export class JobContractorService {
                             }
                         };
                         // Generate pdf from HTML and add as attachment
-                        const pdfBuffer = await new Promise<Buffer>((resolve, reject) => {
-                            pdf.create(htmlContent, { format: 'A4' }).toBuffer((err, buffer) => {
-                                if (err) reject(err);
-                                else resolve(buffer);
-                            });
-                        });
+                        const pdfBuffer = await htmlPdf.generatePdf({ content: htmlContent }, pdfOptions);
                         attachments.push({
                             content: pdfBuffer.toString('base64'),
                             filename: 'Contractor_Details.pdf',
