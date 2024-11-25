@@ -333,13 +333,13 @@ export class JobContractorService {
 
     private async generateDetailsHtml(jobDetails: any, contractorDetails: any) {
 
-        let logo = jobDetails.company.logo ? jobDetails.company.logo : "https://smart-builder-asset.s3.us-east-1.amazonaws.com/companies/53/logos/smartbuilder-logo.png"
-        const response = await fetch(logo);
-        const arrayBuffer = await response.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
-        const base64Image = buffer.toString('base64');
-        const mimeType = response.headers.get('content-type');
-        let logoBase64 = `data:${mimeType};base64,${base64Image}`;
+        // let logo = jobDetails.company.logo ? jobDetails.company.logo : "https://smart-builder-asset.s3.us-east-1.amazonaws.com/companies/53/logos/smartbuilder-logo.png"
+        // const response = await fetch(logo);
+        // const arrayBuffer = await response.arrayBuffer();
+        // const buffer = Buffer.from(arrayBuffer);
+        // const base64Image = buffer.toString('base64');
+        // const mimeType = response.headers.get('content-type');
+        // let logoBase64 = `data:${mimeType};base64,${base64Image}`;
 
         let htmlContent = `
             <div style="display: flex; justify-content: center; align-items: center;">
