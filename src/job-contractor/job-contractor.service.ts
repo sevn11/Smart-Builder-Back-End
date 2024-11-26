@@ -283,6 +283,8 @@ export class JobContractorService {
                             attachments.push({
                                 content: pdf.toString('base64'),
                                 filename: 'Contractor_Details.pdf',
+                                type: 'application/pdf',
+                                disposition: 'attachment',
                             });
                         });
                     }
