@@ -195,7 +195,7 @@ export class JobContractorService {
 
                 // Prepare attachments array
                 let attachments = [];
-                if(body.files) {
+                if (body.files) {
                     const fileIds = body.files;
                     attachments = await Promise.all(fileIds.map(async (fileId) => {
                         // Retrieve file data from database
@@ -233,9 +233,9 @@ export class JobContractorService {
                     };
 
                     // Fetch linked informations if send details is checked
-                    if(jobContractor.sendDetails) {
+                    if (jobContractor.sendDetails) {
                         let jobDetails = await this.databaseService.job.findFirst({
-                            where: { id: jobId, companyId, isDeleted: false},
+                            where: { id: jobId, companyId, isDeleted: false },
                             include: {
                                 customer: true,
                                 description: true,
@@ -243,7 +243,7 @@ export class JobContractorService {
                             }
                         });
                         let contractorDetails = await this.databaseService.clientTemplate.findFirst({
-                            where: { companyId, jobId, isDeleted: false},
+                            where: { companyId, jobId, isDeleted: false },
                             include: {
                                 clientCategory: {
                                     where: {
@@ -278,17 +278,18 @@ export class JobContractorService {
                             }
                         });
                         let htmlContent = await this.generateDetailsHtml(jobDetails, contractorDetails);
+                        let generatedPdfBuffer = await this.generatePDF(htmlContent);
+
                         // Generate pdf from HTML and add as attachment
-                        await convertHTMLToPDF(htmlContent, function (pdf: any) {
+                        if (generatedPdfBuffer) {
                             attachments.push({
-                                content: pdf.toString('base64'),
+                                content: generatedPdfBuffer.toString('base64'),
                                 filename: 'Contractor_Details.pdf',
                                 type: 'application/pdf',
                                 disposition: 'attachment',
-                            });
-                        });
+                            })
+                        }
                     }
-
                     // Send emails with template and attachments
                     await this.sendgridService.sendEmailWithTemplate(
                         contractor.email,
@@ -325,6 +326,23 @@ export class JobContractorService {
         }
     }
 
+    private async generatePDF(htmlContent: string): Promise<Buffer> {
+        const pdf = require('html-pdf-node');
+        let options = { format: 'A4' };
+        return new Promise((resolve, reject) => {
+
+            pdf.generatePdf({ content: htmlContent }, options)
+                .then((pdfBuffer: any) => {
+                    console.log('PDF generated successfully:', pdfBuffer);
+                    resolve(pdfBuffer);
+                })
+                .catch((error: any) => {
+                    console.error('Error generating PDF:', error);
+                    reject(error);
+                });
+        })
+    }
+
     private async generateDetailsHtml(jobDetails: any, contractorDetails: any) {
 
         let logo = jobDetails.company.logo ? jobDetails.company.logo : "https://smart-builder-asset.s3.us-east-1.amazonaws.com/companies/53/logos/smartbuilder-logo.png"
@@ -359,8 +377,8 @@ export class JobContractorService {
             `;
         }
         else {
-        contractorDetails.clientCategory.forEach((category: any) => {
-            htmlContent += `
+            contractorDetails.clientCategory.forEach((category: any) => {
+                htmlContent += `
                 <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
                    <thead>
                         <tr>
@@ -369,54 +387,54 @@ export class JobContractorService {
                     </thead>
                     <tbody>
                 `
-            category.ClientTemplateQuestion.forEach((question: any) => {
-              let answer = "-";
-        
-              // Format answer based on question type
-              if (question.questionType === "Allowance") {
-                answer = `$${this.formatNumberWithCommas(question?.answer?.answerText ?? 0)}`;
-              } else if (question.questionType === "Multiple Choice Question" && question?.multipleOptions) {
-                if (question?.answer?.answerIds?.length > 0) {
-                  answer = question?.multipleOptions
-                    .filter((option, index) => question.answer.answerIds.includes(String(index)))
-                    .map(option => option.text)
-                    .join(", ");
-                } else {
-                  answer = "-";
-                }
-              } else {
-                answer = question?.answer?.answerText ?? "-";
-              }
-        
-              htmlContent += `
+                category.ClientTemplateQuestion.forEach((question: any) => {
+                    let answer = "-";
+
+                    // Format answer based on question type
+                    if (question.questionType === "Allowance") {
+                        answer = `$${this.formatNumberWithCommas(question?.answer?.answerText ?? 0)}`;
+                    } else if (question.questionType === "Multiple Choice Question" && question?.multipleOptions) {
+                        if (question?.answer?.answerIds?.length > 0) {
+                            answer = question?.multipleOptions
+                                .filter((option, index) => question.answer.answerIds.includes(String(index)))
+                                .map(option => option.text)
+                                .join(", ");
+                        } else {
+                            answer = "-";
+                        }
+                    } else {
+                        answer = question?.answer?.answerText ?? "-";
+                    }
+
+                    htmlContent += `
                     <tr>
                         <td style="width: 50%; text-align: left; font-weight: bold; padding: 8px;border: 1px solid #ddd;">${question.question}</td>
                         <td style="width: 50%; text-align: left; padding: 8px;border: 1px solid #ddd;">${answer}</td>
                     </tr>
               `;
+                });
             });
-        });
         }
-        
+
         htmlContent += `
                     </tbody>
                 </table>
             </div>
         </div>
         `;
-    
+
         return htmlContent;
     }
 
-    private  formatNumberWithCommas = (number: number | string) => {
+    private formatNumberWithCommas = (number: number | string) => {
         if (isNaN(Number(number))) {
-          return 0;
+            return 0;
         }
-      
+
         let numberString = number.toString();
-      
+
         numberString = numberString.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-      
+
         return numberString;
     };
 }
