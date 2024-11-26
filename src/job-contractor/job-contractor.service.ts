@@ -278,17 +278,15 @@ export class JobContractorService {
                             }
                         });
                         let htmlContent = await this.generateDetailsHtml(jobDetails, contractorDetails);
-                        let generatedPdfBuffer = await this.generatePDF(htmlContent);
-
                         // Generate pdf from HTML and add as attachment
-                        if (generatedPdfBuffer) {
+                        await convertHTMLToPDF(htmlContent, function (pdf: any) {
                             attachments.push({
-                                content: generatedPdfBuffer.toString('base64'),
+                                content: pdf.toString('base64'),
                                 filename: 'Contractor_Details.pdf',
                                 type: 'application/pdf',
                                 disposition: 'attachment',
                             })
-                        }
+                        })
                     }
                     // Send emails with template and attachments
                     await this.sendgridService.sendEmailWithTemplate(
@@ -324,23 +322,6 @@ export class JobContractorService {
                 details: error.message,
             });
         }
-    }
-
-    private async generatePDF(htmlContent: string): Promise<Buffer> {
-        const pdf = require('html-pdf-node');
-        let options = { format: 'A4' };
-        return new Promise((resolve, reject) => {
-
-            pdf.generatePdf({ content: htmlContent }, options)
-                .then((pdfBuffer: any) => {
-                    console.log('PDF generated successfully:', pdfBuffer);
-                    resolve(pdfBuffer);
-                })
-                .catch((error: any) => {
-                    console.error('Error generating PDF:', error);
-                    reject(error);
-                });
-        })
     }
 
     private async generateDetailsHtml(jobDetails: any, contractorDetails: any) {
