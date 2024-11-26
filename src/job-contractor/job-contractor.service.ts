@@ -9,6 +9,7 @@ import { readFile } from 'fs/promises';
 import { SendgridService } from 'src/core/services';
 import { ConfigService } from '@nestjs/config';
 import * as htmlPdf from 'html-pdf-node';
+const convertHTMLToPDF = require('pdf-puppeteer');
 
 @Injectable()
 export class JobContractorService {
@@ -276,32 +277,13 @@ export class JobContractorService {
                                 }
                             }
                         });
-                        let htmlContent = `
-                            <html>
-                                <head>
-                                    <title>Test PDF</title>
-                                </head>
-                                <body>
-                                    <h1 style="color: red;">This is a test PDF without content</h1>
-                                </body>
-                            </html>`;
-
-                        const pdfOptions = {
-                            format: 'A4',
-                            printBackground: true,
-                            margin: {
-                              top: 20,   
-                              left: 20,
-                              bottom: 20,
-                              right: 20
-                            },
-                            disableExternalResources: false
-                        };
+                        let htmlContent = await this.generateDetailsHtml(jobDetails, contractorDetails);
                         // Generate pdf from HTML and add as attachment
-                        const pdfBuffer = await htmlPdf.generatePdf({ content: htmlContent }, pdfOptions);
-                        attachments.push({
-                            content: pdfBuffer.toString('base64'),
-                            filename: 'Contractor_Details.pdf',
+                        await convertHTMLToPDF(htmlContent, function (pdf: any) {
+                            attachments.push({
+                                content: pdf.toString('base64'),
+                                filename: 'Contractor_Details.pdf',
+                            });
                         });
                     }
 
