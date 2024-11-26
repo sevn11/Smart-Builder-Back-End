@@ -294,7 +294,8 @@ export class JobContractorService {
                               left: 20,
                               bottom: 20,
                               right: 20
-                            }
+                            },
+                            disableExternalResources: false
                         };
                         // Generate pdf from HTML and add as attachment
                         const pdfBuffer = await htmlPdf.generatePdf({ content: htmlContent }, pdfOptions);
