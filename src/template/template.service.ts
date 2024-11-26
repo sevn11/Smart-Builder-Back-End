@@ -167,8 +167,9 @@ export class TemplateService {
                         include: {
                             answer: {
                                 where: {
+                                    clientTemplateId: templateId,
                                     companyId,
-                                    clientCategoryId: category.id,
+                                    customerId: customer.id,
                                     jobId: job.id,
                                 }
                             }
