@@ -276,8 +276,16 @@ export class JobContractorService {
                                 }
                             }
                         });
-                        // let htmlContent = await this.generateDetailsHtml(jobDetails, contractorDetails);
-                        let htmlContent = "<h1 style='color: red;'> This is for testing </h1>";
+                        let htmlContent = `
+                            <html>
+                                <head>
+                                    <title>Test PDF</title>
+                                </head>
+                                <body>
+                                    <h1 style="color: red;">This is a test PDF without content</h1>
+                                </body>
+                            </html>`;
+
                         const pdfOptions = {
                             format: 'A4',
                             printBackground: true,
