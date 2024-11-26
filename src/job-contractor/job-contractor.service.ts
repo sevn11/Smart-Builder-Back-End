@@ -286,14 +286,7 @@ export class JobContractorService {
                                 type: 'application/pdf',
                                 disposition: 'attachment',
                             })
-                        },
-                            { format: 'A4' },
-                            {
-                                args: [
-                                    '--no-sandbox',
-                                    '--disable-setuid-sandbox'
-                                ]
-                            });
+                        });
                     }
                     // Send emails with template and attachments
                     await this.sendgridService.sendEmailWithTemplate(
