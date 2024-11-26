@@ -276,7 +276,8 @@ export class JobContractorService {
                                 }
                             }
                         });
-                        let htmlContent = await this.generateDetailsHtml(jobDetails, contractorDetails);
+                        // let htmlContent = await this.generateDetailsHtml(jobDetails, contractorDetails);
+                        let htmlContent = "<h1 style='color: red;'> This is for testing </h1>";
                         const pdfOptions = {
                             format: 'A4',
                             printBackground: true,
