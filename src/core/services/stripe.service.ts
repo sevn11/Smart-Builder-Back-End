@@ -366,4 +366,17 @@ export class StripeService {
             return null
         }
     }
+
+    // Function to update stripe customer 
+    async updateCustomerEmail(user: User) {
+        try {
+            await this.StripeClient.customers.update(user.stripeCustomerId, {
+                email: user.email,
+                name: user.name
+            });
+        } catch (error) {
+            console.log(error)
+            return false;
+        }
+    }
 }
