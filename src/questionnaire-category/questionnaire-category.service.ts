@@ -138,9 +138,6 @@ export class QuestionnaireCategoryService {
                 isDeleted: false,
                 linkToQuestionnaire: true,
               },
-              include: {
-                answers: true,
-              },
               omit: {
                 isDeleted: true,
                 categoryId: true,

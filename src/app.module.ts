@@ -27,8 +27,12 @@ import { ProjectEstimatorTemplateModule } from './project-estimator-template/pro
 import { QuestionnaireCategoryModule } from './questionnaire-category/questionnaire-category.module';
 import { TemplateQuestionModule } from './template-question/template-question.module';
 import { TemplateQuestionAnswerModule } from './template-question-answer/template-question-answer.module';
+import { GoogleCalendarModule } from './google-calendar/google-calendar.module';
 import { ProjectDescriptionModule } from './project-description/project-description.module';
 import { SeoSettingsModule } from './seo-settings/seo-settings.module';
+import { TemplateModule } from './template/template.module';
+import { ClientTemplateModule } from './client-template/client-template.module';
+import { CustomizedContentModule } from './customized-content/customized-content.module';
 @Module({
   imports: [
     ServeStaticModule.forRoot({
@@ -59,9 +63,13 @@ import { SeoSettingsModule } from './seo-settings/seo-settings.module';
     QuestionnaireCategoryModule,
     TemplateQuestionModule,
     TemplateQuestionAnswerModule,
+    GoogleCalendarModule,
     ProjectDescriptionModule,
     SelectionTemplateModule,
-    SeoSettingsModule
+    SeoSettingsModule,
+    TemplateModule,
+    ClientTemplateModule,
+    CustomizedContentModule
   ],
 })
 export class AppModule { }
