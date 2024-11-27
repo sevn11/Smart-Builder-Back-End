@@ -28,6 +28,9 @@ model User {
   isActive      Boolean        @default(true) @map("is_active")
   isDeleted     Boolean?       @default(false) @map("is_deleted")
   PermissionSet PermissionSet?
+  stripeCustomerId   String?  @map("stripe_customer_id")
+  subscriptionId    String?  @map("subscription_id")
+  productId         String?  @map("product_id")
 
   passwordResetCode Int?    @map("password_reset_code")
   invitationToken   String? @map("invitation_token")
@@ -39,7 +42,19 @@ model User {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  PaymentLog      PaymentLog[]
+  EmployeeDetails EmployeeDetails?
+  
   @@map("users")
+}
+
+model SeoSettings {
+  id                    Int             @id @default(autoincrement())
+  yearlyPlanAmount      Decimal         @map("yearly_plan_amount") @db.Decimal(10, 2)
+  monthlyPlanAmount     Decimal         @map("monthly_plan_amount") @db.Decimal(10, 2)
+  additionalEmployeeFee Decimal         @map("additional_employee_fee") @db.Decimal(10, 2) 
+
+  @@map("seo_settings")
 }
 
 model Company {
@@ -56,7 +71,9 @@ model Company {
   customers              Customer[]
   jobs                   Job[]
   projectDescription     ProjectDescription[]
-  extraFee               Decimal                 @map("extra_fee") @db.Decimal(10, 2) @default(20.00)
+  extraFee               Decimal                 @map("extra_fee") @db.Decimal(10, 2) @default(0.00)
+  planType               PlanType?               @map("plan_type")        
+  planAmount             Decimal                 @map("plan_amount") @db.Decimal(10, 2) @default(0.00)
   categories             Category[]
   contractors            Contractor[]
   JobContractor          JobContractor[]
@@ -78,6 +95,21 @@ model Company {
   ClientTemplate         ClientTemplate[]
   clientQuestionAnswer   ClientQuestionAnswer[]
   @@map("companies")
+}
+
+enum PlanType {
+  MONTHLY
+  YEARLY
+}
+
+model EmployeeDetails {
+  id             Int      @id @default(autoincrement())
+  userId         Int      @unique @map("user_id")
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  address        String?
+  phoneNumber    String?  @map("phone_number")
+
+  @@map("employee_details")
 }
 
 model PermissionSet {
@@ -187,6 +219,22 @@ model Job {
   ClientTemplateQuestion ClientTemplateQuestion[]
   ClientQuestionAnswer   ClientQuestionAnswer[]
   @@map("jobs")
+}
+
+model PaymentLog {
+    id              Int       @id @default(autoincrement())
+    userId          Int       @map("user_id")
+    user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+    paymentId       String?   @map("payment_id")
+    amount          Float?    @default(0)
+    paymentDate     DateTime? @map("payment_date")
+    status          String?  
+    response        Json?    
+
+    createdAt       DateTime @default(now()) @map("created_at")
+    updatedAt       DateTime @updatedAt @map("updated_at")
+
+    @@map("payment_logs")
 }
 
 model ProjectDescription {

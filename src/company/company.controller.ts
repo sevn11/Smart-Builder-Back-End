@@ -4,6 +4,7 @@ import { CompanyService } from './company.service';
 import { GetUser } from 'src/core/decorators';
 import { User } from '@prisma/client';
 import { AddUserDTO, UploadLogoDTO, UpdateCompanyDTO, UpdateUserDTO, ChangeEmailDTO } from './validators';
+import { PaymentMethodDTO } from './validators/payment-method';
 
 
 @UseGuards(JwtGuard)
@@ -60,4 +61,50 @@ export class CompanyController {
 
     }
 
+    @HttpCode(HttpStatus.OK)
+    @Get(':id/payment-method')
+    getDefaultPaymentMethod(@GetUser() user: User, @Param('id', ParseIntPipe) companyId: number) {
+        return this.companyService.getDefaultPaymentMethod(user, companyId);
+    }
+
+    @HttpCode(HttpStatus.OK)
+    @Post(':id/payment-method')
+    setDefaultPaymentMethod(@GetUser() user: User, @Param('id', ParseIntPipe) companyId: number, @Body() body: PaymentMethodDTO) {
+        return this.companyService.setDefaultPaymentMethod(user, body);
+    }
+
+    @HttpCode(HttpStatus.OK)
+    @Get(':id/transactions')
+    getTransactions(@GetUser() user: User, @Param('id', ParseIntPipe) companyId: number) {
+        return this.companyService.getTransactions(user, companyId);
+    }
+
+    @HttpCode(HttpStatus.OK)
+    @Post(':id/retry-payment/:paymenLogId')
+    retryPayment(@GetUser() user: User, @Param('id', ParseIntPipe) companyId: number, @Param('paymenLogId', ParseIntPipe) paymenLogId: number, @Body() body: PaymentMethodDTO) {
+        return this.companyService.retryPayment(user, paymenLogId, body);
+    }
+
+    @HttpCode(HttpStatus.OK)
+    @Post(':id/renew-subscription/:employeeId')
+    renewEmployeeSubscription(
+        @GetUser() user: User, 
+        @Param('id', ParseIntPipe) companyId: number, 
+        @Param('employeeId', ParseIntPipe) employeeId: number, 
+        @Body() body: PaymentMethodDTO
+    ) {
+        return this.companyService.renewEmployeeSubscription(user, employeeId, body);
+    }
+
+    @HttpCode(HttpStatus.OK)
+    @Get(':id/subscription-info')
+    getBuilderSubscriptionInfo(@GetUser() user: User, @Param('id', ParseIntPipe) companyId: number) {
+        return this.companyService.getBuilderSubscriptionInfo(user);
+    }
+
+    @HttpCode(HttpStatus.OK)
+    @Get(':id/cancel-subscription')
+    cancelBuilderSubscription(@GetUser() user: User, @Param('id', ParseIntPipe) companyId: number) {
+        return this.companyService.cancelBuilderSubscription(user);
+    }
 }

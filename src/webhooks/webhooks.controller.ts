@@ -3,11 +3,12 @@ import { User } from '@prisma/client';
 import { GetUser } from 'src/core/decorators';
 import { UpdateCompanyLogoDTO } from './validators';
 import { WebhooksService } from './webhooks.service';
+import { StripeService } from 'src/core/services/stripe.service';
 
 @Controller('webhooks')
 export class WebhooksController {
 
-    constructor(private webhookService: WebhooksService) {
+    constructor(private webhookService: WebhooksService, private stripeService: StripeService) {
 
     }
 
@@ -17,4 +18,9 @@ export class WebhooksController {
         return this.webhookService.updateLogoUrl(companyId, body);
     }
 
+    @HttpCode(HttpStatus.OK)
+    @Post('stripe-events')
+    handleStripeWebhook(@Body() body: any) {
+        this.webhookService.handleStripeWebhook(body);
+    }
 }
