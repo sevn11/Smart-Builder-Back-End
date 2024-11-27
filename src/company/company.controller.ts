@@ -101,4 +101,10 @@ export class CompanyController {
     getBuilderSubscriptionInfo(@GetUser() user: User, @Param('id', ParseIntPipe) companyId: number) {
         return this.companyService.getBuilderSubscriptionInfo(user);
     }
+
+    @HttpCode(HttpStatus.OK)
+    @Get(':id/cancel-subscription')
+    cancelBuilderSubscription(@GetUser() user: User, @Param('id', ParseIntPipe) companyId: number) {
+        return this.companyService.cancelBuilderSubscription(user);
+    }
 }

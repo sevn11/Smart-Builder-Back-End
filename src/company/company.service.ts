@@ -708,4 +708,43 @@ export class CompanyService {
             throw new InternalServerErrorException();
         }
     }
+
+    // Fn to cancel builder subscription along with all employee scubscriptions
+    async cancelBuilderSubscription(user: User) {
+        try {
+            let builder = await this.databaseService.user.findFirstOrThrow({
+                where: {
+                    id: user.id,
+                    userType: UserTypes.BUILDER
+                }
+            });
+            // Remove subscription from stripe
+            if(builder.subscriptionId) {
+                await this.stripeService.removeSubscription(builder.subscriptionId);
+            }
+            // Cancel employee subscription
+            let employees = await this.databaseService.user.findMany({
+                where: {
+                    isActive: true,
+                    isDeleted: false,
+                    companyId: user.companyId,
+                    userType: UserTypes.EMPLOYEE
+                }
+            });
+            if (employees.length > 0) {
+                for (const employee of employees) {
+                    if(employee.subscriptionId) {
+                        await this.stripeService.removeSubscription(employee.subscriptionId);
+                    }
+                }
+            }
+            return { message: ResponseMessages.SUCCESSFUL }
+        } catch (error) {
+            console.log(error)
+            throw new InternalServerErrorException({
+                error: "An unexpected error occured.",
+                errorDetails: error.message
+            })
+        }
+    }
 }
