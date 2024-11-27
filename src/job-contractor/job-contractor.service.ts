@@ -279,14 +279,24 @@ export class JobContractorService {
                         });
                         let htmlContent = await this.generateDetailsHtml(jobDetails, contractorDetails);
                         // Generate pdf from HTML and add as attachment
-                        await convertHTMLToPDF(htmlContent, function (pdf: any) {
-                            attachments.push({
-                                content: pdf.toString('base64'),
-                                filename: 'Contractor_Details.pdf',
-                                type: 'application/pdf',
-                                disposition: 'attachment',
-                            })
-                        });
+                        await convertHTMLToPDF(
+                            htmlContent,
+                            function (pdf: any) {
+                                attachments.push({
+                                    content: pdf.toString('base64'),
+                                    filename: 'Contractor_Details.pdf',
+                                    type: 'application/pdf',
+                                    disposition: 'attachment',
+                                })
+                            },
+                            { format: 'A4' },
+                            {
+                                args: [
+                                    '--no-sandbox',
+                                    '--disable-setuid-sandbox'
+                                ]
+                            }
+                        );
                     }
                     // Send emails with template and attachments
                     await this.sendgridService.sendEmailWithTemplate(
