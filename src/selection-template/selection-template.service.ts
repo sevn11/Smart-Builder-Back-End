@@ -604,6 +604,8 @@ export class SelectionTemplateService {
                     data: {
                         question: body.question,
                         linkToPhase: body.isQuestionLinkedPhase,
+                        questionType: body.type,
+                        multipleOptions: body.multipleOptions,
                         phaseId: body.isQuestionLinkedPhase ? body.linkedPhase : null,
                         contractorIds: body.contractorIds
                     },
