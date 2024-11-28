@@ -99,8 +99,8 @@ export class CompanyService {
                 if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
-                let employee = null;
-                employee = await this.databaseService.user.findFirstOrThrow({
+                let result = null;
+                result = await this.databaseService.user.findFirstOrThrow({
                     where: {
                         id: userId,
                         isActive: true,
@@ -108,7 +108,7 @@ export class CompanyService {
                         isDeleted: false
                     }
                 });
-                employee = await this.databaseService.user.update({
+                result = await this.databaseService.user.update({
                     where: {
                         id: userId,
                         companyId: companyId,
@@ -116,6 +116,7 @@ export class CompanyService {
                     },
                     data: {
                         name: body.name,
+                        email: body.email,
                         PermissionSet: {
                             update: {
                                 fullAccess: body.PermissionSet.fullAccess,
@@ -146,7 +147,10 @@ export class CompanyService {
                         }
                     }
                 });
-                return { message: ResponseMessages.SUCCESSFUL, employee }
+                if(result.userType == UserTypes.BUILDER && result.stripeCustomerId) {
+                    await this.stripeService.updateCustomerEmail(result);
+                } 
+                return { message: ResponseMessages.SUCCESSFUL, result }
             } else {
                 throw new ForbiddenException("Action Not Allowed");
             }
