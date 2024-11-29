@@ -653,7 +653,7 @@ export class JobsService {
         }
 
         if (template.projectEstimatorTemplateId && customerTemplate.id) {
-            return await this.handleProjectEstimatorTemplate(template.projectEstimatorTemplateId, companyId, jobId, customerId, customerTemplate.id);
+            await this.handleProjectEstimatorTemplate(template.projectEstimatorTemplateId, companyId, jobId, customerId, customerTemplate.id);
         }
     }
 
@@ -728,8 +728,8 @@ export class JobsService {
             include: {
                 categories: {
                     where: { questionnaireTemplateId: templateId, isDeleted: false, companyId, isCompanyCategory: true },
-                    orderBy: { questionnaireOrder: "asc" },
-                    include: { questions: { where: { isDeleted: false } } }
+                    orderBy: { id: "asc" },
+                    include: { questions: { where: { isDeleted: false, }, orderBy: { id: "asc" } } }
                 }
             }
         });
@@ -756,6 +756,8 @@ export class JobsService {
                         companyId: category.companyId,
                         questionnaireOrder: category.questionnaireOrder,
                         contractorIds: category.contractorIds,
+                        initialOrder: category.initialOrder,
+                        paintOrder: category.paintOrder,
                         customerId,
                         jobId,
                     }
@@ -787,7 +789,9 @@ export class JobsService {
                     customerId,
                     jobId,
                     contractorIds: question.contractorIds,
-                    clientTemplateId: customerTemplateId
+                    clientTemplateId: customerTemplateId,
+                    initialQuestionOrder: question.initialQuestionOrder,
+                    paintQuestionOrder: question.paintQuestionOrder
                 }
             })
         }))
@@ -830,7 +834,7 @@ export class JobsService {
                 let invoiceId = 1100;
                 await Promise.all(estData.map(async (x) => {
                     let currentInvoiceId = null;
-                    if(x.item == 'Change Order') {
+                    if (x.item == 'Change Order') {
                         currentInvoiceId = invoiceId;
                         invoiceId += 1;
                     }

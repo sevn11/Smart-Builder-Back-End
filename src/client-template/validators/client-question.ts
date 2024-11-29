@@ -30,7 +30,7 @@ export class ClientQuestionDTO {
 
     @IsArray()
     @IsOptional()
-    linkedSelections?: string
+    linkedSelections?: string[]
 
     @IsArray()
     @IsOptional()

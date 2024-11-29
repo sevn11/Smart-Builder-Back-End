@@ -67,7 +67,7 @@ export class JobsController {
         @GetUser() user: User,
         @Param('companyId', ParseIntPipe) companyId: number,
         @Param('jobId', ParseIntPipe) jobId: number,
-        @Body() body: {salesTaxStatus: boolean},
+        @Body() body: { salesTaxStatus: boolean },
     ) {
         return this.jobService.updateJobSalesStatus(user, companyId, jobId, body);
     }

@@ -28,6 +28,8 @@ export interface QuestionDetails {
     contractors_attached_in_questions: string;
     multiple_options: string;
     question_order: number;
+    initial_question_order: number;
+    paint_question_order: number;
 }
 
 
@@ -49,8 +51,14 @@ export interface ImportData extends CategoryDetails {
     contractors_attached_in_questions: string;
     multiple_options: string;
     category_order: number;
+    initial_selection_order: number;
+    initial_order: number;
+    paint_selection_order: number;
+    paint_order: number;
     question_order: number;
-    questions: QuestionDetails[]
+    questions: QuestionDetails[];
+    question_initial_order: number;
+    question_paint_order: number;
 }
 
 @Injectable()
@@ -73,7 +81,9 @@ export class QuestionnaireImportService {
                     category_linked_to_questionnaire: current.category_linked_to_questionnaire,
                     company_category: current.company_category,
                     category_order: current.category_order,
-                    questions: [] // Initialize an empty array for questions
+                    questions: [], // Initialize an empty array for questions
+                    initial_order: current.initial_selection_order,
+                    paint_order: current.paint_selection_order,
                 };
             }
 
@@ -88,6 +98,8 @@ export class QuestionnaireImportService {
                     contractors_attached_in_questions: current.contractors_attached_in_questions,
                     multiple_options: current.multiple_options,
                     question_order: current.question_order,
+                    initial_question_order: current.question_initial_order,
+                    paint_question_order: current.question_paint_order,
                 });
             }
 
@@ -126,14 +138,16 @@ export class QuestionnaireImportService {
                     linkToPaintSelection: importData.category_linked_to_paint_selection === 'true' ? true : false,
                     linkToPhase: importData.category_linked_to_contractor_phase === 'true' ? true : false,
                     contractorIds: linkedContractorId,
-                    linkToQuestionnaire: true
+                    linkToQuestionnaire: true,
+                    initialOrder: Number(importData.initial_order),
+                    paintOrder: Number(importData.paint_order)
                 },
                 omit: {
                     isDeleted: true,
                     isCompanyCategory: false,
                 },
             })
-            
+
             if (!category) return;
 
             const categoryId = category.id;
@@ -164,7 +178,9 @@ export class QuestionnaireImportService {
                             linkToPaintSelection: que.question_linked_to_paint_selection == 'true' ? true : false,
                             questionnaireTemplateId: templateId,
                             categoryId: categoryId,
-                            contractorIds: linkedContractorId
+                            contractorIds: linkedContractorId,
+                            initialQuestionOrder: que.initial_question_order,
+                            paintQuestionOrder: que.paint_question_order
                         },
                         omit: {
                             isDeleted: true,

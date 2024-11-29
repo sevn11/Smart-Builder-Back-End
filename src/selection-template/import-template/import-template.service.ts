@@ -89,14 +89,16 @@ export class ImportTemplateService {
         try {
             const categoryName = typeof importData.category !== 'string' ? (importData.category)?.toString() : importData.category;
             let whereClause: any = {}
-
+            let selectionOrder: any = {}
             if (type === TemplateType.SELECTION_INITIAL) {
                 whereClause.linkToInitalSelection = true;
                 whereClause.linkToPaintSelection = false;
+                selectionOrder.initialOrder = Number(importData.category_order)
             }
             if (type === TemplateType.SELECTION_PAINT) {
                 whereClause.linkToPaintSelection = true
                 whereClause.linkToInitalSelection = false;
+                selectionOrder.paintOrder = Number(importData.category_order)
             }
 
             let contractorIds = importData.linked_contractors_id;
@@ -115,9 +117,10 @@ export class ImportTemplateService {
                     name: categoryName,
                     isCompanyCategory: importData.company_category ? true : false,
                     companyId: companyId,
-                    questionnaireOrder: Number(importData.category_order),
+                    questionnaireOrder: 0,
                     questionnaireTemplateId: templateId,
                     ...whereClause,
+                    ...selectionOrder,
                     linkToPhase: importData.category_linked_to_contractor_phase === 'true' ? true : false,
                     contractorIds: linkedContractorId,
                     linkToQuestionnaire: false,
