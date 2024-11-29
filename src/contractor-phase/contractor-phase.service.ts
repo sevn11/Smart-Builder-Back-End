@@ -24,7 +24,11 @@ export class ContractorPhaseService {
                         isDeleted: false
                     },
                     include: {
-                        contractors: true
+                        contractors: {
+                            where: {
+                                isDeleted: false
+                            }
+                        }
                     },
                     orderBy: {
                         name: 'asc'
