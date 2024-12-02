@@ -8,7 +8,6 @@ import { SendInfoToContractorDTO } from './validators/send-info-mail';
 import { readFile } from 'fs/promises';
 import { SendgridService } from 'src/core/services';
 import { ConfigService } from '@nestjs/config';
-import * as htmlPdf from 'html-pdf-node';
 const convertHTMLToPDF = require('pdf-puppeteer');
 
 @Injectable()
@@ -334,6 +333,15 @@ export class JobContractorService {
         }
     }
 
+    private getCurrentDate() {
+        const date = new Date();
+        const year = date.getFullYear().toString().slice(-2);
+        const month = (date.getMonth() + 1).toString().padStart(2, "0");
+        const day = date.getDate().toString().padStart(2, "0");
+      
+        return `${month}/${day}/${year}`;
+    }
+
     private async generateDetailsHtml(jobDetails: any, contractorDetails: any) {
 
         let logo = jobDetails.company.logo ? jobDetails.company.logo : "https://smart-builder-asset.s3.us-east-1.amazonaws.com/companies/53/logos/smartbuilder-logo.png"
@@ -350,13 +358,18 @@ export class JobContractorService {
                     <div style="margin-bottom: 10px;">
                         <img src="${logoBase64}" style="width: 100px" />
                     </div>
-                    <div style="display: flex; flex-direction: column; justify-content: start; width: 100%;">
-                        <h4 style="margin: 0">${jobDetails.customer.name}</h4>
-                        <h4 style="margin: 0">${jobDetails.projectAddress}</h4>
-                        <h4 style="margin: 0">
-                            ${jobDetails.projectCity ? `${jobDetails.projectCity}, ` : ''}
-                            ${jobDetails.projectState} ${jobDetails.projectZip}
-                        </h4>
+                    <div style="display: flex; flex-direction: row; justify-content: space-between;align-items: flex-end; width: 100%;margin-top: 30px;">
+                        <div>
+                                <h4 style="margin: 0">${jobDetails.customer.name}</h4>
+                                <h4 style="margin: 0">${jobDetails.projectAddress}</h4>
+                                <h4 style="margin: 0">
+                                    ${jobDetails.projectCity ? `${jobDetails.projectCity}, ` : ''}
+                                    ${jobDetails.projectState} ${jobDetails.projectZip}
+                                </h4>
+                        </div>
+                        <div>
+                            <h4 style="margin: 0">Date: ${this.getCurrentDate()}</h4>
+                        </div>
                     </div>
         `;
 
@@ -372,8 +385,10 @@ export class JobContractorService {
                 htmlContent += `
                 <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
                    <thead>
-                        <tr>
-                            <th colspan="2" style="background-color: rgb(38, 67, 115); color: white; padding: 8px; text-align: center;border: 1px solid #ddd;">${category.name}</th>
+                        <tr style="color: #000000; font-size: bold;">
+                            <th colspan="2" style="font-size: 22px;padding: 8px; text-align: center;border: 1px solid #ddd;">
+                                ${category.name}
+                            </th>
                         </tr>
                     </thead>
                     <tbody>
