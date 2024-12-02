@@ -11,7 +11,7 @@ export class ClientCategoryDTO {
 
     @IsArray()
     @IsOptional()
-    linkedSelections?: string
+    linkedSelections?: string[]
 
     @IsBoolean()
     isCategoryLinkedContractor: boolean
