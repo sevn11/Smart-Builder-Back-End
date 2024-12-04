@@ -53,6 +53,20 @@ export class AdminUsersService {
                                 planType: true,
                                 planAmount: true
                             }
+                        },
+                        PaymentLog: {
+                            select: {
+                                id: true,
+                                userId: true,
+                                status: true,
+                                paymentDate: true,
+                                createdAt: true,
+                                updatedAt: true,
+                            },
+                            orderBy: {
+                                paymentDate: 'desc'
+                            },
+                            take: 1
                         }
                     }
                 }),
