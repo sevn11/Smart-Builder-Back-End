@@ -273,6 +273,7 @@ model Category {
   questions               TemplateQuestion[]
 
   contractorIds           Int[] @default([])
+  phaseIds                Int[] @default([])
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -322,6 +323,7 @@ model TemplateQuestion {
   questionOrder           Int   @default(0)  @map("question_order")
 
   contractorIds           Int[] @default([])
+  phaseIds                Int[] @default([])
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -604,6 +606,7 @@ model ClientCategory {
   company                 Company?                 @relation(fields: [companyId], references: [id], onDelete: Cascade)
   questionnaireOrder      Int                      @map("questionnaire_order")
   contractorIds           Int[]                    @default([])
+  phaseIds                Int[]                    @default([])
   createdAt               DateTime                 @default(now()) @map("created_at")
   updatedAt               DateTime                 @updatedAt @map("updated_at")
 
@@ -638,6 +641,7 @@ model ClientTemplateQuestion {
   jobId                  Int?                     @map("job_id")
   job                    Job?                     @relation(fields: [jobId], references: [id], onDelete: Cascade)
   contractorIds          Int[]                    @default([])
+  phaseIds               Int[]                    @default([])
   createdAt              DateTime                 @default(now()) @map("created_at")
   updatedAt              DateTime                 @updatedAt @map("updated_at")
   clientTemplateId       Int                      @map("client_template_id")
