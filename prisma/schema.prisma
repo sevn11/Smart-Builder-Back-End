@@ -277,6 +277,7 @@ model Category {
   questions               TemplateQuestion[]
 
   contractorIds           Int[] @default([])
+  phaseIds                Int[] @default([])
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -327,6 +328,7 @@ model TemplateQuestion {
   initialQuestionOrder    Int   @default(0) @map("initial_question_order") // order of question in initial template.
   paintQuestionOrder      Int   @default(0) @map("paint_question_order")  // order of question in paint selection template.
   contractorIds           Int[] @default([])
+  phaseIds                Int[] @default([])
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -629,6 +631,7 @@ model ClientCategory {
   initialOrder            Int                      @default(0) @map("initial_order")
   paintOrder              Int                      @default(0) @map("paint_order")
   contractorIds           Int[]                    @default([])
+  phaseIds                Int[]                    @default([])
   createdAt               DateTime                 @default(now()) @map("created_at")
   updatedAt               DateTime                 @updatedAt @map("updated_at")
 
@@ -663,6 +666,7 @@ model ClientTemplateQuestion {
   jobId                  Int?                     @map("job_id")
   job                    Job?                     @relation(fields: [jobId], references: [id], onDelete: Cascade)
   contractorIds          Int[]                    @default([])
+  phaseIds               Int[]                    @default([])
   createdAt              DateTime                 @default(now()) @map("created_at")
   updatedAt              DateTime                 @updatedAt @map("updated_at")
   clientTemplateId       Int                      @map("client_template_id")

@@ -11,7 +11,7 @@ export interface CategoryDetails {
     category_linked_to_initial_selection: string;
     category_linked_to_paint_selection: string;
     category_linked_to_contractor_phase: string;
-    linked_contractors_id: string | number; // This is a list of IDs, so we use an array of numbers
+    linked_phases_id: string | number; // This is a list of IDs, so we use an array of numbers
     category_linked_to_questionnaire: string;
     company_category: boolean;
     category_order: number;
@@ -25,7 +25,7 @@ export interface QuestionDetails {
     question_linked_to_initial_selection: string,
     question_linked_to_paint_selection: string,
     question_linked_to_questionnaire: string,
-    contractors_attached_in_questions: string;
+    phases_attached_in_questions: string;
     multiple_options: string;
     question_order: number;
     initial_question_order: number;
@@ -39,7 +39,7 @@ export interface ImportData extends CategoryDetails {
     category_linked_to_initial_selection: string;
     category_linked_to_paint_selection: string;
     category_linked_to_contractor_phase: string;
-    linked_contractors_id: string | number; // This is a list of IDs, so we use an array of numbers
+    linked_phases_id: string | number; // This is a list of IDs, so we use an array of numbers
     category_linked_to_questionnaire: string;
     company_category: boolean;
     question: string,
@@ -48,7 +48,7 @@ export interface ImportData extends CategoryDetails {
     question_linked_to_initial_selection: string,
     question_linked_to_paint_selection: string,
     question_linked_to_questionnaire: string,
-    contractors_attached_in_questions: string;
+    phases_attached_in_questions: string;
     multiple_options: string;
     category_order: number;
     initial_selection_order: number;
@@ -77,7 +77,7 @@ export class QuestionnaireImportService {
                     category_linked_to_initial_selection: current.category_linked_to_initial_selection,
                     category_linked_to_paint_selection: current.category_linked_to_paint_selection,
                     category_linked_to_contractor_phase: current.category_linked_to_contractor_phase,
-                    linked_contractors_id: current.linked_contractors_id,
+                    linked_phases_id: current.linked_phases_id,
                     category_linked_to_questionnaire: current.category_linked_to_questionnaire,
                     company_category: current.company_category,
                     category_order: current.category_order,
@@ -95,7 +95,7 @@ export class QuestionnaireImportService {
                     question_linked_to_initial_selection: current.question_linked_to_initial_selection,
                     question_linked_to_paint_selection: current.question_linked_to_paint_selection,
                     question_linked_to_questionnaire: current.question_linked_to_questionnaire,
-                    contractors_attached_in_questions: current.contractors_attached_in_questions,
+                    phases_attached_in_questions: current.phases_attached_in_questions,
                     multiple_options: current.multiple_options,
                     question_order: current.question_order,
                     initial_question_order: current.question_initial_order,
@@ -116,15 +116,15 @@ export class QuestionnaireImportService {
 
             const categoryName = typeof importData.category !== 'string' ? (importData.category).toString() : importData.category;
 
-            let contractorIds = importData.linked_contractors_id;
-            let linkedContractorId = [];
+            let phaseIds = importData.linked_phases_id;
+            let linkedPhaseId = [];
 
-            if (typeof contractorIds === 'number') {
-                linkedContractorId = [contractorIds];
-            } else if (typeof contractorIds === 'string') {
-                linkedContractorId = contractorIds.split(', ').map(Number)
+            if (typeof phaseIds === 'number') {
+                linkedPhaseId = [phaseIds];
+            } else if (typeof phaseIds === 'string') {
+                linkedPhaseId = phaseIds.split(', ').map(Number)
             } else {
-                linkedContractorId = [];
+                linkedPhaseId = [];
             }
 
             let category = await this.databaseService.category.create({
@@ -137,7 +137,7 @@ export class QuestionnaireImportService {
                     linkToInitalSelection: importData.category_linked_to_initial_selection === 'true' ? true : false,
                     linkToPaintSelection: importData.category_linked_to_paint_selection === 'true' ? true : false,
                     linkToPhase: importData.category_linked_to_contractor_phase === 'true' ? true : false,
-                    contractorIds: linkedContractorId,
+                    phaseIds: linkedPhaseId,
                     linkToQuestionnaire: true,
                     initialOrder: Number(importData.initial_order),
                     paintOrder: Number(importData.paint_order)
@@ -155,15 +155,15 @@ export class QuestionnaireImportService {
                 importData.questions.map(async (que) => {
                     let options = !que.multiple_options ? [] : que.multiple_options.split(', ').map((ques) => ({ text: ques }))
 
-                    let contractorIds = que.contractors_attached_in_questions;
-                    let linkedContractorId = [];
+                    let phaseIds = que.phases_attached_in_questions;
+                    let linkedPhaseId = [];
 
-                    if (typeof contractorIds === 'number') {
-                        linkedContractorId = [contractorIds];
-                    } else if (typeof contractorIds === 'string') {
-                        linkedContractorId = contractorIds.split(', ').map(Number)
+                    if (typeof phaseIds === 'number') {
+                        linkedPhaseId = [phaseIds];
+                    } else if (typeof phaseIds === 'string') {
+                        linkedPhaseId = phaseIds.split(', ').map(Number)
                     } else {
-                        linkedContractorId = [];
+                        linkedPhaseId = [];
                     }
 
                     let newQuestions = await this.databaseService.templateQuestion.create({
@@ -178,7 +178,7 @@ export class QuestionnaireImportService {
                             linkToPaintSelection: que.question_linked_to_paint_selection == 'true' ? true : false,
                             questionnaireTemplateId: templateId,
                             categoryId: categoryId,
-                            contractorIds: linkedContractorId,
+                            phaseIds: linkedPhaseId,
                             initialQuestionOrder: que.initial_question_order,
                             paintQuestionOrder: que.paint_question_order
                         },

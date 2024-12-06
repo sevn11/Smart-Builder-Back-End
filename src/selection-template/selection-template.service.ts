@@ -200,7 +200,7 @@ export class SelectionTemplateService {
                 linkToQuestionnaire: false,
                 questionnaireTemplateId: templateId,
                 linkToPhase: body.isCategoryLinkedPhase,
-                contractorIds: body.isCategoryLinkedPhase ? body.contractorIds : [],
+                phaseIds: body.isCategoryLinkedPhase ? body.phaseIds : [],
                 ...whereClause,
             };
 
@@ -278,7 +278,7 @@ export class SelectionTemplateService {
                 data: {
                     name: body.name,
                     linkToPhase: body.isCategoryLinkedPhase,
-                    contractorIds: body.isCategoryLinkedPhase ? body.contractorIds : []
+                    phaseIds: body.isCategoryLinkedPhase ? body.phaseIds : []
                 }
             });
 
@@ -459,7 +459,7 @@ export class SelectionTemplateService {
                     phaseId: body.linkedPhase || null,
                     questionOrder: 0,
                     [orderField]: order,
-                    contractorIds: body.contractorIds || null
+                    phaseIds: body.phaseIds || null
                 }
             });
 
@@ -532,7 +532,7 @@ export class SelectionTemplateService {
                     question: body.question,
                     linkToPhase: body.isQuestionLinkedPhase,
                     phaseId: body.isQuestionLinkedPhase ? body.linkedPhase : null,
-                    contractorIds: body.contractorIds,
+                    phaseIds: body.phaseIds,
                 },
             });
 

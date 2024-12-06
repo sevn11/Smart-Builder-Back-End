@@ -34,5 +34,5 @@ export class ClientQuestionDTO {
 
     @IsArray()
     @IsOptional()
-    contractorIds?: number[]
+    phaseIds?: number[]
 }

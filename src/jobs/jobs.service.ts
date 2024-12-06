@@ -913,7 +913,7 @@ export class JobsService {
                         isCompanyCategory: category.isCompanyCategory,
                         companyId: category.companyId,
                         questionnaireOrder: category.questionnaireOrder,
-                        contractorIds: category.contractorIds,
+                        phaseIds: category.phaseIds,
                         initialOrder: category.initialOrder,
                         paintOrder: category.paintOrder,
                         customerId,
@@ -946,7 +946,7 @@ export class JobsService {
                     questionOrder: question.questionOrder,
                     customerId,
                     jobId,
-                    contractorIds: question.contractorIds,
+                    phaseIds: question.phaseIds,
                     clientTemplateId: customerTemplateId,
                     initialQuestionOrder: question.initialQuestionOrder,
                     paintQuestionOrder: question.paintQuestionOrder

@@ -90,7 +90,7 @@ export class TemplateQuestionService {
                         linkToPaintSelection: body.linkedSelections.includes(SelectionTemplates.PAINT_SELECTION),
                         questionnaireTemplateId: templateId,
                         categoryId: categoryId,
-                        contractorIds: body.contractorIds,
+                        phaseIds: body.phaseIds,
                         ...selQuestionOrder
                     },
                     omit: {
@@ -315,7 +315,7 @@ export class TemplateQuestionService {
                         linkToPhase: body.isQuestionLinkedPhase,
                         linkToInitalSelection: body.linkedSelections.includes(SelectionTemplates.INITIAL_SELECTION),
                         linkToPaintSelection: body.linkedSelections.includes(SelectionTemplates.PAINT_SELECTION),
-                        contractorIds: body.contractorIds,
+                        phaseIds: body.phaseIds,
                         ...selQuestionOrder
                     },
                     omit: {

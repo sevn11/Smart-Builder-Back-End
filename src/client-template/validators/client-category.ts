@@ -14,12 +14,12 @@ export class ClientCategoryDTO {
     linkedSelections?: string[]
 
     @IsBoolean()
-    isCategoryLinkedContractor: boolean
+    isCategoryLinkedPhase: boolean
 
-    @ValidateIf(o => o.isCategoryLinkedContractor === true)
+    @ValidateIf(o => o.isCategoryLinkedPhase === true)
     @IsArray()
     @IsNotEmpty() // Ensures that the array is not empty and contains values
-    contractorIds?: number[];
+    phaseIds?: number[];
 
     @IsNumber()
     @Type(() => Number)
