@@ -358,7 +358,7 @@ export class CompanyService {
                         company_name: employee.company.name,
                         password_link: `${this.config.get("FRONTEND_BASEURL")}/auth/create-password?token=${invitationToken}`
                     }
-                    // this.sendgridService.sendEmailWithTemplate(employee.email, this.config.get('EMPLOYEE_PASSWORD_SET_TEMPLATE_ID'), templateData)
+                    this.sendgridService.sendEmailWithTemplate(employee.email, this.config.get('EMPLOYEE_PASSWORD_SET_TEMPLATE_ID'), templateData)
                 } else {
                     response.paymentStatus = false;
                     response.payementMessage = res.message;
