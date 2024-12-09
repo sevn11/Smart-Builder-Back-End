@@ -755,7 +755,7 @@ export class JobsService {
                         isCompanyCategory: category.isCompanyCategory,
                         companyId: category.companyId,
                         questionnaireOrder: category.questionnaireOrder,
-                        contractorIds: category.contractorIds,
+                        phaseIds: category.phaseIds,
                         customerId,
                         jobId,
                     }
@@ -786,7 +786,7 @@ export class JobsService {
                     questionOrder: question.questionOrder,
                     customerId,
                     jobId,
-                    contractorIds: question.contractorIds,
+                    phaseIds: question.phaseIds,
                     clientTemplateId: customerTemplateId
                 }
             })
