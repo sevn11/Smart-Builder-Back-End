@@ -31,6 +31,7 @@ model User {
   stripeCustomerId   String?  @map("stripe_customer_id")
   subscriptionId    String?  @map("subscription_id")
   productId         String?  @map("product_id")
+  isDemoUser        Boolean? @default(false) @map("is_demo_user")
 
   passwordResetCode Int?    @map("password_reset_code")
   invitationToken   String? @map("invitation_token")
