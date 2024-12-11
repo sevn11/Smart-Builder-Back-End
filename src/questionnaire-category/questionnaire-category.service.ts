@@ -82,8 +82,8 @@ export class QuestionnaireCategoryService {
             questionnaireOrder: order,
             questionnaireTemplateId: template.id,
             ...selectionTypes,
-            linkToPhase: body.isCategoryLinkedContractor,
-            contractorIds: body.isCategoryLinkedContractor ? body.contractorIds : []
+            linkToPhase: body.isCategoryLinkedPhase,
+            phaseIds: body.isCategoryLinkedPhase ? body.phaseIds : []
           },
           omit: {
             isDeleted: true,
@@ -221,8 +221,8 @@ export class QuestionnaireCategoryService {
           data: {
             name: body.name,
             ...selectionTypes,
-            linkToPhase: body.isCategoryLinkedContractor,
-            contractorIds: body.isCategoryLinkedContractor ? body.contractorIds : []
+            linkToPhase: body.isCategoryLinkedPhase,
+            phaseIds: body.isCategoryLinkedPhase ? body.phaseIds : []
           },
         });
         return { category, message: ResponseMessages.CATEGORY_UPDATED };

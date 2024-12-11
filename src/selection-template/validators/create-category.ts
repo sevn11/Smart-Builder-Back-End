@@ -18,5 +18,5 @@ export class CreateCategoryDTO {
     @ValidateIf(o => o.isCategoryLinkedPhase === true)
     @IsArray()
     @IsNotEmpty()
-    contractorIds?: number[];
+    phaseIds?: number[];
 }

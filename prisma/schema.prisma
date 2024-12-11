@@ -28,6 +28,9 @@ model User {
   isActive      Boolean        @default(true) @map("is_active")
   isDeleted     Boolean?       @default(false) @map("is_deleted")
   PermissionSet PermissionSet?
+  stripeCustomerId   String?  @map("stripe_customer_id")
+  subscriptionId    String?  @map("subscription_id")
+  productId         String?  @map("product_id")
 
   passwordResetCode Int?    @map("password_reset_code")
   invitationToken   String? @map("invitation_token")
@@ -39,7 +42,19 @@ model User {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  PaymentLog      PaymentLog[]
+  EmployeeDetails EmployeeDetails?
+  
   @@map("users")
+}
+
+model SeoSettings {
+  id                    Int             @id @default(autoincrement())
+  yearlyPlanAmount      Decimal         @map("yearly_plan_amount") @db.Decimal(10, 2)
+  monthlyPlanAmount     Decimal         @map("monthly_plan_amount") @db.Decimal(10, 2)
+  additionalEmployeeFee Decimal         @map("additional_employee_fee") @db.Decimal(10, 2) 
+
+  @@map("seo_settings")
 }
 
 model Company {
@@ -56,7 +71,9 @@ model Company {
   customers              Customer[]
   jobs                   Job[]
   projectDescription     ProjectDescription[]
-  extraFee               Decimal                 @map("extra_fee") @db.Decimal(10, 2) @default(20.00)
+  extraFee               Decimal                 @map("extra_fee") @db.Decimal(10, 2) @default(0.00)
+  planType               PlanType?               @map("plan_type")        
+  planAmount             Decimal                 @map("plan_amount") @db.Decimal(10, 2) @default(0.00)
   categories             Category[]
   contractors            Contractor[]
   JobContractor          JobContractor[]
@@ -68,6 +85,7 @@ model Company {
   CashFlow               CashFlow[]
   projectEstimatorTemplates     ProjectEstimatorTemplate[]
   projectEstimatorTemplateHeader ProjectEstimatorTemplateHeader[]
+  CustomizedContent      CustomizedContent[]
   isActive               Boolean                 @default(true) @map("is_active")
   isDeleted              Boolean?                @default(false) @map("is_deleted")
 
@@ -77,6 +95,21 @@ model Company {
   ClientTemplate         ClientTemplate[]
   clientQuestionAnswer   ClientQuestionAnswer[]
   @@map("companies")
+}
+
+enum PlanType {
+  MONTHLY
+  YEARLY
+}
+
+model EmployeeDetails {
+  id             Int      @id @default(autoincrement())
+  userId         Int      @unique @map("user_id")
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  address        String?
+  phoneNumber    String?  @map("phone_number")
+
+  @@map("employee_details")
 }
 
 model PermissionSet {
@@ -188,6 +221,22 @@ model Job {
   @@map("jobs")
 }
 
+model PaymentLog {
+    id              Int       @id @default(autoincrement())
+    userId          Int       @map("user_id")
+    user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+    paymentId       String?   @map("payment_id")
+    amount          Float?    @default(0)
+    paymentDate     DateTime? @map("payment_date")
+    status          String?  
+    response        Json?    
+
+    createdAt       DateTime @default(now()) @map("created_at")
+    updatedAt       DateTime @updatedAt @map("updated_at")
+
+    @@map("payment_logs")
+}
+
 model ProjectDescription {
   id                Int                @id @default(autoincrement())
   name              String
@@ -224,6 +273,7 @@ model Category {
   questions               TemplateQuestion[]
 
   contractorIds           Int[] @default([])
+  phaseIds                Int[] @default([])
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -273,6 +323,7 @@ model TemplateQuestion {
   questionOrder           Int   @default(0)  @map("question_order")
 
   contractorIds           Int[] @default([])
+  phaseIds                Int[] @default([])
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -556,6 +607,7 @@ model ClientCategory {
   company                 Company?                 @relation(fields: [companyId], references: [id], onDelete: Cascade)
   questionnaireOrder      Int                      @map("questionnaire_order")
   contractorIds           Int[]                    @default([])
+  phaseIds                Int[]                    @default([])
   createdAt               DateTime                 @default(now()) @map("created_at")
   updatedAt               DateTime                 @updatedAt @map("updated_at")
 
@@ -590,6 +642,7 @@ model ClientTemplateQuestion {
   jobId                  Int?                     @map("job_id")
   job                    Job?                     @relation(fields: [jobId], references: [id], onDelete: Cascade)
   contractorIds          Int[]                    @default([])
+  phaseIds               Int[]                    @default([])
   createdAt              DateTime                 @default(now()) @map("created_at")
   updatedAt              DateTime                 @updatedAt @map("updated_at")
   clientTemplateId       Int                      @map("client_template_id")
@@ -626,4 +679,17 @@ model ClientQuestionAnswer {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("client_question_answer")
+}
+
+model CustomizedContent {
+  id                 Int        @id @default(autoincrement())
+  pageType           String?    @map("page_type")
+  content            String?    
+  companyId          Int?       @map("company_id")
+  company            Company?   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+
+  @@map("customized_contents")
+  @@unique([companyId, pageType])  
 }

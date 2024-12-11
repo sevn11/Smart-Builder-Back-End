@@ -208,7 +208,7 @@ export class SelectionTemplateService {
                         linkToPaintSelection: templateType === TemplateType.SELECTION_PAINT ? true : false,
                         questionnaireTemplateId: templateId,
                         linkToPhase: body.isCategoryLinkedPhase,
-                        contractorIds: body.isCategoryLinkedPhase ? body.contractorIds : []
+                        phaseIds: body.isCategoryLinkedPhase ? body.phaseIds : []
                     },
                     omit: {
                         isDeleted: true,
@@ -283,7 +283,7 @@ export class SelectionTemplateService {
                     data: {
                         name: body.name,
                         linkToPhase: body.isCategoryLinkedPhase,
-                        contractorIds: body.isCategoryLinkedPhase ? body.contractorIds : []
+                        phaseIds: body.isCategoryLinkedPhase ? body.phaseIds : []
                     }
                 })
 
@@ -517,7 +517,7 @@ export class SelectionTemplateService {
                         categoryId: categoryId,
                         phaseId: body.linkedPhase || null,
                         questionOrder: order,
-                        contractorIds: body.contractorIds || null
+                        phaseIds: body.phaseIds || null
                     },
                     omit: {
                         isDeleted: true,
@@ -604,8 +604,10 @@ export class SelectionTemplateService {
                     data: {
                         question: body.question,
                         linkToPhase: body.isQuestionLinkedPhase,
+                        questionType: body.type,
+                        multipleOptions: body.multipleOptions,
                         phaseId: body.isQuestionLinkedPhase ? body.linkedPhase : null,
-                        contractorIds: body.contractorIds
+                        phaseIds: body.phaseIds
                     },
                     omit: {
                         isDeleted: true,
