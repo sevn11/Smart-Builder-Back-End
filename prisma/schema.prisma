@@ -392,7 +392,8 @@ model JobSchedule {
   startDate         DateTime?          @map("start_date")
   endDate           DateTime?          @map("end_date")
   isDeleted         Boolean?           @default(false) @map("is_deleted")
-
+  isScheduledOnWeekend Boolean?        @default(false) @map("is_scheduled_on_weekend")
+  duration          Int?               @default(0) @map("duration")
   @@map("job_schedules")
 }
 

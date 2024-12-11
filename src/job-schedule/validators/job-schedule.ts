@@ -13,4 +13,8 @@ export class JobScheduleDTO {
     @IsString()
     @IsNotEmpty()
     endDate: string;
+
+    @IsNumber()
+    @IsNotEmpty()
+    duration: number;
 }

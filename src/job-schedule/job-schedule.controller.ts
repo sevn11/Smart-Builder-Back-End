@@ -9,7 +9,7 @@ import { BulkUpdateJobScheduleDTO } from './validators/bulk-update-job-schedule'
 @UseGuards(JwtGuard)
 @Controller('companies/:companyId/job/:jobId/job-schedule')
 export class JobScheduleController {
-    constructor(private jobScheduleService: JobScheduleService) {}
+    constructor(private jobScheduleService: JobScheduleService) { }
 
     @Post()
     createJobSchedule(
@@ -50,5 +50,26 @@ export class JobScheduleController {
         @Param('scheduleId', ParseIntPipe) scheduleId: number,
     ) {
         return this.jobScheduleService.deleteJobSchedule(user, companyId, jobId, scheduleId);
+    }
+
+    @Post('/gantt-data')
+    createTaskFromGantt(
+        @GetUser() user: User,
+        @Param('jobId', ParseIntPipe) jobId: number,
+        @Param('companyId', ParseIntPipe) companyId: number,
+        @Body() body: any
+    ) {
+        return this.jobScheduleService.createGanttTask(user, jobId, companyId, body);
+    }
+
+    @Patch('/gantt-data/:id')
+    updateTaskFromGantt(
+        @GetUser() user: User,
+        @Param('jobId', ParseIntPipe) jobId: number,
+        @Param('companyId', ParseIntPipe) companyId: number,
+        @Param('id', ParseIntPipe) id: number,
+        @Body() body: any
+    ) {
+        return this.jobScheduleService.updateGanttTask(user, jobId, companyId, id, body);
     }
 }

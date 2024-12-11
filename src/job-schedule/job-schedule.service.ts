@@ -10,14 +10,13 @@ import { BulkUpdateJobScheduleDTO } from './validators/bulk-update-job-schedule'
 @Injectable()
 export class JobScheduleService {
 
-    constructor(private databaseService: DatabaseService, private googleService: GoogleService) {}
+    constructor(private databaseService: DatabaseService, private googleService: GoogleService) { }
 
     async createJobSchedule(
-        user: User, 
-        companyId: number, 
-        jobId: number, 
-        body: JobScheduleDTO) 
-    {
+        user: User,
+        companyId: number,
+        jobId: number,
+        body: JobScheduleDTO) {
         try {
             if (user.userType == UserTypes.ADMIN || (user.userType == UserTypes.BUILDER && user.companyId === companyId)) {
                 await this.databaseService.company.findFirstOrThrow({
@@ -52,10 +51,10 @@ export class JobScheduleService {
     }
 
     async updateJobSchedule(
-        user: User, 
-        companyId: number, 
-        jobId: number, 
-        scheduleId: number, 
+        user: User,
+        companyId: number,
+        jobId: number,
+        scheduleId: number,
         body: JobScheduleDTO
     ) {
         try {
@@ -93,7 +92,7 @@ export class JobScheduleService {
                 });
 
                 await this.updateJobScheduleInGoogleCalendar(user, scheduleId);
-                
+
                 return { message: ResponseMessages.SUCCESSFUL }
             }
         } catch (error) {
@@ -108,11 +107,10 @@ export class JobScheduleService {
     }
 
     async bulkUpdateJobSchedule(
-        user: User, 
-        companyId: number, 
-        jobId: number, 
-        body: BulkUpdateJobScheduleDTO[]) 
-    {
+        user: User,
+        companyId: number,
+        jobId: number,
+        body: BulkUpdateJobScheduleDTO[]) {
         try {
             if (user.userType == UserTypes.ADMIN || (user.userType == UserTypes.BUILDER && user.companyId === companyId)) {
                 await this.databaseService.company.findFirstOrThrow({
@@ -123,7 +121,7 @@ export class JobScheduleService {
                 });
 
                 // Formatting dates
-                for(let event of body) {
+                for (let event of body) {
                     event.startDate = `${event.startDate}Z`;
                     event.endDate = `${event.endDate}Z`;
                 }
@@ -156,9 +154,9 @@ export class JobScheduleService {
     }
 
     async deleteJobSchedule(
-        user: User, 
-        companyId: number, 
-        jobId: number, 
+        user: User,
+        companyId: number,
+        jobId: number,
         scheduleId: number
     ) {
         try {
@@ -185,9 +183,9 @@ export class JobScheduleService {
                 });
 
                 // Delete the job schedule from google calendar also
-                if(schedule.eventId) {
+                if (schedule.eventId) {
                     let event = await this.googleService.getEventFromGoogleCalendar(user, schedule);
-                    if(event) {
+                    if (event) {
                         await this.googleService.deleteCalendarEvent(user, schedule.eventId)
                     }
                 }
@@ -233,11 +231,102 @@ export class JobScheduleService {
         });
 
         // reflect the change in google calendar (if already synced)
-        if(schedule.eventId) {
+        if (schedule.eventId) {
             let event = await this.googleService.getEventFromGoogleCalendar(user, schedule);
-            if(event) {
+            if (event) {
                 await this.googleService.syncJobSchedule(user.id, schedule, schedule.eventId);
             }
+        }
+    }
+
+    async createGanttTask(user: User, jobId: number, companyId: number, body: any) {
+        try {
+            if (user.userType == UserTypes.ADMIN || (user.userType == UserTypes.BUILDER && user.companyId === companyId)) {
+                await this.databaseService.company.findFirstOrThrow({
+                    where: {
+                        id: companyId,
+                        isDeleted: false
+                    }
+                });
+                body.contractorId = parseInt(body.contractor);
+                body.startDate = `${body.start_date}`;
+                body.endDate = `${body.end_date}`;
+                body.isScheduledOnWeekend = body.weekendschedule
+
+                // Split the string into components
+                const [startDay, startMonth, startYear] = body.start_date.match(/(\d+)/g)!;
+                const [endDay, endMonth, endYear] = body.end_date.match(/(\d+)/g)!;
+
+                // Construct the ISO string
+                const isoStartDate = new Date(`${startYear}-${startMonth}-${startDay}T00:00:00.000`);
+                const isoEndDate = new Date(`${endYear}-${endMonth}-${endDay}T00:00:00.000`);
+
+                await this.databaseService.jobSchedule.create({
+                    data: {
+                        companyId,
+                        jobId,
+                        contractorId: body.contractorId,
+                        startDate: isoStartDate,
+                        endDate: isoEndDate,
+                        isScheduledOnWeekend: body.isScheduledOnWeekend,
+                        duration: body.duration
+                    }
+                });
+                return { message: ResponseMessages.SUCCESSFUL }
+            }
+        } catch (error) {
+            console.log(error)
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code == PrismaErrorCodes.NOT_FOUND) {
+                    throw new BadRequestException(ResponseMessages.RESOURCE_NOT_FOUND);
+                }
+            }
+            throw new InternalServerErrorException();
+        }
+    }
+
+    async updateGanttTask(user: User, jobId: number, companyId: number, id: number, body: any) {
+        try {
+            if (user.userType == UserTypes.ADMIN || (user.userType == UserTypes.BUILDER && user.companyId === companyId)) {
+                await this.databaseService.company.findFirstOrThrow({
+                    where: { id: companyId, isDeleted: false }
+                });
+
+                const jobSchedule = await this.databaseService.jobSchedule.findFirstOrThrow({
+                    where: { id: id, isDeleted: false, }
+                })
+                body.contractorId = body.contractor ? parseInt(body.contractor) : jobSchedule.contractorId;
+                body.startDate = `${body.start_date}`;
+                body.endDate = `${body.end_date}`;
+
+                // Split the string into components
+                const [startDay, startMonth, startYear] = body.start_date.match(/(\d+)/g)!;
+                const [endDay, endMonth, endYear] = body.end_date.match(/(\d+)/g)!;
+
+                // Construct the ISO string
+                const isoStartDate = new Date(`${startYear}-${startMonth}-${startDay}T00:00:00.000`);
+                const isoEndDate = new Date(`${endYear}-${endMonth}-${endDay}T00:00:00.000`);
+
+                await this.databaseService.jobSchedule.update({
+                    where: { id: id },
+                    data: {
+                        contractorId: body.contractorId,
+                        startDate: isoStartDate,
+                        endDate: isoEndDate,
+                        duration: body.duration,
+                        isScheduledOnWeekend: body.weekendschedule
+                    }
+                })
+                return { message: ResponseMessages.SUCCESSFUL }
+            }
+        } catch (error) {
+            console.log(error)
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code == PrismaErrorCodes.NOT_FOUND) {
+                    throw new BadRequestException(ResponseMessages.RESOURCE_NOT_FOUND);
+                }
+            }
+            throw new InternalServerErrorException();
         }
     }
 }
