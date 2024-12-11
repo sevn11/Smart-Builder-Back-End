@@ -6,6 +6,7 @@ import { PassThrough } from 'stream';
 import * as FormData from 'form-data';
 import axios from 'axios';
 import { UploadDocumentDTO } from './validators/upload-document';
+import { ResponseMessages } from 'src/core/utils';
 
 @Injectable()
 export class SignNowService {
@@ -64,17 +65,21 @@ export class SignNowService {
 			let form = new FormData();
 			const readableStream = new PassThrough();
 			readableStream.end(file.buffer);
-	
+			const recipients = JSON.parse(body.recipients);
+			// Attach logged in user itself as a signer
+
+			if(this.SignNowUserName !== user.email) {
+				recipients.push(user.email);
+			}
 			form.append('file', readableStream, {
 				filename: file.originalname,
 				contentType: file.mimetype,
 			});
-			form.append('Tags', body.tags);
 
 			let config = {
 				method: 'POST',
 				maxBodyLength: Infinity,
-				url: `${this.baseURL}/document/fieldextract`,
+				url: `${this.baseURL}/document`,
 				headers: { 
 				  'Authorization': `Bearer ${this.AccessToken}`, 
 				  'Content-Type': 'multipart/form-data', 
@@ -86,24 +91,19 @@ export class SignNowService {
 			try {
 				const response = await axios(config);
 				const documentId = response.data.id;
-            
-				// Get document details
-				let documentDetails = await this.getDocument(documentId);
-				let role_id = documentDetails.roles[0].unique_id;
-				let email = user.email;
 
-				let embeddedResponse = await this.CreateEmbeddedInvite(documentId, role_id, email);
-				if(embeddedResponse) {
-					let embeddedLinkResponse = await this.GenerateEmbeddedInviteLink(embeddedResponse.id, documentId);
-					return {
-						embeddedLinkResponse
-					}
+				if(documentId) {
+					recipients.forEach(async (recipient) => {
+						// Inivte each one to sign the uploaded document
+						await this.sendFreeFormInvite(documentId, recipient);
+					});
 				} else {
 					throw new InternalServerErrorException({
 						message: 'An unexpected error occurred.'
-					});
+					});	
 				}
-
+				
+				return { status: true, response: ResponseMessages.SUCCESSFUL }
 			} catch (error) {
 				console.error("Upload error:", error);
 				throw new InternalServerErrorException({
@@ -116,6 +116,31 @@ export class SignNowService {
             });
 		}
     }
+
+	private async sendFreeFormInvite(documentId: string, recipient: string) {
+		try {
+			let formData = {
+				documentId,
+				to: recipient,
+				from: this.SignNowUserName,
+				subject: "You Are Invited to Sign a Document from Aurora"
+			};
+			const options = {
+				method: 'POST',
+				maxBodyLength: Infinity,
+				url: `${this.baseURL}/document/${documentId}/invite`,
+				headers: {Authorization: `Bearer ${this.AccessToken}`, Accept: 'application/json'},
+				data: formData
+			};
+			// Send sign invite
+			await axios.request(options);	
+		} catch (error) {
+			console.log(error?.response?.data);
+			throw new InternalServerErrorException({
+                message: 'An unexpected error occurred.'
+            });
+		}
+	}
 
 	// Function to get document details
 	private async getDocument(documentId: string) {
