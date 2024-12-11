@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common';
-import { PrismaErrorCodes, ResponseMessages, UserTypes } from 'src/core/utils';
+import { HelperFunctions, PrismaErrorCodes, ResponseMessages, UserTypes } from 'src/core/utils';
 import { DatabaseService } from 'src/database/database.service';
 import { ChangeBuilderAccessDTO, GetBuilderListDTO } from '../validators';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
@@ -8,14 +8,16 @@ import { StripeService } from 'src/core/services/stripe.service';
 import { UpdateBuilderPlanInfoDTO } from '../validators/update-plan-info';
 import { BuilderPlanTypes } from 'src/core/utils/builder-plan-types';
 import { SendgridService } from 'src/core/services';
+import * as argon from 'argon2';
 import { ConfigService } from '@nestjs/config';
 import { UpdateBuilderPlanAmountDTO } from '../validators/update-builder-plan';
+import { DemoUserDTO } from '../validators/add-demo-user';
 
 @Injectable()
 export class AdminUsersService {
     constructor(
-        private databaseService: DatabaseService, 
-        private stripeService: StripeService, 
+        private databaseService: DatabaseService,
+        private stripeService: StripeService,
         private sendgridService: SendgridService,
         private readonly config: ConfigService
     ) {
@@ -63,6 +65,7 @@ export class AdminUsersService {
                                 createdAt: true,
                                 updatedAt: true,
                             },
+
                             orderBy: {
                                 paymentDate: 'desc'
                             },
@@ -174,7 +177,7 @@ export class AdminUsersService {
             });
             // Delete builder's and employees subscription from stripe
             await this.stripeService.removeSubscription(builder.subscriptionId);
-            if(employees.length > 0) {
+            if (employees.length > 0) {
                 for (const employee of employees) {
                     await this.stripeService.removeSubscription(employee.subscriptionId);
                     await this.databaseService.user.update({
@@ -185,7 +188,7 @@ export class AdminUsersService {
             }
             // Delete customer from stripe
             await this.stripeService.deleteStripeCustomer(builder.stripeCustomerId);
-            
+
             await this.databaseService.$transaction([
                 this.databaseService.company.update({
                     where: {
@@ -320,7 +323,7 @@ export class AdminUsersService {
                             await this.stripeService.updateSubscriptionAmount(builder.stripeCustomerId, employee, newAmount, planType);
                         }
                     });
-            
+
                     await Promise.all(updatePromises);
                 }
             }
@@ -363,13 +366,13 @@ export class AdminUsersService {
     async updateBuilderPlanInfo(body: UpdateBuilderPlanInfoDTO) {
         try {
             let updatedPlan = await this.databaseService.seoSettings.update({
-                where: { id: 1},
+                where: { id: 1 },
                 data: {
                     ...body.plans
                 }
             })
 
-            if(body.applyToCurrentUsers) {
+            if (body.applyToCurrentUsers) {
                 // update planAmount based in plantype(monthly / yearly) for each company
                 let builders = await this.databaseService.user.findMany({
                     where: {
@@ -382,18 +385,18 @@ export class AdminUsersService {
                 if (builders.length > 0) {
                     let price = 0;
                     for (const builder of builders) {
-                        if(builder.company.planType == BuilderPlanTypes.MONTHLY) {
+                        if (builder.company.planType == BuilderPlanTypes.MONTHLY) {
                             price = updatedPlan.monthlyPlanAmount.toNumber();
                             await this.databaseService.company.update({
                                 where: { id: builder.companyId, planType: BuilderPlanTypes.MONTHLY },
-                                data: { planAmount: price}
+                                data: { planAmount: price }
                             });
                         }
-                        if(builder.company.planType == BuilderPlanTypes.YEARLY) {
+                        if (builder.company.planType == BuilderPlanTypes.YEARLY) {
                             price = updatedPlan.yearlyPlanAmount.toNumber();
                             await this.databaseService.company.update({
                                 where: { id: builder.companyId, planType: BuilderPlanTypes.YEARLY },
-                                data: { planAmount: price}
+                                data: { planAmount: price }
                             });
                         }
                         let newPrice = price * 100;
@@ -401,7 +404,7 @@ export class AdminUsersService {
                         await this.stripeService.updateSubscriptionAmount(builder.stripeCustomerId, builder, newPrice, planType);
                     }
                     // Send mail to each user's about plan change
-                    if(body.notifyUsers) {
+                    if (body.notifyUsers) {
                         if (builders.length > 0) {
                             for (const builder of builders) {
                                 let templateData = {
@@ -416,7 +419,7 @@ export class AdminUsersService {
                 }
 
             }
-          
+
             return updatedPlan;
         } catch (error) {
             throw new InternalServerErrorException();
@@ -466,10 +469,10 @@ export class AdminUsersService {
         }
     }
 
-    async updateGlobalEmployeeFee(body: {employeeFee: number}) {
+    async updateGlobalEmployeeFee(body: { employeeFee: number }) {
         try {
             let updatedPlan = await this.databaseService.seoSettings.update({
-                where: { id: 1},
+                where: { id: 1 },
                 data: {
                     additionalEmployeeFee: body.employeeFee
                 }
@@ -477,6 +480,109 @@ export class AdminUsersService {
             return { message: "Employee fee updated" }
         } catch (error) {
             throw new InternalServerErrorException();
+        }
+    }
+
+    async addDemoUser(body: DemoUserDTO) {
+        try {
+            let existingUser = await this.databaseService.user.findUnique({
+                where: {
+                    email: body.email,
+                    isActive: true,
+                    isDeleted: false
+                }
+            });
+            if (existingUser) {
+                throw new BadRequestException();
+            }
+
+            let data = await this.databaseService.seoSettings.findMany();
+            let seoSettings = data[0];
+
+            let planAmount = 0;
+            body.planType == BuilderPlanTypes.MONTHLY
+                ? planAmount = seoSettings.monthlyPlanAmount.toNumber()
+                : planAmount = seoSettings.yearlyPlanAmount.toNumber()
+
+            if (data) {
+                // Create new customer and add card details inside stripe
+                let response = await this.stripeService.createDemoUserSubscription(body, planAmount);
+                if (response.status) {
+                    const hash = await argon.hash(body.password);
+                    const invitationToken = HelperFunctions.generateRandomString(16);
+                    const user = await this.databaseService.user.create({
+                        data: {
+                            email: body.email.toLowerCase(),
+                            hash,
+                            name: body.name,
+                            userType: UserTypes.BUILDER,
+                            tosAcceptanceTime: new Date().toISOString(),
+                            isTosAccepted: true,
+                            tosVersion: HelperFunctions.getTosVersion(),
+                            stripeCustomerId: response.stripeCustomerId,
+                            productId: response.productId,
+                            subscriptionId: response.subscriptionId,
+                            isDemoUser: true,
+                            company: {
+                                create: {
+                                    name: body.companyName,
+                                    address: body.address,
+                                    phoneNumber: body.phoneNumber,
+                                    planType: body.planType,
+                                    planAmount,
+                                    extraFee: seoSettings.additionalEmployeeFee
+                                }
+                            },
+                            PermissionSet: {
+                                create: {
+                                    fullAccess: true,
+                                    viewOnly: false
+                                }
+                            }
+                        },
+                        omit: {
+                            hash: true,
+                            invitationToken: true,
+                            passwordResetCode: true,
+                            isDeleted: true
+                        },
+                        include: {
+                            company: {
+                                omit: {
+                                    isDeleted: true
+                                }
+                            },
+                            PermissionSet: {
+                                omit: {
+                                    userId: true,
+                                    isDeleted: true,
+                                }
+                            }
+                        }
+                    });
+                    //  Send Email
+                    const templateData = {
+                        name: user.name,
+                        user_name: user.email,
+                        password: body.password,
+                        login_url: `${this.config.get("FRONTEND_BASEURL")}/auth/login`,
+                    }
+                    this.sendgridService.sendEmailWithTemplate(user.email, this.config.get('DEMO_USER_INVITE_TEMPLATE_ID'), templateData)
+
+                    return { status: true, user };
+                }
+                else {
+                    return response;
+                }
+            } else {
+                throw new InternalServerErrorException()
+            }
+        } catch (ex) {
+            // Database Exceptions
+            if (ex instanceof BadRequestException) {
+                throw new BadRequestException(ResponseMessages.UNIQUE_EMAIL_ERROR);
+            }
+            throw new InternalServerErrorException()
         }
     }
 }
