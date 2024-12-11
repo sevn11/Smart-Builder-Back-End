@@ -272,7 +272,7 @@ export class JobsService {
                 });
 
                 job.status = body.jobStatus;
-                if(body.jobStatus == "OPEN") {
+                if (body.jobStatus == "OPEN") {
                     job.isClosed = false;
                 } else {
                     job.isClosed = true;
@@ -417,11 +417,11 @@ export class JobsService {
                         isDeleted: false
                     }
                 });
-                
+
                 // Delete the job / project from google calendar also
-                if(job.eventId) {
+                if (job.eventId) {
                     let event = await this.googleService.getEventFromGoogleCalendar(user, job);
-                    if(event) {
+                    if (event) {
                         await this.googleService.deleteCalendarEvent(user, job.eventId)
                     }
                 }
@@ -511,9 +511,9 @@ export class JobsService {
                 const openJobs = await Promise.all(
                     jobs.map(async (item) => {
                         let isSynced = false;
-                        if(item.eventId) {
+                        if (item.eventId) {
                             let event = await this.googleService.getEventFromGoogleCalendar(user, item);
-                            if(event) {
+                            if (event) {
                                 isSynced = true;
                             }
                         }
@@ -524,7 +524,8 @@ export class JobsService {
                             end: item.endDate,
                             customerId: item.customer?.id,
                             color: item.calendarColor,
-                            isSynced
+                            isSynced,
+                            isParent: true
                         };
 
                         const scheduleEvents = await Promise.all(item.JobSchedule.map(async (schedule) => {
@@ -535,7 +536,7 @@ export class JobsService {
                                     isScheduleSynced = true;
                                 }
                             }
-    
+
                             return {
                                 id: schedule.id,
                                 title: `${schedule.contractor.phase.name} - ${schedule.contractor.name} (${item.customer.name})`,
@@ -545,7 +546,11 @@ export class JobsService {
                                 contractorId: schedule.contractorId,
                                 color: item.calendarColor,
                                 isSynced: isScheduleSynced,
-                                type: 'schedule'
+                                type: 'schedule',
+                                isChild: true,
+                                parentId: item.id,
+                                isScheduledOnWeekend: schedule.isScheduledOnWeekend,
+                                duration: schedule.duration
                             };
                         }));
 
@@ -578,7 +583,7 @@ export class JobsService {
         user: User,
         companyId: number,
         jobId: number,
-        body: {salesTaxStatus: boolean}
+        body: { salesTaxStatus: boolean }
     ) {
         try {
             // Check if User is Admin of the Company.
@@ -642,15 +647,15 @@ export class JobsService {
         });
 
         // reflect the change in google calendar (if already synced)
-        if(latestJob.eventId) {
+        if (latestJob.eventId) {
             let event = await this.googleService.getEventFromGoogleCalendar(user, latestJob);
-            if(event) {
+            if (event) {
                 await this.googleService.syncToCalendar(user.id, latestJob, latestJob.eventId);
             }
         }
     }
 
-    async getJobAndSchedules (user: User, companyId: number, jobId: number) {
+    async getJobAndSchedules(user: User, companyId: number, jobId: number) {
         try {
             // Check if User is Admin of the Company.
             if (user.userType == UserTypes.ADMIN || (user.userType == UserTypes.BUILDER && user.companyId === companyId)) {
@@ -665,7 +670,7 @@ export class JobsService {
                 }
                 let job = await this.databaseService.job.findUnique({
                     where: {
-                        id: jobId, 
+                        id: jobId,
                         companyId,
                         isDeleted: false,
                         isClosed: false
@@ -702,11 +707,11 @@ export class JobsService {
                         }
                     }
                 });
-                
+
                 if (!job) {
                     return { error: 'Job not found' };
                 }
-                
+
                 let isSynced = false;
                 if (job.eventId) {
                     let event = await this.googleService.getEventFromGoogleCalendar(user, job);
@@ -723,7 +728,8 @@ export class JobsService {
                     end: job.endDate,
                     customerId: job.customer?.id,
                     color: job.calendarColor,
-                    isSynced
+                    isSynced,
+                    type: "project"
                 };
 
                 // Check sync status for each schedule
@@ -742,21 +748,23 @@ export class JobsService {
                             scheduleId: schedule.id,
                             title: `${schedule.contractor.phase.name} - ${schedule.contractor.name}`,
                             start: schedule.startDate,
-                            end: schedule.endDate, 
+                            end: schedule.endDate,
                             customerId: job.customer?.id,
                             contractorId: schedule.contractorId,
                             color: job.calendarColor,
                             isSynced: isScheduleSynced,
                             type: 'schedule',
-                            dependencies: index > 0 ? [uniqueId - 1] : []
+                            dependencies: index > 0 ? [uniqueId - 1] : [],
+                            isScheduledOnWeekend: schedule.isScheduledOnWeekend,
+                            duration: schedule.duration
                         };
                     })
                 );
 
                 const result = [openJob, ...schedulesWithSyncStatus];
-                
+
                 return { jobAndSchedules: result };
-                
+
             } else {
                 throw new ForbiddenException("Action Not Allowed");
             }
