@@ -67,19 +67,38 @@ export class SignNowService {
 			readableStream.end(file.buffer);
 			const recipients = JSON.parse(body.recipients);
 			// Attach logged in user itself as a signer
-
+			let recipientsPayload = [];
+			recipients.forEach(async (recipient: string, index: number) => {
+				let payload = {
+					email: recipient,
+					role_id: "",
+					role: `Owner_${index}`,
+					order: 1,
+					subject: "You Are Invited to Sign a Document from Smart Builder",
+					message: "Hi, this is an invite to sign a document from Smart Builder"
+				}
+				recipientsPayload.push(payload);
+			});
 			if(this.SignNowUserName !== user.email) {
 				recipients.push(user.email);
+				recipientsPayload.push({
+					email: user.email,
+					role_id: "",
+					role: "Builder",
+					order: 1,
+					subject: "You Are Invited to Sign a Document from Smart Builder",
+					message: "Hi, this is an invite to sign a document from Smart Builder"
+				});
 			}
 			form.append('file', readableStream, {
 				filename: file.originalname,
 				contentType: file.mimetype,
 			});
-
+			form.append('Tags', body.tags);
 			let config = {
 				method: 'POST',
 				maxBodyLength: Infinity,
-				url: `${this.baseURL}/document`,
+				url: `${this.baseURL}/document/fieldextract`,
 				headers: { 
 				  'Authorization': `Bearer ${this.AccessToken}`, 
 				  'Content-Type': 'multipart/form-data', 
@@ -93,10 +112,7 @@ export class SignNowService {
 				const documentId = response.data.id;
 
 				if(documentId) {
-					recipients.forEach(async (recipient) => {
-						// Inivte each one to sign the uploaded document
-						await this.sendFreeFormInvite(documentId, recipient);
-					});
+					await this.sendSignInvite(documentId, recipientsPayload);
 				} else {
 					throw new InternalServerErrorException({
 						message: 'An unexpected error occurred.'
@@ -105,7 +121,7 @@ export class SignNowService {
 				
 				return { status: true, response: ResponseMessages.SUCCESSFUL }
 			} catch (error) {
-				console.error("Upload error:", error);
+				console.log(error?.response?.data);
 				throw new InternalServerErrorException({
 					message: 'An unexpected error occurred.'
 				});
@@ -117,13 +133,13 @@ export class SignNowService {
 		}
     }
 
-	private async sendFreeFormInvite(documentId: string, recipient: string) {
+	private async sendSignInvite(documentId: string, recipientData: any[]) {
 		try {
 			let formData = {
 				documentId,
-				to: recipient,
+				to: recipientData,
 				from: this.SignNowUserName,
-				subject: "You Are Invited to Sign a Document from Aurora"
+				subject: "You Are Invited to Sign a Document from Smart Builder"
 			};
 			const options = {
 				method: 'POST',
