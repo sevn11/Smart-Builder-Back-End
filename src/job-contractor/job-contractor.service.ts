@@ -192,28 +192,27 @@ export class JobContractorService {
                 }
                 replyTo = ccMail = company.email;
 
-                // Prepare attachments array
-                let attachments = [];
-                if (body.files) {
-                    const fileIds = body.files;
-                    attachments = await Promise.all(fileIds.map(async (fileId) => {
-                        // Retrieve file data from database
-                        const file = await this.databaseService.contractorFiles.findFirstOrThrow({
-                            where: { id: fileId }
-                        });
-
-                        // Read file content asynchronously
-                        const fileContent = await readFile(file.filePath);
-
-                        // Return attachment object
-                        return {
-                            content: fileContent.toString('base64'),
-                            filename: file.fileName,
-                        };
-                    }));
-                }
-
                 await Promise.all(jobContractors.map(async (jobContractor) => {
+                    // Prepare attachments array
+                    let attachments = [];
+                    if (body.files) {
+                        const fileIds = body.files;
+                        attachments = await Promise.all(fileIds.map(async (fileId) => {
+                            // Retrieve file data from database
+                            const file = await this.databaseService.contractorFiles.findFirstOrThrow({
+                                where: { id: fileId }
+                            });
+    
+                            // Read file content asynchronously
+                            const fileContent = await readFile(file.filePath);
+    
+                            // Return attachment object
+                            return {
+                                content: fileContent.toString('base64'),
+                                filename: file.fileName,
+                            };
+                        }));
+                    }
                     // Retrieve job contractor data from database
                     const jobContractorData = await this.databaseService.jobContractor.findFirstOrThrow({
                         where: { id: Number(jobContractor.id) }
@@ -241,42 +240,95 @@ export class JobContractorService {
                                 company: true
                             }
                         });
-                        let contractorDetails = await this.databaseService.clientTemplate.findFirst({
-                            where: { companyId, jobId, isDeleted: false },
-                            include: {
-                                clientCategory: {
-                                    where: {
-                                        isDeleted: false,
-                                        linkToPhase: true,
-                                        contractorIds: {
-                                            has: contractor.id
-                                        },
-                                        companyId,
-                                    },
-                                    omit: { createdAt: true, updatedAt: true },
-                                    orderBy: { questionnaireOrder: 'asc' },
-                                    include: {
-                                        ClientTemplateQuestion: {
-                                            where: {
-                                                isDeleted: false,
-                                                linkToPhase: true,
-                                                contractorIds: {
-                                                    has: contractor.id
-                                                },
-                                            },
-                                            orderBy: { questionOrder: 'asc' },
-                                            include: {
-                                                answer: {
-                                                    where: { jobId, companyId },
-                                                    omit: { createdAt: true, updatedAt: true }
-                                                }
+                        // Fetching all linked info of phase
+                        const [categoryDetails, clientCategoryDetails] = await Promise.all([
+                            await this.databaseService.category.findMany({
+                                where: {
+                                    companyId,
+                                    isDeleted: false,
+                                    phaseIds: {
+                                        has: contractor.phaseId
+                                    }
+                                },
+                                include: {
+                                    questions: {
+                                        where: {
+                                            isDeleted: false,
+                                            phaseIds: {
+                                                has: contractor.phaseId
                                             }
                                         }
                                     }
                                 }
-                            }
-                        });
-                        let htmlContent = await this.generateDetailsHtml(jobDetails, contractorDetails);
+                            }),
+                            await this.databaseService.clientCategory.findMany({
+                                where: {
+                                    companyId,
+                                    isDeleted: false,
+                                    jobId,
+                                    phaseIds: {
+                                        has: contractor.phaseId
+                                    }
+                                },
+                                include: {
+                                    ClientTemplateQuestion: {
+                                        where: {
+                                            isDeleted: false,
+                                            phaseIds: {
+                                                has: contractor.phaseId
+                                            }
+                                        },
+                                        include: {
+                                            answer: {
+                                                where: { jobId, companyId },
+                                                omit: { createdAt: true, updatedAt: true }
+                                            }
+                                        }
+                                    }
+                                }
+                            }),
+                        ]);
+                        let formattedDetails = [
+                            ...categoryDetails.map(category => ({
+                                category: category.id,
+                                categoryName: category.name,
+                                questions: category.questions.map(question => ({
+                                    questionId: question.id,
+                                    questionText: question.question,
+                                    questionType: question.questionType
+                                }))
+                            })),
+                            ...clientCategoryDetails.map(clientCategory => ({
+                                category: clientCategory.id,
+                                categoryName: clientCategory.name,
+                                questions: clientCategory.ClientTemplateQuestion.map(question => {
+                                    let answer: any;
+                                    if (question.questionType === "Allowance") {
+                                        const answerText = question?.answer?.answerText ?? "0";
+                                        answer = `$${this.formatNumberWithCommas(parseFloat(answerText as string))}`;
+                                    } else if (question.questionType === "Multiple Choice Question" && question?.multipleOptions) {
+                                        if (question?.answer?.answerIds?.length > 0) {
+                                            let options = question?.multipleOptions as any;
+                                            answer = options.filter((option, index) => question.answer.answerIds.includes(String(index)))
+                                                .map(option => option.text)
+                                                .join(", ");
+                                        } else {
+                                            answer = "-";
+                                        }
+                                    } else {
+                                        answer = question?.answer?.answerText ?? "-";
+                                    }
+                                    return {
+                                        questionId: question.id,
+                                        questionText: question.question,
+                                        questionType: question.questionType,
+                                        answer
+                                    };
+                                })
+                            }))
+                        ];
+
+                        let htmlContent = await this.generateDetailsHtml(jobDetails, formattedDetails);
                         // Generate pdf from HTML and add as attachment
                         await convertHTMLToPDF(
                             htmlContent,
@@ -342,7 +394,7 @@ export class JobContractorService {
         return `${month}/${day}/${year}`;
     }
 
-    private async generateDetailsHtml(jobDetails: any, contractorDetails: any) {
+    private async generateDetailsHtml(jobDetails: any, formattedDetails: any[]) {
 
         let logo = jobDetails.company.logo ? jobDetails.company.logo : "https://smart-builder-asset.s3.us-east-1.amazonaws.com/companies/53/logos/smartbuilder-logo.png"
         const response = await fetch(logo);
@@ -373,7 +425,7 @@ export class JobContractorService {
                     </div>
         `;
 
-        if (contractorDetails.clientCategory.length === 0) {
+        if (formattedDetails.length === 0) {
             htmlContent += `
                 <div style="text-align: center; margin-top: 20px; font-weight: bold;">
                     No data found
@@ -381,40 +433,24 @@ export class JobContractorService {
             `;
         }
         else {
-            contractorDetails.clientCategory.forEach((category: any) => {
+            formattedDetails.forEach((category: any) => {
                 htmlContent += `
                 <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
                    <thead>
                         <tr style="color: #000000; font-size: bold;">
                             <th colspan="2" style="font-size: 22px;padding: 8px; text-align: center;border: 1px solid #ddd;">
-                                ${category.name}
+                                ${category.categoryName}
                             </th>
                         </tr>
                     </thead>
                     <tbody>
                 `
-                category.ClientTemplateQuestion.forEach((question: any) => {
-                    let answer = "-";
-
-                    // Format answer based on question type
-                    if (question.questionType === "Allowance") {
-                        answer = `$${this.formatNumberWithCommas(question?.answer?.answerText ?? 0)}`;
-                    } else if (question.questionType === "Multiple Choice Question" && question?.multipleOptions) {
-                        if (question?.answer?.answerIds?.length > 0) {
-                            answer = question?.multipleOptions
-                                .filter((option, index) => question.answer.answerIds.includes(String(index)))
-                                .map(option => option.text)
-                                .join(", ");
-                        } else {
-                            answer = "-";
-                        }
-                    } else {
-                        answer = question?.answer?.answerText ?? "-";
-                    }
+                category.questions.forEach((question: any) => {
+                    let answer = question.answer ?? "-"
 
                     htmlContent += `
                     <tr>
-                        <td style="width: 50%; text-align: left; font-weight: bold; padding: 8px;border: 1px solid #ddd;">${question.question}</td>
+                        <td style="width: 50%; text-align: left; font-weight: bold; padding: 8px;border: 1px solid #ddd;">${question.questionText}</td>
                         <td style="width: 50%; text-align: left; padding: 8px;border: 1px solid #ddd;">${answer}</td>
                     </tr>
               `;
