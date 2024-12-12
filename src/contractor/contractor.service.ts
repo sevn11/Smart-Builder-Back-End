@@ -251,73 +251,93 @@ export class ContractorService {
                                 name: true,
                             }
                         },
-                        JobContractor: {
-                            include: {
-                                job: {
-                                    include: {
-                                        ClientTemplate: {
-                                            include: {
-                                                clientCategory: {
-                                                    where: {
-                                                        isDeleted: false,
-                                                        linkToPhase: true,
-                                                        contractorIds: {
-                                                            has: contractorId
-                                                        },
-                                                    },
-                                                    omit: { createdAt: true, updatedAt: true },
-                                                    orderBy: { questionnaireOrder: 'asc' },
-                                                    include: {
-                                                        ClientTemplateQuestion: {
-                                                            where: {
-                                                                isDeleted: false,
-                                                                linkToPhase: true,
-                                                                contractorIds: {
-                                                                    has: contractorId
-                                                                },
-                                                            },
-                                                            select: { id: true, question: true, questionType: true },
-                                                            orderBy: { questionOrder: 'asc' },
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
+                    }
+                });
+                const phaseId = contractor.phase.id;
+                const jobContractor = await this.databaseService.jobContractor.findMany({
+                    where: {
+                        companyId,
+                        contractorId: contractor.id
+                    },
+                    select: {
+                        jobId: true
+                    }
+                });
+                let contractorJobIds = []
+                if(jobContractor) {
+                    contractorJobIds = jobContractor.map(item => item.jobId)
+                }
+                const [categoryDetails, clientCategoryDetails] = await Promise.all([
+                    await this.databaseService.category.findMany({
+                        where: {
+                            companyId,
+                            isDeleted: false,
+                            phaseIds: {
+                                has: phaseId
+                            }
+                        },
+                        include: {
+                            questions: {
+                                where: {
+                                    isDeleted: false,
+                                    phaseIds: {
+                                        has: phaseId
                                     }
                                 }
                             }
                         }
-                    }
-                });
-
-                const jobDetails = contractor.JobContractor.map(jobContractor => {
-                    const jobId = jobContractor.job.id;
-                    const customerId = jobContractor.job.customerId;
-
-                    // Gather all categories and questions under this job's client template
-                    const categoriesWithQuestions = jobContractor.job.ClientTemplate.flatMap(clientTemplate =>
-                        clientTemplate.clientCategory.map(category => ({
-                            jobId,
-                            customerId,
-                            categoryId: category.id,
-                            categoryName: category.name,
-                            questions: category.ClientTemplateQuestion.map(question => ({
-                                questionId: question.id,
-                                questionText: question.question,
-                                questionType: question.questionType
-                            }))
+                    }),
+                    await this.databaseService.clientCategory.findMany({
+                        where: {
+                            companyId,
+                            isDeleted: false,
+                            jobId: {
+                                in: contractorJobIds
+                            },
+                            phaseIds: {
+                                has: phaseId
+                            }
+                        },
+                        include: {
+                            ClientTemplateQuestion: {
+                                where: {
+                                    isDeleted: false,
+                                    phaseIds: {
+                                        has: phaseId
+                                    }
+                                }
+                            }
+                        }
+                    }),
+                ]);
+                
+                let formattedDetails = [
+                    ...categoryDetails.map(category => ({
+                        category: category.id,
+                        categoryName: category.name,
+                        questions: category.questions.map(question => ({
+                            questionId: question.id,
+                            questionText: question.question,
+                            questionType: question.questionType
                         }))
-                    );
-
-                    return categoriesWithQuestions;
-                }).flat();
+                    })),
+                    ...clientCategoryDetails.map(clientCategory => ({
+                        category: clientCategory.id,
+                        categoryName: clientCategory.name,
+                        questions: clientCategory.ClientTemplateQuestion.map(question => ({
+                            questionId: question.id,
+                            questionText: question.question,
+                            questionType: question.questionType
+                        }))
+                    }))
+                ];
 
                 // Prepare the contractor response
                 const contractorResponse = {
                     id: contractor.id,
                     name: contractor.name,
                     phase: contractor.phase,
-                    categories: jobDetails,
+                    categories: formattedDetails,
                 };
 
                 return { contractor: contractorResponse };
