@@ -420,6 +420,39 @@ export class ClientTemplateService {
         }
     }
 
+
+    private async alterCategory(templateId: any, categoryId: number, linkedValue: { linkToInitalSelection: boolean, linkToPaintSelection: boolean }) {
+        let { _max: catAggregate } = await this.databaseService.clientCategory.aggregate({
+            _max: { questionnaireOrder: true, initialOrder: true, paintOrder: true },
+            where: { isDeleted: false, clientTemplateId: templateId }
+        });
+        const categoryItem = await this.databaseService.clientCategory.findUniqueOrThrow({
+            where: { id: categoryId, isDeleted: false, clientTemplateId: templateId }
+        })
+        let linkedData = {
+            linkToInitalSelection: categoryItem.linkToInitalSelection,
+            linkToPaintSelection: categoryItem.linkToPaintSelection,
+            initialOrder: categoryItem.initialOrder,
+            paintOrder: categoryItem.paintOrder
+        }
+
+        if (linkedValue.linkToInitalSelection && !categoryItem.linkToInitalSelection) {
+            linkedData.initialOrder = catAggregate.initialOrder + 1;
+            linkedData.linkToInitalSelection = true
+        }
+
+        if (linkedValue.linkToPaintSelection && !categoryItem.linkToPaintSelection) {
+            linkedData.paintOrder = catAggregate.paintOrder + 1;
+            linkedData.linkToPaintSelection = true
+        }
+        if (Object.keys(linkedData).length > 0) {
+            await this.databaseService.clientCategory.update({
+                where: { id: categoryId, isDeleted: false },
+                data: linkedData
+            })
+        }
+    }
+
     // Create Question: Questionnaire & Selection
     async createQuestion(user: User, type: TemplateTypeValue, companyId: number, jobId: number, templateId: number, categoryId: number, body: ClientQuestionDTO) {
         try {
@@ -431,7 +464,7 @@ export class ClientTemplateService {
             await this.checkCompanyExist(companyId);
             const job = await this.checkJobExist(jobId, companyId);
             const template = await this.checkTemplateExist(templateId, job.customerId, job.id, companyId);
-            await this.checkClientCategory(categoryId, template.id, job.customerId, job.id, companyId);
+            const category = await this.checkClientCategory(categoryId, template.id, job.customerId, job.id, companyId);
             const linkFieldMapping = { 'initial-selection': 'linkToInitalSelection', 'paint-selection': 'linkToPaintSelection', 'questionnaire': 'linkToQuestionnaire', };
             let { _max } = await this.databaseService.clientTemplateQuestion.aggregate({
                 _max: { questionOrder: true, initialQuestionOrder: true, paintQuestionOrder: true },
@@ -467,7 +500,7 @@ export class ClientTemplateService {
             if (type in selectionTypeLinks) {
                 initialSelectionTypes[selectionTypeLinks[type]] = true;
             }
-
+            await this.alterCategory(template.id, category.id, initialSelectionTypes)
             if (whereClause.linkToQuestionnaire) {
                 orderValues.questionOrder = (_max?.questionOrder || 0) + 1;
             }
@@ -576,7 +609,7 @@ export class ClientTemplateService {
             if (type in selectionTypeLinks) {
                 initialSelectionTypes[selectionTypeLinks[type]] = true;
             }
-
+            await this.alterCategory(template.id, clientCategory.id, initialSelectionTypes)
             if (type != 'initial-selection' && initialSelectionTypes.linkToInitalSelection) {
                 orderValues.initialQuestionOrder = (_max?.initialQuestionOrder || 0) + 1;
             }
