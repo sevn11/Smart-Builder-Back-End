@@ -276,6 +276,7 @@ export class ContractorService {
                                 has: phaseId
                             }
                         },
+                        orderBy: { questionnaireOrder: 'asc' },
                         include: {
                             questions: {
                                 where: {
@@ -283,7 +284,8 @@ export class ContractorService {
                                     phaseIds: {
                                         has: phaseId
                                     }
-                                }
+                                },
+                                orderBy: { questionOrder: 'asc' },
                             }
                         }
                     }),
@@ -298,6 +300,7 @@ export class ContractorService {
                                 has: phaseId
                             }
                         },
+                        orderBy: { questionnaireOrder: 'asc' },
                         include: {
                             ClientTemplateQuestion: {
                                 where: {
@@ -305,7 +308,8 @@ export class ContractorService {
                                     phaseIds: {
                                         has: phaseId
                                     }
-                                }
+                                },
+                                orderBy: { questionOrder: 'asc' },
                             }
                         }
                     }),
