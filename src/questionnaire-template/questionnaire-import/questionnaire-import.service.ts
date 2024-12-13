@@ -74,16 +74,12 @@ export class QuestionnaireImportService {
             if (!groupedData[current.category]) {
                 groupedData[current.category] = {
                     category: current.category,
-                    category_linked_to_initial_selection: current.category_linked_to_initial_selection,
-                    category_linked_to_paint_selection: current.category_linked_to_paint_selection,
                     category_linked_to_contractor_phase: current.category_linked_to_contractor_phase,
                     linked_contractors_id: current.linked_contractors_id,
                     category_linked_to_questionnaire: current.category_linked_to_questionnaire,
                     company_category: current.company_category,
                     category_order: current.category_order,
-                    questions: [], // Initialize an empty array for questions
-                    initial_order: current.initial_selection_order,
-                    paint_order: current.paint_selection_order,
+                    questions: [],
                 };
             }
 
@@ -92,14 +88,10 @@ export class QuestionnaireImportService {
                     question: current.question,
                     question_type: current.question_type,
                     question_linked_to_contractor_phase: current.question_linked_to_contractor_phase,
-                    question_linked_to_initial_selection: current.question_linked_to_initial_selection,
-                    question_linked_to_paint_selection: current.question_linked_to_paint_selection,
                     question_linked_to_questionnaire: current.question_linked_to_questionnaire,
                     contractors_attached_in_questions: current.contractors_attached_in_questions,
                     multiple_options: current.multiple_options,
                     question_order: current.question_order,
-                    initial_question_order: current.question_initial_order,
-                    paint_question_order: current.question_paint_order,
                 });
             }
 
@@ -134,13 +126,9 @@ export class QuestionnaireImportService {
                     companyId: companyId,
                     questionnaireOrder: Number(importData.category_order),
                     questionnaireTemplateId: templateId,
-                    linkToInitalSelection: importData.category_linked_to_initial_selection === 'true' ? true : false,
-                    linkToPaintSelection: importData.category_linked_to_paint_selection === 'true' ? true : false,
                     linkToPhase: importData.category_linked_to_contractor_phase === 'true' ? true : false,
                     contractorIds: linkedContractorId,
                     linkToQuestionnaire: true,
-                    initialOrder: Number(importData.initial_order),
-                    paintOrder: Number(importData.paint_order)
                 },
                 omit: {
                     isDeleted: true,
@@ -174,13 +162,9 @@ export class QuestionnaireImportService {
                             linkToQuestionnaire: true,
                             linkToPhase: que.question_linked_to_contractor_phase == 'true' ? true : false,
                             questionOrder: Number(que.question_order),
-                            linkToInitalSelection: que.question_linked_to_initial_selection == 'true' ? true : false,
-                            linkToPaintSelection: que.question_linked_to_paint_selection == 'true' ? true : false,
                             questionnaireTemplateId: templateId,
                             categoryId: categoryId,
                             contractorIds: linkedContractorId,
-                            initialQuestionOrder: que.initial_question_order,
-                            paintQuestionOrder: que.paint_question_order
                         },
                         omit: {
                             isDeleted: true,
