@@ -35,10 +35,21 @@ export class ContractorController {
         return this.contractorService.updateContractor(user, companyId, contractorId, body);
     }
 
+    @Patch('/:contractorId/order')
+    @HttpCode(HttpStatus.OK)
+    updateOrder(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number, @Param('contractorId', ParseIntPipe) contractorId: number, @Body() body: {contractorOrder: number}) {
+        return this.contractorService.updateOrder(user, companyId, contractorId, body);
+    }
+
     @Delete('/:contractorId')
     @HttpCode(HttpStatus.OK)
     deleteContractor(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number, @Param('contractorId', ParseIntPipe) contractorId: number) {
         return this.contractorService.deleteContractor(user, companyId, contractorId);
     }
 
+    @Get('/:contractorId/categories')
+    @HttpCode(HttpStatus.OK)
+    getContractorCategories(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number, @Param('contractorId', ParseIntPipe) contractorId: number) {
+        return this.contractorService.getContractorCategories(user, companyId, contractorId);
+    }
 }

@@ -355,6 +355,7 @@ model Contractor {
   company           Company?           @relation(fields: [companyId], references: [id], onDelete: Cascade)
   isDeleted         Boolean?           @default(false) @map("is_deleted")
   JobContractor     JobContractor[]
+  contractorOrder   Int?               @map("contractor_order")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
