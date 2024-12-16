@@ -100,6 +100,7 @@ export class QuestionnaireCategoryService {
             isCompanyCategory: false,
           },
         });
+
         return { category };
       }
     } catch (error) {
