@@ -73,7 +73,7 @@ export class QuestionnaireImportService {
             // If the category doesn't exist, initialize it
             if (!groupedData[current.category]) {
                 groupedData[current.category] = {
-                    category: current.category,
+                    category: current.category?.toString(),
                     category_linked_to_contractor_phase: current.category_linked_to_contractor_phase,
                     linked_phases_id: current.linked_phases_id,
                     category_linked_to_questionnaire: current.category_linked_to_questionnaire,
@@ -85,7 +85,7 @@ export class QuestionnaireImportService {
 
             if (current.question) {
                 groupedData[current.category].questions.push({
-                    question: current.question,
+                    question: current.question?.toString(),
                     question_type: current.question_type,
                     question_linked_to_contractor_phase: current.question_linked_to_contractor_phase,
                     question_linked_to_questionnaire: current.question_linked_to_questionnaire,
@@ -128,7 +128,7 @@ export class QuestionnaireImportService {
                     questionnaireTemplateId: templateId,
                     linkToPhase: importData.category_linked_to_contractor_phase === 'true' ? true : false,
                     phaseIds: linkedPhaseId,
-                    linkToQuestionnaire: true,
+                    linkToQuestionnaire: true
                 },
                 omit: {
                     isDeleted: true,
@@ -164,7 +164,7 @@ export class QuestionnaireImportService {
                             questionOrder: Number(que.question_order),
                             questionnaireTemplateId: templateId,
                             categoryId: categoryId,
-                            phaseIds: linkedPhaseId,
+                            phaseIds: linkedPhaseId
                         },
                         omit: {
                             isDeleted: true,

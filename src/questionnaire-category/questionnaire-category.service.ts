@@ -92,13 +92,15 @@ export class QuestionnaireCategoryService {
             questionnaireTemplateId: template.id,
             ...selectionTypes,
             linkToPhase: body.isCategoryLinkedPhase,
-            phaseIds: body.isCategoryLinkedPhase ? body.phaseIds : []
+            phaseIds: body.isCategoryLinkedPhase ? body.phaseIds : [],
+            ...selectionOrder,
           },
           omit: {
             isDeleted: true,
             isCompanyCategory: false,
           },
         });
+
         return { category };
       }
     } catch (error) {
@@ -257,7 +259,8 @@ export class QuestionnaireCategoryService {
             name: body.name,
             ...selectionTypes,
             linkToPhase: body.isCategoryLinkedPhase,
-            phaseIds: body.isCategoryLinkedPhase ? body.phaseIds : []
+            phaseIds: body.isCategoryLinkedPhase ? body.phaseIds : [],
+            ...selectionOrder,
           },
         });
         return { category, message: ResponseMessages.CATEGORY_UPDATED };
