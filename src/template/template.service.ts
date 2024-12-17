@@ -145,16 +145,24 @@ export class TemplateService {
             }
 
             let whereClause: any = {};
+            let orderByQuestion: any = {};
+            let orderByCategory: any = {};
             if (type === 'initial-selection') {
                 whereClause.linkToInitalSelection = true;
+                orderByQuestion.initialQuestionOrder = 'asc';
+                orderByCategory.initialOrder = 'asc'
             }
 
             if (type === 'paint-selection') {
                 whereClause.linkToPaintSelection = true;
+                orderByQuestion.paintQuestionOrder = 'asc';
+                orderByCategory.paintOrder = 'asc'
             }
 
             if (type === 'questionnaire') {
                 whereClause.linkToQuestionnaire = true;
+                orderByQuestion.questionOrder = 'asc';
+                orderByCategory.questionnaireOrder = 'asc'
             }
 
             const clientCategories = await this.databaseService.clientCategory.findMany({
@@ -163,7 +171,7 @@ export class TemplateService {
                     ClientTemplateQuestion: {
                         where: { isDeleted: false, clientTemplateId: template.id, jobId: job.id, customerId: job.customerId, ...whereClause },
                         omit: { createdAt: true, updatedAt: true, },
-                        orderBy: { questionOrder: 'asc' },
+                        orderBy: orderByQuestion,
                         include: {
                             answer: {
                                 where: {
@@ -176,7 +184,7 @@ export class TemplateService {
                         }
                     },
                 },
-                orderBy: { questionnaireOrder: 'asc' }
+                orderBy: orderByCategory
             });
 
             return { category: clientCategories, message: ResponseMessages.ANSWER_UPDATED_SUCCESSFULLY }
