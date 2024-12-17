@@ -51,7 +51,7 @@ export class ImportTemplateService {
             // If the category doesn't exist, initialize it
             if (!groupedData[current.category]) {
                 groupedData[current.category] = {
-                    category: current.category,
+                    category: current.category?.toString(),
                     category_linked_to_initial_selection: current.category_linked_to_initial_selection,
                     category_linked_to_paint_selection: current.category_linked_to_paint_selection,
                     category_linked_to_contractor_phase: current.category_linked_to_contractor_phase,
@@ -65,7 +65,7 @@ export class ImportTemplateService {
 
             if (current.question) {
                 groupedData[current.category].questions.push({
-                    question: current.question,
+                    question: current.question?.toString(),
                     question_type: current.question_type,
                     question_linked_to_contractor_phase: current.question_linked_to_contractor_phase,
                     question_linked_to_initial_selection: current.question_linked_to_initial_selection,

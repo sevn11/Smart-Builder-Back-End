@@ -924,11 +924,12 @@ export class SelectionTemplateService {
                 });
             }
 
+            let { categoryId: updatedCategoryId, ...rest } = questionWhereClause;
             let result = await this.databaseService.category.findMany({
                 where: categoryWhereClause,
                 include: {
                     questions: {
-                        where: questionWhereClause,
+                        where: rest,
                         orderBy: { [questionOrderField]: "asc" }
                     }
                 },
