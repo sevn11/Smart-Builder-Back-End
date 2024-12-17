@@ -41,4 +41,5 @@ export class ResponseMessages {
     static NO_TEMPLATE_FOUND = 'No Template Found.'
     static ANSWER_UPDATED_SUCCESSFULLY = 'Answer update successfully.'
     static CATEGORY_ADDED_SUCCESSFULLY = 'Category added successfully'
+    static CONTRACTOR_ORDER_UPDATED = 'Contractor order updated.'
 }

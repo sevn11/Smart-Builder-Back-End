@@ -31,6 +31,7 @@ model User {
   stripeCustomerId   String?  @map("stripe_customer_id")
   subscriptionId    String?  @map("subscription_id")
   productId         String?  @map("product_id")
+  isDemoUser        Boolean? @default(false) @map("is_demo_user")
 
   passwordResetCode Int?    @map("password_reset_code")
   invitationToken   String? @map("invitation_token")
@@ -275,6 +276,7 @@ model Category {
   questions               TemplateQuestion[]
 
   contractorIds           Int[] @default([])
+  phaseIds                Int[] @default([])
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -325,6 +327,7 @@ model TemplateQuestion {
   initialQuestionOrder    Int   @default(0) @map("initial_question_order") // order of question in initial template.
   paintQuestionOrder      Int   @default(0) @map("paint_question_order")  // order of question in paint selection template.
   contractorIds           Int[] @default([])
+  phaseIds                Int[] @default([])
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -355,6 +358,7 @@ model Contractor {
   company           Company?           @relation(fields: [companyId], references: [id], onDelete: Cascade)
   isDeleted         Boolean?           @default(false) @map("is_deleted")
   JobContractor     JobContractor[]
+  contractorOrder   Int?               @map("contractor_order")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -609,6 +613,7 @@ model ClientCategory {
   initialOrder            Int                      @default(0) @map("initial_order")
   paintOrder              Int                      @default(0) @map("paint_order")
   contractorIds           Int[]                    @default([])
+  phaseIds                Int[]                    @default([])
   createdAt               DateTime                 @default(now()) @map("created_at")
   updatedAt               DateTime                 @updatedAt @map("updated_at")
 
@@ -643,6 +648,7 @@ model ClientTemplateQuestion {
   jobId                  Int?                     @map("job_id")
   job                    Job?                     @relation(fields: [jobId], references: [id], onDelete: Cascade)
   contractorIds          Int[]                    @default([])
+  phaseIds               Int[]                    @default([])
   createdAt              DateTime                 @default(now()) @map("created_at")
   updatedAt              DateTime                 @updatedAt @map("updated_at")
   clientTemplateId       Int                      @map("client_template_id")

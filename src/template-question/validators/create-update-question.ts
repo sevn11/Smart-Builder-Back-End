@@ -36,5 +36,5 @@ export class CreateUpdateQuestionDTO {
 
     @IsArray()
     @IsOptional()
-    contractorIds?: number[]
+    phaseIds?: number[]
 }

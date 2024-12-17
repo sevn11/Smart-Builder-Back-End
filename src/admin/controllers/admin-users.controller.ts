@@ -4,6 +4,7 @@ import { ChangeBuilderAccessDTO, GetBuilderListDTO } from '../validators';
 import { CreateUpdateExtraFeeDTO } from '../validators/create-update-extra-fee';
 import { UpdateBuilderPlanInfoDTO } from '../validators/update-plan-info';
 import { UpdateBuilderPlanAmountDTO } from '../validators/update-builder-plan';
+import { DemoUserDTO } from '../validators/add-demo-user';
 
 @Controller('admin/users')
 export class AdminUsersController {
@@ -17,6 +18,7 @@ export class AdminUsersController {
     getBuilderList(@Query() query: GetBuilderListDTO) {
         return this.adminUserService.getBuilders(query);
     }
+
     @Patch('builders/:builderId/activate')
     @HttpCode(HttpStatus.OK)
     changeBuilderAccess(@Param('builderId', ParseIntPipe) builderId: number, @Body() body: ChangeBuilderAccessDTO) {
@@ -58,5 +60,11 @@ export class AdminUsersController {
     @HttpCode(HttpStatus.OK)
     updateGlobalEmployeeFee(@Body() body: { employeeFee: number }) {
         return this.adminUserService.updateGlobalEmployeeFee(body);
+    }
+
+
+    @Post('demo-user')
+    addDemoUser(@Body() body: DemoUserDTO) {
+        return this.adminUserService.addDemoUser(body);
     }
 }

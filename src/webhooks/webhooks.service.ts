@@ -41,13 +41,13 @@ export class WebhooksService {
 
     async handleStripeWebhook (body: any) {
         // Seperate logic for subscription canceled event
-        if(body.type == 'customer.subscription.deleted') {
+        if(body.type == 'customer.subscription.updated') {
             let canceledDate = new Date(body.data.object.canceled_at * 1000);
             let subscriptionId = body.data.object.id;
             let user = await this.databaseService.user.findFirst({
                 where: { subscriptionId }
             });
-            if(user) {
+            if(user && body.data.object.status == "canceled") {
                 const month = canceledDate.getMonth() + 1;
                 const year = canceledDate.getFullYear();
 

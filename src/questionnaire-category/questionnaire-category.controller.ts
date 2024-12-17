@@ -13,7 +13,7 @@ export class QuestionnaireCategoryController {
     constructor(private questionnaireCategoryService: QuestionnaireCategoryService) { }
 
     @Post()
-    createJob(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number, @Param('templateId', ParseIntPipe) templateId: number, @Body() body: CreateUpdateCategoryDTO) {
+    createCategory(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number, @Param('templateId', ParseIntPipe) templateId: number, @Body() body: CreateUpdateCategoryDTO) {
         return this.questionnaireCategoryService.createCategory(user, companyId, templateId, body);
     }
 

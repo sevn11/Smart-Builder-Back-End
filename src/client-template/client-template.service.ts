@@ -145,8 +145,8 @@ export class ClientTemplateService {
                     isCompanyCategory: true,
                     companyId: company.id,
                     clientTemplateId: template.id,
-                    linkToPhase: body.isCategoryLinkedContractor,
-                    contractorIds: body.contractorIds,
+                    linkToPhase: body.isCategoryLinkedPhase,
+                    phaseIds: body.phaseIds,
                     linkToQuestionnaire: type === 'questionnaire',
                     customerId: job.customerId,
                     jobId,
@@ -258,8 +258,8 @@ export class ClientTemplateService {
                 data: {
                     name: body.name,
                     ...initialSelectionTypes,
-                    linkToPhase: body.isCategoryLinkedContractor,
-                    contractorIds: body.contractorIds,
+                    linkToPhase: body.isCategoryLinkedPhase,
+                    phaseIds: body.phaseIds,
                     ...orderValues,
                     jobId,
 
@@ -522,7 +522,7 @@ export class ClientTemplateService {
                     linkToQuestionnaire: type === 'questionnaire',
                     clientTemplateId: templateId,
                     clientCategoryId: categoryId,
-                    contractorIds: body.contractorIds,
+                    phaseIds: body.phaseIds,
                     customerId: job.customerId,
                     jobId: job.id,
                     ...orderValues,
@@ -636,7 +636,7 @@ export class ClientTemplateService {
                     questionType: body.type,
                     multipleOptions: body.multipleOptions,
                     linkToPhase: body.isQuestionLinkedPhase,
-                    contractorIds: body.contractorIds,
+                    phaseIds: body.phaseIds,
                     ...initialSelectionTypes,
                     ...orderValues
                 }
