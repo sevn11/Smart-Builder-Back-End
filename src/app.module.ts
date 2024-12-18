@@ -29,6 +29,7 @@ import { TemplateQuestionModule } from './template-question/template-question.mo
 import { TemplateQuestionAnswerModule } from './template-question-answer/template-question-answer.module';
 import { GoogleCalendarModule } from './google-calendar/google-calendar.module';
 import { ProjectDescriptionModule } from './project-description/project-description.module';
+import { JobScheduleModule } from './job-schedule/job-schedule.module';
 import { SeoSettingsModule } from './seo-settings/seo-settings.module';
 import { TemplateModule } from './template/template.module';
 import { ClientTemplateModule } from './client-template/client-template.module';
@@ -66,6 +67,7 @@ import { CustomizedContentModule } from './customized-content/customized-content
     GoogleCalendarModule,
     ProjectDescriptionModule,
     SelectionTemplateModule,
+    JobScheduleModule,
     SeoSettingsModule,
     TemplateModule,
     ClientTemplateModule,

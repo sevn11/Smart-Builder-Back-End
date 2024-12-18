@@ -78,6 +78,7 @@ model Company {
   categories             Category[]
   contractors            Contractor[]
   JobContractor          JobContractor[]
+  JobSchedule            JobSchedule[]
   JobProjectEstimatorHeader    JobProjectEstimatorHeader[]
   ContractorFiles        ContractorFiles[]
   ContractorPhase        ContractorPhase[]
@@ -198,6 +199,7 @@ model Job {
   template           QuestionnaireTemplate? @relation(fields: [templateId], references: [id])
 
   JobContractor     JobContractor[]
+  JobSchedule       JobSchedule[]
   JobProjectEstimatorHeader JobProjectEstimatorHeader[]
   ContractorFiles        ContractorFiles[]
   paymentSchedules       PaymentSchedule[]
@@ -355,6 +357,7 @@ model Contractor {
   company           Company?           @relation(fields: [companyId], references: [id], onDelete: Cascade)
   isDeleted         Boolean?           @default(false) @map("is_deleted")
   JobContractor     JobContractor[]
+  JobSchedule       JobSchedule[]
   contractorOrder   Int?               @map("contractor_order")
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -373,6 +376,23 @@ model JobContractor {
   contractor        Contractor?        @relation(fields: [contractorId], references: [id], onDelete: Cascade)
 
   @@map("job_contractors")
+}
+
+model JobSchedule {
+  id                Int                @id @default(autoincrement())
+  companyId         Int?               @map("company_id")
+  company           Company?           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  jobId             Int?               @map("job_id")
+  job               Job?               @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  contractorId      Int?               @map("contractor_id")
+  contractor        Contractor?        @relation(fields: [contractorId], references: [id], onDelete: Cascade)
+  eventId           String?            @map("event_id")
+  startDate         DateTime?          @map("start_date")
+  endDate           DateTime?          @map("end_date")
+  isDeleted         Boolean?           @default(false) @map("is_deleted")
+  isScheduledOnWeekend Boolean?        @default(false) @map("is_scheduled_on_weekend")
+  duration          Int?               @default(0) @map("duration")
+  @@map("job_schedules")
 }
 
 model ContractorPhase {
