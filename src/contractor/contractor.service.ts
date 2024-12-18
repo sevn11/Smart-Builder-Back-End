@@ -231,7 +231,7 @@ export class ContractorService {
     }
 
     // Fn to fetch all categories under each project particular contractor assigend to
-    async getContractorCategories(user: User, companyId: number, contractorId: number) {
+    async getContractorCategories(user: User, companyId: number, contractorId: number, templateId?: number) {
         try {
             // Check if User is Admin of the Company.
             if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
@@ -267,15 +267,23 @@ export class ContractorService {
                 if(jobContractor) {
                     contractorJobIds = jobContractor.map(item => item.jobId)
                 }
+                const categoryCondition: any = {
+                    companyId,
+                    isDeleted: false,
+                    phaseIds: {
+                        has: phaseId
+                    }
+                };
+                let templateInfo: any = null;
+                if(templateId) {
+                    categoryCondition.questionnaireTemplateId = templateId;
+                    templateInfo = await this.databaseService.questionnaireTemplate.findUnique({
+                        where: { id: templateId }
+                    })
+                }
                 const [categoryDetails, clientCategoryDetails] = await Promise.all([
                     await this.databaseService.category.findMany({
-                        where: {
-                            companyId,
-                            isDeleted: false,
-                            phaseIds: {
-                                has: phaseId
-                            }
-                        },
+                        where: categoryCondition,
                         orderBy: { questionnaireOrder: 'asc' },
                         include: {
                             questions: {
@@ -342,6 +350,7 @@ export class ContractorService {
                     name: contractor.name,
                     phase: contractor.phase,
                     categories: formattedDetails,
+                    templateInfo
                 };
 
                 return { contractor: contractorResponse };

@@ -789,7 +789,6 @@ export class JobsService {
             }
         }
     }
-
     private async prepareCustomerTemplateData(templateId: number, companyId: number, jobId: number, customerId: number, oldTemplateId: number) {
         if (oldTemplateId) {
             await this.clearPreviousTemplateData(oldTemplateId, companyId, jobId, customerId);

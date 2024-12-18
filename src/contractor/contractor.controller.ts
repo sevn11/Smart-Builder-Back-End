@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { JwtGuard } from 'src/core/guards';
 import { ContractorService } from './contractor.service';
 import { GetUser } from 'src/core/decorators';
@@ -49,7 +49,12 @@ export class ContractorController {
 
     @Get('/:contractorId/categories')
     @HttpCode(HttpStatus.OK)
-    getContractorCategories(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number, @Param('contractorId', ParseIntPipe) contractorId: number) {
-        return this.contractorService.getContractorCategories(user, companyId, contractorId);
+    getContractorCategories(
+        @GetUser() user: User, 
+        @Param('companyId', ParseIntPipe) companyId: number, 
+        @Param('contractorId', ParseIntPipe) contractorId: number,
+        @Query('templateId') templateId: number
+    ) {
+        return this.contractorService.getContractorCategories(user, companyId, contractorId, templateId);
     }
 }
