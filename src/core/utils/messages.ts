@@ -38,4 +38,8 @@ export class ResponseMessages {
     static QUESTION_ORDER_UPDATED = 'Question order updated.'
     static QUESTIONNAIRE_TEMPLATE_ADDED = 'Questionnaire Template added successfully.'
     static TEMPLATE_IMPORTED_SUCCESSFULLY = 'Template imported successfully.'
+    static NO_TEMPLATE_FOUND = 'No Template Found.'
+    static ANSWER_UPDATED_SUCCESSFULLY = 'Answer update successfully.'
+    static CATEGORY_ADDED_SUCCESSFULLY = 'Category added successfully'
+    static CONTRACTOR_ORDER_UPDATED = 'Contractor order updated.'
 }

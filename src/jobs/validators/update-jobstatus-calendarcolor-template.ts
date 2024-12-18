@@ -1,4 +1,4 @@
-import { IsEnum, IsOptional, IsString } from 'class-validator';
+import { IsEnum, IsNumber, IsOptional, IsString } from 'class-validator';
 import { JobStatus } from 'src/core/utils';
 
 export class UpdateJobStatusCalendarColorTemplateDto {
@@ -10,8 +10,8 @@ export class UpdateJobStatusCalendarColorTemplateDto {
     @IsOptional()
     color: string;
 
-    @IsString()
+    @IsNumber()
     @IsOptional()
-    template: string;
+    template: number;
 
 }

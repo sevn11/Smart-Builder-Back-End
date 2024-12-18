@@ -6,6 +6,7 @@ import { ConfigService, ConfigModule } from '@nestjs/config';
 import { JwtStrategy } from './strategies';
 import { SendgridService } from 'src/core/services';
 import { CoreModule } from 'src/core/core.module';
+import { StripeService } from 'src/core/services/stripe.service';
 
 @Module({
   imports: [
@@ -22,7 +23,7 @@ import { CoreModule } from 'src/core/core.module';
     }),
     CoreModule,
   ],
-  providers: [AuthService, ConfigService, JwtStrategy, SendgridService],
+  providers: [AuthService, ConfigService, JwtStrategy, SendgridService, StripeService],
   controllers: [AuthController],
 })
 

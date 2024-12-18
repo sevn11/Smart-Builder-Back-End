@@ -1,11 +1,20 @@
-import { IsArray, IsBoolean, IsNotEmpty, IsNumber, IsOptional, IsString } from "class-validator";
+import { Type } from "class-transformer";
+import { IsArray, IsBoolean, IsNotEmpty, IsNumber, IsOptional, IsString, ValidateNested } from "class-validator";
 
-
+class Contractor {
+    @IsNumber()
+    @IsNotEmpty()
+    id: string;
+  
+    @IsBoolean()
+    sendDetails: boolean;
+}
 export class SendInfoToContractorDTO {
     @IsArray()
-    @IsNumber({}, { each: true })
+    @ValidateNested({ each: true })
+    @Type(() => Contractor)
     @IsNotEmpty()
-    jobContractors: number[];
+    jobContractors: Contractor[];
 
     @IsArray()
     @IsNumber({}, { each: true })

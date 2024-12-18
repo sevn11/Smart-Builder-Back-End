@@ -30,6 +30,10 @@ import { TemplateQuestionAnswerModule } from './template-question-answer/templat
 import { GoogleCalendarModule } from './google-calendar/google-calendar.module';
 import { ProjectDescriptionModule } from './project-description/project-description.module';
 import { JobScheduleModule } from './job-schedule/job-schedule.module';
+import { SeoSettingsModule } from './seo-settings/seo-settings.module';
+import { TemplateModule } from './template/template.module';
+import { ClientTemplateModule } from './client-template/client-template.module';
+import { CustomizedContentModule } from './customized-content/customized-content.module';
 @Module({
   imports: [
     ServeStaticModule.forRoot({
@@ -63,7 +67,11 @@ import { JobScheduleModule } from './job-schedule/job-schedule.module';
     GoogleCalendarModule,
     ProjectDescriptionModule,
     SelectionTemplateModule,
-    JobScheduleModule
+    JobScheduleModule,
+    SeoSettingsModule,
+    TemplateModule,
+    ClientTemplateModule,
+    CustomizedContentModule
   ],
 })
 export class AppModule { }

@@ -1,4 +1,5 @@
-import { IsEmail, IsOptional, IsString, IsNumber, IsDecimal, ValidateIf, IsNotEmpty } from "class-validator";
+import { IsEmail, IsOptional, IsString, IsNumber, IsDecimal, ValidateIf, IsNotEmpty, IsEnum } from "class-validator";
+import { BuilderPlanTypes } from "src/core/utils/builder-plan-types";
 
 export class UpdateCompanyDTO {
 
@@ -40,4 +41,6 @@ export class UpdateCompanyDTO {
     @IsOptional()
     logo?: string
 
+    @IsEnum(BuilderPlanTypes)
+    planType: BuilderPlanTypes;
 }
