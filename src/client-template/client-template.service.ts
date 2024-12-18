@@ -226,7 +226,7 @@ export class ClientTemplateService {
             const { _max } = await this.databaseService.clientCategory.aggregate({
                 _max: { questionnaireOrder: true, initialOrder: true, paintOrder: true, },
                 where: linkedTypeCondition
-            })
+            });
 
             if (hasSelectionChange) {
                 body.linkedSelections.forEach((selection) => {
@@ -234,37 +234,78 @@ export class ClientTemplateService {
                     initialSelectionTypes.linkToPaintSelection ||= selection === SelectionTemplates.PAINT_SELECTION;
                 })
             }
+            const initialValue = clientCategory.initialOrder;
+            const paintValue = clientCategory.paintOrder;
+            let decrement = { initialOrder: false, paintOrder: false }
             if (type in selectionTypeLinks) {
                 initialSelectionTypes[selectionTypeLinks[type]] = true;
             }
-            if (initialSelectionTypes.linkToInitalSelection) {
+            if (initialSelectionTypes.linkToInitalSelection && !clientCategory.linkToInitalSelection) {
                 orderValues.initialOrder = (_max?.initialOrder || 0) + 1;
+            } else {
+                orderValues.initialOrder = clientCategory.initialOrder;
             }
 
-            if (initialSelectionTypes.linkToPaintSelection) {
+            if (initialSelectionTypes.linkToPaintSelection && !clientCategory.linkToPaintSelection) {
                 orderValues.paintOrder = (_max?.paintOrder || 0) + 1;
+            } else {
+                orderValues.paintOrder = clientCategory.paintOrder;
             }
 
-            const category = await this.databaseService.clientCategory.update({
-                where: {
-                    id: clientCategory.id,
-                    isDeleted: false,
-                    clientTemplateId: template.id,
-                    jobId,
-                    customerId: job.customerId,
-                    companyId,
-                    ...whereClause
-                },
-                data: {
-                    name: body.name,
-                    ...initialSelectionTypes,
-                    linkToPhase: body.isCategoryLinkedPhase,
-                    phaseIds: body.phaseIds,
-                    ...orderValues,
-                    jobId,
+            if (type === 'questionnaire' && clientCategory.linkToInitalSelection && !initialSelectionTypes.linkToInitalSelection) {
+                orderValues.initialOrder = 0;
+                decrement.initialOrder = true;
+            }
 
-                },
+            if (type === 'questionnaire' && clientCategory.linkToPaintSelection && !initialSelectionTypes.linkToPaintSelection) {
+                orderValues.paintOrder = 0;
+                decrement.paintOrder = true;
+            }
+
+            await this.databaseService.$transaction(async (tx) => {
+                await tx.clientCategory.update({
+                    where: {
+                        id: clientCategory.id,
+                        isDeleted: false,
+                        clientTemplateId: template.id,
+                        jobId,
+                        customerId: job.customerId,
+                        companyId,
+                        ...whereClause
+                    },
+                    data: {
+                        name: body.name,
+                        ...initialSelectionTypes,
+                        linkToPhase: body.isCategoryLinkedPhase,
+                        phaseIds: body.phaseIds,
+                        ...orderValues,
+                        jobId,
+
+                    },
+                });
+                if (decrement.initialOrder) {
+                    await tx.clientCategory.updateMany({
+                        where: {
+                            isDeleted: false,
+                            clientTemplateId: template.id,
+                            initialOrder: { gt: initialValue }
+                        },
+                        data: { initialOrder: { decrement: 1 } }
+                    })
+                }
+
+                if (decrement.paintOrder) {
+                    await tx.clientCategory.updateMany({
+                        where: {
+                            isDeleted: false,
+                            clientTemplateId: template.id,
+                            paintOrder: { gt: paintValue }
+                        },
+                        data: { paintOrder: { decrement: 1 } }
+                    })
+                }
             });
+
             const clientCategories = await this.databaseService.clientCategory.findMany({
                 where: { isDeleted: false, clientTemplateId: template.id, customerId: job.customerId, jobId, companyId, ...whereClause },
                 include: {
@@ -301,7 +342,7 @@ export class ClientTemplateService {
         }
     }
 
-    // Todo: delete category: Questionnnaire & Selection
+    // delete category: Questionnnaire & Selection
     async deleteCategory(user: User, type: TemplateTypeValue, companyId: number, jobId: number, templateId: number, categoryId: number) {
         try {
             const isAllowed = user.userType === UserTypes.ADMIN || (user.userType === UserTypes.BUILDER && user.companyId === companyId);
@@ -578,7 +619,7 @@ export class ClientTemplateService {
             const job = await this.checkJobExist(jobId, companyId);
             const template = await this.checkTemplateExist(templateId, job.customerId, job.id, companyId);
             let clientCategory = await this.checkClientCategory(categoryId, template.id, job.customerId, job.id, companyId);
-            await this.checkQuestion(questionId, clientCategory.id, template.id, job.customerId, job.id, companyId);
+            const question = await this.checkQuestion(questionId, clientCategory.id, template.id, job.customerId, job.id, companyId);
             const linkFieldMapping = { 'initial-selection': 'linkToInitalSelection', 'paint-selection': 'linkToPaintSelection', 'questionnaire': 'linkToQuestionnaire', };
             const whereClause = { [linkFieldMapping[type]]: true };
             const initialSelectionTypes = { linkToInitalSelection: false, linkToPaintSelection: false };
@@ -605,16 +646,37 @@ export class ClientTemplateService {
                     initialSelectionTypes.linkToPaintSelection ||= selection === SelectionTemplates.PAINT_SELECTION;
                 });
             }
-
             if (type in selectionTypeLinks) {
                 initialSelectionTypes[selectionTypeLinks[type]] = true;
             }
+
+
             await this.alterCategory(template.id, clientCategory.id, initialSelectionTypes)
-            if (type != 'initial-selection' && initialSelectionTypes.linkToInitalSelection) {
-                orderValues.initialQuestionOrder = (_max?.initialQuestionOrder || 0) + 1;
+            if (initialSelectionTypes.linkToInitalSelection) {
+                if (!question.linkToInitalSelection) {
+                    orderValues.initialQuestionOrder = (_max?.initialQuestionOrder || 0) + 1;
+                } else {
+                    orderValues.initialQuestionOrder = question.initialQuestionOrder
+                }
             }
-            if (type != 'paint-selection' && initialSelectionTypes.linkToPaintSelection) {
-                orderValues.paintQuestionOrder = (_max?.paintQuestionOrder || 0) + 1;
+            if (initialSelectionTypes.linkToPaintSelection) {
+                if (!question.linkToPaintSelection) {
+                    orderValues.paintQuestionOrder = (_max?.paintQuestionOrder || 0) + 1;
+                } else {
+                    orderValues.paintQuestionOrder = question.paintQuestionOrder
+                }
+            }
+            let initialValue = question.initialQuestionOrder;
+            let paintValue = question.paintQuestionOrder;
+            const decrement = { initialOrder: false, paintOrder: false, }
+            // the question is initially linked by needs to unlink.
+            if (type === 'questionnaire' && question.linkToInitalSelection && !initialSelectionTypes.linkToInitalSelection) {
+                orderValues.initialQuestionOrder = 0
+                decrement.initialOrder = true;
+            }
+            if (type === 'questionnaire' && question.linkToPaintSelection && !initialSelectionTypes.linkToPaintSelection) {
+                orderValues.paintQuestionOrder = 0
+                decrement.paintOrder = true;
             }
 
             if (!clientCategory.linkToInitalSelection || !clientCategory.linkToPaintSelection) {
@@ -629,18 +691,43 @@ export class ClientTemplateService {
                 }
             }
 
-            await this.databaseService.clientTemplateQuestion.update({
-                where: { id: questionId },
-                data: {
-                    question: body.question,
-                    questionType: body.type,
-                    multipleOptions: body.multipleOptions,
-                    linkToPhase: body.isQuestionLinkedPhase,
-                    phaseIds: body.phaseIds,
-                    ...initialSelectionTypes,
-                    ...orderValues
+            await this.databaseService.$transaction(async (tx) => {
+                await tx.clientTemplateQuestion.update({
+                    where: { id: questionId },
+                    data: {
+                        question: body.question,
+                        questionType: body.type,
+                        multipleOptions: body.multipleOptions,
+                        linkToPhase: body.isQuestionLinkedPhase,
+                        phaseIds: body.phaseIds,
+                        ...initialSelectionTypes,
+                        ...orderValues
+                    }
+                })
+
+                if (decrement.initialOrder) {
+                    await tx.clientTemplateQuestion.updateMany({
+                        where: {
+                            clientTemplateId: template.id,
+                            clientCategoryId: clientCategory.id,
+                            initialQuestionOrder: { gt: initialValue },
+                            isDeleted: false,
+                        },
+                        data: { initialQuestionOrder: { decrement: 1 } }
+                    })
                 }
-            })
+                if (decrement.paintOrder) {
+                    await tx.clientTemplateQuestion.updateMany({
+                        where: {
+                            clientTemplateId: template.id,
+                            clientCategoryId: clientCategory.id,
+                            paintQuestionOrder: { gt: paintValue },
+                            isDeleted: false,
+                        },
+                        data: { paintQuestionOrder: { decrement: 1 } }
+                    })
+                }
+            });
 
             const clientCategories = await this.databaseService.clientCategory.findMany({
                 where: { isDeleted: false, clientTemplateId: template.id, customerId: job.customerId, jobId, companyId, ...whereClause },

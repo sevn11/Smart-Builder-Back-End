@@ -302,26 +302,61 @@ export class TemplateQuestionService {
                     selQuestionOrder.paintQuestionOrder = templateQuestion.paintQuestionOrder
                 }
 
-                await this.databaseService.templateQuestion.update({
-                    where: {
-                        id: questionId,
-                        categoryId: categoryId,
-                        isDeleted: false,
-                    },
-                    data: {
-                        question: body.question,
-                        questionType: body.type,
-                        multipleOptions: body.multipleOptions,
-                        linkToPhase: body.isQuestionLinkedPhase,
-                        linkToInitalSelection: body.linkedSelections.includes(SelectionTemplates.INITIAL_SELECTION),
-                        linkToPaintSelection: body.linkedSelections.includes(SelectionTemplates.PAINT_SELECTION),
-                        phaseIds: body.phaseIds,
-                        ...selQuestionOrder
-                    },
-                    omit: {
-                        isDeleted: true,
+                const initialValue = templateQuestion.initialQuestionOrder;
+                const paintValue = templateQuestion.paintQuestionOrder;
+                let decrement = { initialOrder: false, paintOrder: false };
+                if (!body.linkedSelections.includes(SelectionTemplates.PAINT_SELECTION) && templateQuestion.linkToPaintSelection) {
+                    decrement.paintOrder = true;
+                    selQuestionOrder.paintQuestionOrder = 0
+                }
+                if (!body.linkedSelections.includes(SelectionTemplates.INITIAL_SELECTION) && templateQuestion.linkToInitalSelection) {
+                    decrement.initialOrder = true;
+                    selQuestionOrder.initialQuestionOrder = 0
+                }
+                await this.databaseService.$transaction(async (tx) => {
+                    await tx.templateQuestion.update({
+                        where: {
+                            id: questionId,
+                            categoryId: categoryId,
+                            isDeleted: false,
+                        },
+                        data: {
+                            question: body.question,
+                            questionType: body.type,
+                            multipleOptions: body.multipleOptions,
+                            linkToPhase: body.isQuestionLinkedPhase,
+                            linkToInitalSelection: body.linkedSelections.includes(SelectionTemplates.INITIAL_SELECTION),
+                            linkToPaintSelection: body.linkedSelections.includes(SelectionTemplates.PAINT_SELECTION),
+                            phaseIds: body.phaseIds,
+                            ...selQuestionOrder
+                        },
+                        omit: {
+                            isDeleted: true,
+                        }
+                    });
+
+                    if (decrement.initialOrder) {
+                        await tx.templateQuestion.updateMany({
+                            where: {
+                                isDeleted: false,
+                                categoryId: categoryId,
+                                initialQuestionOrder: { gt: initialValue }
+                            },
+                            data: { initialQuestionOrder: { decrement: 1 } }
+                        })
                     }
-                })
+
+                    if (decrement.paintOrder) {
+                        await tx.templateQuestion.updateMany({
+                            where: {
+                                isDeleted: false,
+                                categoryId: categoryId,
+                                paintQuestionOrder: { gt: paintValue }
+                            },
+                            data: { paintQuestionOrder: { decrement: 1 } }
+                        })
+                    }
+                });
                 // Fetch the updated category with updated questions
                 const category = await this.databaseService.category.findUniqueOrThrow({
                     where: {

@@ -247,23 +247,60 @@ export class QuestionnaireCategoryService {
         } else {
           selectionOrder.paintOrder = category.paintOrder
         }
+        const initialValue = category.initialOrder;
+        const paintValue = category.paintOrder;
+        let decrement = { initialOrder: false, paintOrder: false }
+        if (!selectionTypes.linkToInitalSelection && category.linkToInitalSelection) {
+          selectionOrder.initialOrder = 0;
+          decrement.initialOrder = true;
+        }
+        if (!selectionTypes.linkToPaintSelection && category.linkToPaintSelection) {
+          selectionOrder.paintOrder = 0;
+          decrement.paintOrder = true;
+        }
 
-        category = await this.databaseService.category.update({
-          where: {
-            id: categoryId,
-            questionnaireTemplateId: templateId,
-            isCompanyCategory: true,
-            isDeleted: false,
-          },
-          data: {
-            name: body.name,
-            ...selectionTypes,
-            linkToPhase: body.isCategoryLinkedPhase,
-            phaseIds: body.isCategoryLinkedPhase ? body.phaseIds : [],
-            ...selectionOrder,
-          },
+        const response = await this.databaseService.$transaction(async (tx) => {
+          const category = await tx.category.update({
+            where: {
+              id: categoryId,
+              questionnaireTemplateId: templateId,
+              isCompanyCategory: true,
+              isDeleted: false,
+            },
+            data: {
+              name: body.name,
+              ...selectionTypes,
+              linkToPhase: body.isCategoryLinkedPhase,
+              phaseIds: body.isCategoryLinkedPhase ? body.phaseIds : [],
+              ...selectionOrder,
+            },
+          })
+
+          if (decrement.initialOrder) {
+            await tx.category.updateMany({
+              where: {
+                isDeleted: false,
+                questionnaireTemplateId: templateId,
+                initialOrder: { gt: initialValue }
+              },
+              data: { initialOrder: { decrement: 1 } }
+            })
+          }
+
+          if (decrement.paintOrder) {
+            await tx.category.updateMany({
+              where: {
+                isDeleted: false,
+                questionnaireTemplateId: templateId,
+                paintOrder: { gt: paintValue }
+              },
+              data: { paintOrder: { decrement: 1 } }
+            })
+          }
+
+          return category
         });
-        return { category, message: ResponseMessages.CATEGORY_UPDATED };
+        return { category: response, message: ResponseMessages.CATEGORY_UPDATED };
       }
     } catch (error) {
       console.log(error);
