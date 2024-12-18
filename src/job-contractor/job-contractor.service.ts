@@ -241,9 +241,9 @@ export class JobContractorService {
                             }
                         });
                         // Get template attached to project
-                        const clientTemplateInfo = await this.databaseService.clientTemplate.findUnique({
+                        const clientTemplateInfo = await this.databaseService.clientTemplate.findFirst({
                             where: {
-                                id: jobDetails.templateId
+                                questionnaireTemplateId: jobDetails.templateId
                             }
                         })
                         // Fetching all linked info of phase
