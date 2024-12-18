@@ -240,6 +240,12 @@ export class JobContractorService {
                                 company: true
                             }
                         });
+                        // Get template attached to project
+                        const clientTemplateInfo = await this.databaseService.clientTemplate.findUnique({
+                            where: {
+                                id: jobDetails.templateId
+                            }
+                        })
                         // Fetching all linked info of phase
                         const [categoryDetails, clientCategoryDetails] = await Promise.all([
                             await this.databaseService.category.findMany({
@@ -248,7 +254,8 @@ export class JobContractorService {
                                     isDeleted: false,
                                     phaseIds: {
                                         has: contractor.phaseId
-                                    }
+                                    },
+                                    questionnaireTemplateId: clientTemplateInfo.questionnaireTemplateId
                                 },
                                 orderBy: { questionnaireOrder: 'asc' },
                                 include: {
@@ -270,7 +277,8 @@ export class JobContractorService {
                                     jobId,
                                     phaseIds: {
                                         has: contractor.phaseId
-                                    }
+                                    },
+                                    clientTemplateId: clientTemplateInfo.id
                                 },
                                 orderBy: { questionnaireOrder: 'asc' },
                                 include: {
