@@ -54,8 +54,6 @@ export class ImportTemplateService {
                     category: current.category?.toString(),
                     category_linked_to_initial_selection: current.category_linked_to_initial_selection,
                     category_linked_to_paint_selection: current.category_linked_to_paint_selection,
-                    category_linked_to_contractor_phase: current.category_linked_to_contractor_phase,
-                    linked_phases_id: current.linked_phases_id,
                     category_linked_to_questionnaire: current.category_linked_to_questionnaire,
                     company_category: current.company_category,
                     category_order: current.category_order,
@@ -67,11 +65,9 @@ export class ImportTemplateService {
                 groupedData[current.category].questions.push({
                     question: current.question?.toString(),
                     question_type: current.question_type,
-                    question_linked_to_contractor_phase: current.question_linked_to_contractor_phase,
                     question_linked_to_initial_selection: current.question_linked_to_initial_selection,
                     question_linked_to_paint_selection: current.question_linked_to_paint_selection,
                     question_linked_to_questionnaire: current.question_linked_to_questionnaire,
-                    phases_attached_in_questions: current.phases_attached_in_questions,
                     multiple_options: current.multiple_options,
                     question_order: current.question_order,
                 });
@@ -101,17 +97,6 @@ export class ImportTemplateService {
                 selectionOrder.paintOrder = Number(importData.category_order)
             }
 
-            let phaseIds = importData.linked_phases_id;
-            let linkedPhaseId = [];
-
-            if (typeof phaseIds === 'number') {
-                linkedPhaseId = [phaseIds];
-            } else if (typeof phaseIds === 'string') {
-                linkedPhaseId = phaseIds.split(', ').map(Number)
-            } else {
-                linkedPhaseId = [];
-            }
-
             let category = await this.databaseService.category.create({
                 data: {
                     name: categoryName,
@@ -121,8 +106,6 @@ export class ImportTemplateService {
                     questionnaireTemplateId: templateId,
                     ...whereClause,
                     ...selectionOrder,
-                    linkToPhase: importData.category_linked_to_contractor_phase === 'true' ? true : false,
-                    phaseIds: linkedPhaseId,
                     linkToQuestionnaire: false,
                 },
                 omit: {
@@ -137,28 +120,15 @@ export class ImportTemplateService {
                 importData.questions.map(async (que) => {
                     let options = !que.multiple_options ? [] : que.multiple_options.split(', ').map((ques) => ({ text: ques }))
 
-                    let phaseIds = que.phases_attached_in_questions;
-                    let linkedPhaseId = [];
-
-                    if (typeof phaseIds === 'number') {
-                        linkedPhaseId = [phaseIds];
-                    } else if (typeof phaseIds === 'string') {
-                        linkedPhaseId = phaseIds.split(', ').map(Number)
-                    } else {
-                        linkedPhaseId = [];
-                    }
-
                     let newQuestions = await this.databaseService.templateQuestion.create({
                         data: {
                             question: que.question,
                             questionType: que.question_type,
                             multipleOptions: options,
-                            linkToPhase: que.question_linked_to_contractor_phase == 'true' ? true : false,
                             questionOrder: 0,
                             ...whereClause,
                             questionnaireTemplateId: templateId,
                             categoryId: categoryId,
-                            phaseIds: linkedPhaseId,
                             linkToQuestionnaire: false,
                             initialQuestionOrder: type === TemplateType.SELECTION_INITIAL ? que.question_order : 0,
                             paintQuestionOrder: type === TemplateType.SELECTION_PAINT ? que.question_order : 0,
