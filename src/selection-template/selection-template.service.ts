@@ -533,6 +533,8 @@ export class SelectionTemplateService {
                     linkToPhase: body.isQuestionLinkedPhase,
                     phaseId: body.isQuestionLinkedPhase ? body.linkedPhase : null,
                     phaseIds: body.phaseIds,
+                    questionType: body.type,
+                    multipleOptions: body.multipleOptions,
                 },
             });
 
