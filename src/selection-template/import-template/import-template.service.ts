@@ -40,7 +40,6 @@ export interface ImportData {
 
 @Injectable()
 export class ImportTemplateService {
-
     constructor(private databaseService: DatabaseService) { }
 
     // group the content for import processing
