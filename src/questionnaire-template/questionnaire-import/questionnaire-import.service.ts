@@ -74,8 +74,6 @@ export class QuestionnaireImportService {
             if (!groupedData[current.category]) {
                 groupedData[current.category] = {
                     category: current.category?.toString(),
-                    category_linked_to_contractor_phase: current.category_linked_to_contractor_phase,
-                    linked_phases_id: current.linked_phases_id,
                     category_linked_to_questionnaire: current.category_linked_to_questionnaire,
                     company_category: current.company_category,
                     category_order: current.category_order,
@@ -87,9 +85,7 @@ export class QuestionnaireImportService {
                 groupedData[current.category].questions.push({
                     question: current.question?.toString(),
                     question_type: current.question_type,
-                    question_linked_to_contractor_phase: current.question_linked_to_contractor_phase,
                     question_linked_to_questionnaire: current.question_linked_to_questionnaire,
-                    phases_attached_in_questions: current.phases_attached_in_questions,
                     multiple_options: current.multiple_options,
                     question_order: current.question_order,
                 });
@@ -108,17 +104,6 @@ export class QuestionnaireImportService {
 
             const categoryName = typeof importData.category !== 'string' ? (importData.category).toString() : importData.category;
 
-            let phaseIds = importData.linked_phases_id;
-            let linkedPhaseId = [];
-
-            if (typeof phaseIds === 'number') {
-                linkedPhaseId = [phaseIds];
-            } else if (typeof phaseIds === 'string') {
-                linkedPhaseId = phaseIds.split(', ').map(Number)
-            } else {
-                linkedPhaseId = [];
-            }
-
             let category = await this.databaseService.category.create({
                 data: {
                     name: categoryName,
@@ -126,8 +111,6 @@ export class QuestionnaireImportService {
                     companyId: companyId,
                     questionnaireOrder: Number(importData.category_order),
                     questionnaireTemplateId: templateId,
-                    linkToPhase: importData.category_linked_to_contractor_phase === 'true' ? true : false,
-                    phaseIds: linkedPhaseId,
                     linkToQuestionnaire: true
                 },
                 omit: {
@@ -143,28 +126,15 @@ export class QuestionnaireImportService {
                 importData.questions.map(async (que) => {
                     let options = !que.multiple_options ? [] : que.multiple_options.split(', ').map((ques) => ({ text: ques }))
 
-                    let phaseIds = que.phases_attached_in_questions;
-                    let linkedPhaseId = [];
-
-                    if (typeof phaseIds === 'number') {
-                        linkedPhaseId = [phaseIds];
-                    } else if (typeof phaseIds === 'string') {
-                        linkedPhaseId = phaseIds.split(', ').map(Number)
-                    } else {
-                        linkedPhaseId = [];
-                    }
-
                     let newQuestions = await this.databaseService.templateQuestion.create({
                         data: {
                             question: que.question,
                             questionType: que.question_type,
                             multipleOptions: options,
                             linkToQuestionnaire: true,
-                            linkToPhase: que.question_linked_to_contractor_phase == 'true' ? true : false,
                             questionOrder: Number(que.question_order),
                             questionnaireTemplateId: templateId,
                             categoryId: categoryId,
-                            phaseIds: linkedPhaseId
                         },
                         omit: {
                             isDeleted: true,
@@ -224,8 +194,6 @@ export class QuestionnaireImportService {
 
             throw new InternalServerErrorException();
         }
-
-
     }
 
     async checkTemplateExist(type: string, body: { templateId: string }, companyId: number) {
