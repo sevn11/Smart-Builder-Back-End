@@ -189,8 +189,8 @@ export class ProjectEstimatorTemplateController {
     importTemplate(
         @GetUser() user: User,
         @UploadedFile() file: Express.Multer.File,
-        @Body() body: { templatename: string },
-        @Param('companyId', ParseIntPipe) companyId: number
+        @Body() body: { templateId: string },
+        @Param('companyId', ParseIntPipe) companyId: number,
     ) {
         return this.projectEstimatorTemplateService.importTemplate(user, file, body, companyId);
     }
