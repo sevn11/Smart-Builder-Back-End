@@ -9,6 +9,10 @@ export class PermissionSetDTO {
 
     @IsBoolean()
     @IsNotEmpty()
+    accounting: boolean
+
+    @IsBoolean()
+    @IsNotEmpty()
     specifications: boolean
 
     @IsBoolean()
@@ -22,6 +26,10 @@ export class PermissionSetDTO {
     @IsBoolean()
     @IsNotEmpty()
     schedule: boolean
+
+    @IsBoolean()
+    @IsNotEmpty()
+    proposal: boolean
 
     @IsBoolean()
     @IsNotEmpty()

@@ -89,7 +89,7 @@ export class ClientTemplateService {
     // add category: Questionnaire & Selection
     async addCategory(user: User, companyId: number, jobId: number, type: string, templateId: number, body: ClientCategoryDTO) {
         try {
-            if (user.userType == UserTypes.ADMIN || (user.userType == UserTypes.BUILDER && user.companyId === companyId)) {
+            if (user.userType == UserTypes.ADMIN || (user.userType == UserTypes.BUILDER && user.companyId === companyId) || user.userType == UserTypes.EMPLOYEE) {
                 if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
@@ -194,7 +194,7 @@ export class ClientTemplateService {
     // update category: Questionnaire & Selection
     async updateCategory(user: User, companyId: number, jobId: number, type: string, templateId: number, categoryId: number, body: ClientCategoryDTO) {
         try {
-            if (user.userType == UserTypes.ADMIN || (user.userType == UserTypes.BUILDER && user.companyId === companyId)) {
+            if (user.userType == UserTypes.ADMIN || (user.userType == UserTypes.BUILDER && user.companyId === companyId) || user.userType == UserTypes.EMPLOYEE) {
                 if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
@@ -299,7 +299,7 @@ export class ClientTemplateService {
     // Todo: delete category: Questionnnaire & Selection
     async deleteCategory(user: User, type: string, companyId: number, jobId: number, templateId: number, categoryId: number) {
         try {
-            if (user.userType == UserTypes.ADMIN || (user.userType == UserTypes.BUILDER && user.companyId === companyId)) {
+            if (user.userType == UserTypes.ADMIN || (user.userType == UserTypes.BUILDER && user.companyId === companyId) || user.userType == UserTypes.EMPLOYEE) {
                 if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
@@ -408,7 +408,7 @@ export class ClientTemplateService {
     async createQuestion(user: User, type: string, companyId: number, jobId: number, templateId: number, categoryId: number, body: ClientQuestionDTO) {
         try {
 
-            if (user.userType == UserTypes.ADMIN || (user.userType == UserTypes.BUILDER && user.companyId === companyId)) {
+            if (user.userType == UserTypes.ADMIN || (user.userType == UserTypes.BUILDER && user.companyId === companyId) || user.userType == UserTypes.EMPLOYEE) {
                 if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
@@ -518,7 +518,7 @@ export class ClientTemplateService {
     // Edit Question: Questionnaire & Selection
     async editQuestion(user: User, type: string, companyId: number, jobId: number, templateId: number, categoryId: number, questionId: number, body: ClientQuestionDTO) {
         try {
-            if (user.userType == UserTypes.ADMIN || (user.userType == UserTypes.BUILDER && user.companyId === companyId)) {
+            if (user.userType == UserTypes.ADMIN || (user.userType == UserTypes.BUILDER && user.companyId === companyId) || user.userType == UserTypes.EMPLOYEE) {
                 if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
@@ -625,7 +625,7 @@ export class ClientTemplateService {
     // Delete Question: Questionnaire & Selection
     async deleteQuestion(user: User, type: string, companyId: number, jobId: number, templateId: number, categoryId: number, questionId: number) {
         try {
-            if (user.userType == UserTypes.ADMIN || (user.userType == UserTypes.BUILDER && user.companyId === companyId)) {
+            if (user.userType == UserTypes.ADMIN || (user.userType == UserTypes.BUILDER && user.companyId === companyId) || user.userType == UserTypes.EMPLOYEE) {
                 if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
