@@ -28,6 +28,8 @@ export interface QuestionDetails {
     phases_attached_in_questions: string;
     multiple_options: string;
     question_order: number;
+    initial_question_order: number;
+    paint_question_order: number;
 }
 
 
@@ -49,8 +51,14 @@ export interface ImportData extends CategoryDetails {
     phases_attached_in_questions: string;
     multiple_options: string;
     category_order: number;
+    initial_selection_order: number;
+    initial_order: number;
+    paint_selection_order: number;
+    paint_order: number;
     question_order: number;
-    questions: QuestionDetails[]
+    questions: QuestionDetails[];
+    question_initial_order: number;
+    question_paint_order: number;
 }
 
 @Injectable()
@@ -65,27 +73,19 @@ export class QuestionnaireImportService {
             // If the category doesn't exist, initialize it
             if (!groupedData[current.category]) {
                 groupedData[current.category] = {
-                    category: current.category,
-                    category_linked_to_initial_selection: current.category_linked_to_initial_selection,
-                    category_linked_to_paint_selection: current.category_linked_to_paint_selection,
-                    category_linked_to_contractor_phase: current.category_linked_to_contractor_phase,
-                    linked_phases_id: current.linked_phases_id,
+                    category: current.category?.toString(),
                     category_linked_to_questionnaire: current.category_linked_to_questionnaire,
                     company_category: current.company_category,
                     category_order: current.category_order,
-                    questions: [] // Initialize an empty array for questions
+                    questions: [],
                 };
             }
 
             if (current.question) {
                 groupedData[current.category].questions.push({
-                    question: current.question,
+                    question: current.question?.toString(),
                     question_type: current.question_type,
-                    question_linked_to_contractor_phase: current.question_linked_to_contractor_phase,
-                    question_linked_to_initial_selection: current.question_linked_to_initial_selection,
-                    question_linked_to_paint_selection: current.question_linked_to_paint_selection,
                     question_linked_to_questionnaire: current.question_linked_to_questionnaire,
-                    phases_attached_in_questions: current.phases_attached_in_questions,
                     multiple_options: current.multiple_options,
                     question_order: current.question_order,
                 });
@@ -104,17 +104,6 @@ export class QuestionnaireImportService {
 
             const categoryName = typeof importData.category !== 'string' ? (importData.category).toString() : importData.category;
 
-            let phaseIds = importData.linked_phases_id;
-            let linkedPhaseId = [];
-
-            if (typeof phaseIds === 'number') {
-                linkedPhaseId = [phaseIds];
-            } else if (typeof phaseIds === 'string') {
-                linkedPhaseId = phaseIds.split(', ').map(Number)
-            } else {
-                linkedPhaseId = [];
-            }
-
             let category = await this.databaseService.category.create({
                 data: {
                     name: categoryName,
@@ -122,10 +111,6 @@ export class QuestionnaireImportService {
                     companyId: companyId,
                     questionnaireOrder: Number(importData.category_order),
                     questionnaireTemplateId: templateId,
-                    linkToInitalSelection: importData.category_linked_to_initial_selection === 'true' ? true : false,
-                    linkToPaintSelection: importData.category_linked_to_paint_selection === 'true' ? true : false,
-                    linkToPhase: importData.category_linked_to_contractor_phase === 'true' ? true : false,
-                    phaseIds: linkedPhaseId,
                     linkToQuestionnaire: true
                 },
                 omit: {
@@ -133,7 +118,7 @@ export class QuestionnaireImportService {
                     isCompanyCategory: false,
                 },
             })
-            
+
             if (!category) return;
 
             const categoryId = category.id;
@@ -141,30 +126,15 @@ export class QuestionnaireImportService {
                 importData.questions.map(async (que) => {
                     let options = !que.multiple_options ? [] : que.multiple_options.split(', ').map((ques) => ({ text: ques }))
 
-                    let phaseIds = que.phases_attached_in_questions;
-                    let linkedPhaseId = [];
-
-                    if (typeof phaseIds === 'number') {
-                        linkedPhaseId = [phaseIds];
-                    } else if (typeof phaseIds === 'string') {
-                        linkedPhaseId = phaseIds.split(', ').map(Number)
-                    } else {
-                        linkedPhaseId = [];
-                    }
-
                     let newQuestions = await this.databaseService.templateQuestion.create({
                         data: {
                             question: que.question,
                             questionType: que.question_type,
                             multipleOptions: options,
                             linkToQuestionnaire: true,
-                            linkToPhase: que.question_linked_to_contractor_phase == 'true' ? true : false,
                             questionOrder: Number(que.question_order),
-                            linkToInitalSelection: que.question_linked_to_initial_selection == 'true' ? true : false,
-                            linkToPaintSelection: que.question_linked_to_paint_selection == 'true' ? true : false,
                             questionnaireTemplateId: templateId,
                             categoryId: categoryId,
-                            phaseIds: linkedPhaseId
                         },
                         omit: {
                             isDeleted: true,
@@ -224,7 +194,5 @@ export class QuestionnaireImportService {
 
             throw new InternalServerErrorException();
         }
-
-
     }
 }

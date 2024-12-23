@@ -11,6 +11,7 @@ import { TemplateNameDTO } from './validators/template';
 import { QuestionOrderDTO } from './validators/question-order';
 import * as csv from 'csv-parse';
 import { ImportTemplateService } from './import-template/import-template.service';
+import { SelectionTemplates } from 'src/core/utils/selection-template';
 
 @Injectable()
 export class SelectionTemplateService {
@@ -23,36 +24,30 @@ export class SelectionTemplateService {
     async getSelectionTemplate(user: User, companyId: number, type: string) {
         try {
             // Check if User is Admin of the Company.
-            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
-                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
-                    throw new ForbiddenException("Action Not Allowed");
-                }
-                // Determine template type
-                const templateType = {
-                    'initial-selection': TemplateType.SELECTION_INITIAL,
-                    'paint-selection': TemplateType.SELECTION_PAINT,
-                }[type];
-
-                if (!templateType) {
-                    throw new ForbiddenException("Action Not Allowed.");
-                }
-
-                let templates = await this.databaseService.questionnaireTemplate.findMany({
-                    where: {
-                        isCompanyTemplate: true,
-                        companyId,
-                        isDeleted: false,
-                    },
-                    omit: {
-                        isDeleted: true,
-                        isCompanyTemplate: false,
-                    },
-                })
-                return { templates }
-
-            } else {
+            if (user.userType !== UserTypes.ADMIN && (user.userType !== UserTypes.BUILDER || user.companyId !== companyId)) {
                 throw new ForbiddenException("Action Not Allowed");
             }
+            // Map type to template type
+            const templateTypeMap = {
+                'initial-selection': TemplateType.SELECTION_INITIAL,
+                'paint-selection': TemplateType.SELECTION_PAINT,
+            };
+
+            const templateType = templateTypeMap[type];
+            if (!templateType) throw new ForbiddenException("Action Not Allowed");
+
+            let templates = await this.databaseService.questionnaireTemplate.findMany({
+                where: {
+                    isCompanyTemplate: true,
+                    companyId,
+                    isDeleted: false,
+                },
+                omit: {
+                    isDeleted: true,
+                    isCompanyTemplate: false,
+                },
+            })
+            return { templates }
         } catch (error) {
             console.log(error);
             // Database Exceptions
@@ -72,79 +67,74 @@ export class SelectionTemplateService {
     // List all the category, question and answer of given selection template
     async getSelectionTemplateContent(user: User, companyId: number, type: string, templateId: number) {
         try {
+            // Validate User Permissions
+            if (user.userType !== UserTypes.ADMIN && (user.userType !== UserTypes.BUILDER || user.companyId !== companyId)) {
+                throw new ForbiddenException("Action Not Allowed");
+            }
 
-            // Check if User is Admin of the Company.
-            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
-                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
-                    throw new ForbiddenException("Action Not Allowed");
-                }
+            // Validate Company
+            const company = await this.databaseService.company.findUnique({
+                where: { id: companyId, isDeleted: false },
+            });
+            if (!company) {
+                throw new ForbiddenException("Company not found.");
+            }
 
-                let company = await this.databaseService.company.findUnique({
-                    where: {
-                        id: companyId,
-                        isDeleted: false,
-                    },
-                });
-                if (!company) {
-                    throw new ForbiddenException("Action Not Allowed");
-                }
+            // Map Template Type
+            const templateTypeMap = {
+                "initial-selection": TemplateType.SELECTION_INITIAL,
+                "paint-selection": TemplateType.SELECTION_PAINT,
+            };
 
-                // Determine template type
-                const templateType = {
-                    'initial-selection': TemplateType.SELECTION_INITIAL,
-                    'paint-selection': TemplateType.SELECTION_PAINT,
-                }[type];
+            const templateType = templateTypeMap[type];
+            if (!templateType) {
+                throw new ForbiddenException("Invalid template type.");
+            }
 
-                if (!templateType) {
-                    throw new ForbiddenException("Action Not Allowed.");
-                }
 
-                let whereClause: any = {
+            // Define Query Filters and Sorting
+            const selectionFilters = {
+                [TemplateType.SELECTION_INITIAL]: {
+                    linkFilter: { linkToInitalSelection: true },
+                    categoryOrder: { initialOrder: "asc" },
+                    questionOrder: { initialQuestionOrder: "asc" },
+                },
+                [TemplateType.SELECTION_PAINT]: {
+                    linkFilter: { linkToPaintSelection: true },
+                    categoryOrder: { paintOrder: "asc" },
+                    questionOrder: { paintQuestionOrder: "asc" },
+                },
+            }[templateType];
+
+            const { linkFilter, categoryOrder, questionOrder } = selectionFilters;
+
+            // Fetch Categories and Questions
+            const categories = await this.databaseService.category.findMany({
+                where: {
                     questionnaireTemplateId: templateId,
                     isCompanyCategory: true,
                     companyId,
                     isDeleted: false,
-                };
-
-                let quesWhereClause: any = {
-                    isDeleted: false,
-                }
-                if (templateType === TemplateType.SELECTION_INITIAL) {
-                    whereClause.linkToInitalSelection = true;
-                    quesWhereClause.linkToInitalSelection = true;
-                }
-                if (templateType === TemplateType.SELECTION_PAINT) {
-                    whereClause.linkToPaintSelection = true
-                    quesWhereClause.linkToPaintSelection = true
-                }
-
-                let categories = await this.databaseService.category.findMany({
-                    where: whereClause,
-                    include: {
-                        questions: {
-                            where: quesWhereClause,
-                            omit: {
-                                isDeleted: true,
-                                categoryId: true,
-                                questionnaireTemplateId: true,
-                            },
-                            orderBy: {
-                                questionOrder: 'asc'
-                            }
+                    ...linkFilter,
+                },
+                include: {
+                    questions: {
+                        where: { isDeleted: false, ...linkFilter },
+                        omit: {
+                            isDeleted: true,
+                            categoryId: true,
+                            questionnaireTemplateId: true,
                         },
+                        orderBy: questionOrder,
                     },
-                    orderBy: {
-                        questionnaireOrder: 'asc'
-                    }
-                })
+                },
+                orderBy: categoryOrder,
+            });
 
-                return { categories }
-            } else {
-                throw new ForbiddenException("Action Not Allowed");
-            }
+            return { categories };
         } catch (error) {
-            console.log(error);
-            // Database Exceptions
+            console.error(error);
+            // Handle Database Errors
             if (error instanceof PrismaClientKnownRequestError) {
                 if (error.code == PrismaErrorCodes.NOT_FOUND)
                     throw new BadRequestException(ResponseMessages.RESOURCE_NOT_FOUND);
@@ -161,66 +151,65 @@ export class SelectionTemplateService {
     // Create selection template category
     async createSelectionTemplateCategory(user: User, type: string, companyId: number, templateId: number, body: CreateCategoryDTO) {
         try {
-            // Check if User is Admin of the Company.
-            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
-                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
-                    throw new ForbiddenException("Action Not Allowed");
-                }
-
-                // Check template exist
-                let template = await this.databaseService.questionnaireTemplate.findUniqueOrThrow({
-                    where: {
-                        id: templateId,
-                        isCompanyTemplate: true,
-                        companyId,
-                        isDeleted: false,
-                    }
-                });
-
-                let maxOrder = await this.databaseService.category.aggregate({
-                    _max: {
-                        questionnaireOrder: true,
-                    },
-                    where: {
-                        questionnaireTemplateId: template.id,
-                        isDeleted: false,
-                    }
-                })
-
-                //increase order by 1.
-                const { _max: { questionnaireOrder } } = maxOrder
-                let order = questionnaireOrder === null || questionnaireOrder == undefined ? 1 : questionnaireOrder + 1
-
-                // Determine template type
-                const templateType = {
-                    'initial-selection': TemplateType.SELECTION_INITIAL,
-                    'paint-selection': TemplateType.SELECTION_PAINT,
-                }[type];
-
-                let category = await this.databaseService.category.create({
-                    data: {
-                        name: body.name,
-                        isCompanyCategory: true,
-                        questionnaireOrder: order,
-                        companyId: companyId,
-                        linkToQuestionnaire: false,
-                        linkToInitalSelection: templateType === TemplateType.SELECTION_INITIAL ? true : false,
-                        linkToPaintSelection: templateType === TemplateType.SELECTION_PAINT ? true : false,
-                        questionnaireTemplateId: templateId,
-                        linkToPhase: body.isCategoryLinkedPhase,
-                        phaseIds: body.isCategoryLinkedPhase ? body.phaseIds : []
-                    },
-                    omit: {
-                        isDeleted: true,
-                        isCompanyCategory: false,
-                    },
-                });
-
-                return { category };
-
-            } else {
+            // Validate User Permissions
+            if (user.userType !== UserTypes.ADMIN && (user.userType !== UserTypes.BUILDER || user.companyId !== companyId)) {
                 throw new ForbiddenException("Action Not Allowed");
             }
+
+            // Check template exist
+            const template = await this.databaseService.questionnaireTemplate.findUniqueOrThrow({
+                where: {
+                    id: templateId,
+                    isCompanyTemplate: true,
+                    companyId,
+                    isDeleted: false,
+                }
+            });
+
+            // Determine order and related properties
+            const isInitialSelection = type === SelectionTemplates.INITIAL_SELECTION.toLowerCase().replace(/ /g, "-");
+            const isPaintSelection = type === SelectionTemplates.PAINT_SELECTION.toLowerCase().replace(/ /g, "-");
+
+            if (!isInitialSelection && !isPaintSelection) {
+                throw new ForbiddenException("Action Not Allowed");
+            }
+
+            const aggregateResult = await this.databaseService.category.aggregate({
+                _max: isInitialSelection
+                    ? { initialOrder: true }
+                    : { paintOrder: true },
+                where: { questionnaireTemplateId: template.id, isDeleted: false },
+            });
+
+            let maxOrder = isInitialSelection
+                ? (aggregateResult._max as { initialOrder: number }).initialOrder
+                : (aggregateResult._max as { paintOrder: number }).paintOrder;
+
+            const order = (maxOrder || 0) + 1;
+
+            // Prepare data for category creation
+            const whereClause = isInitialSelection
+                ? { linkToInitalSelection: true, linkToPaintSelection: false, initialOrder: order }
+                : { linkToInitalSelection: false, linkToPaintSelection: true, paintOrder: order };
+
+            const categoryData = {
+                name: body.name,
+                questionnaireOrder: 0,
+                isCompanyCategory: true,
+                companyId,
+                linkToQuestionnaire: false,
+                questionnaireTemplateId: templateId,
+                linkToPhase: body.isCategoryLinkedPhase,
+                phaseIds: body.isCategoryLinkedPhase ? body.phaseIds : [],
+                ...whereClause,
+            };
+
+            const category = await this.databaseService.category.create({
+                data: categoryData,
+                omit: { isDeleted: true, isCompanyCategory: false },
+            });
+
+            return { category };
         } catch (error) {
             console.log(error);
             // Database Exceptions
@@ -240,66 +229,69 @@ export class SelectionTemplateService {
     // update the selection category template
     async updateSelectionCategory(user: User, type: string, companyId: number, templateId: number, categoryId: number, body: CreateCategoryDTO) {
         try {
-            // Check if User is Admin of the Company.
-            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
-                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
-                    throw new ForbiddenException("Action Not Allowed");
-                }
-
-                // Check template exist
-                await this.databaseService.questionnaireTemplate.findUniqueOrThrow({
-                    where: {
-                        id: templateId,
-                        isCompanyTemplate: true,
-                        companyId,
-                        isDeleted: false,
-                    }
-                });
-
-                // Determine template type
-                const templateType = {
-                    'initial-selection': TemplateType.SELECTION_INITIAL,
-                    'paint-selection': TemplateType.SELECTION_PAINT,
-                }[type];
-
-                let category = await this.databaseService.category.findUniqueOrThrow({
-                    where: {
-                        id: categoryId,
-                        questionnaireTemplateId: templateId,
-                        isDeleted: false,
-                        isCompanyCategory: true,
-                        companyId,
-                    }
-                })
-
-                category = await this.databaseService.category.update({
-                    where: {
-                        id: categoryId,
-                        questionnaireTemplateId: templateId,
-                        isDeleted: false,
-                        isCompanyCategory: true,
-                        companyId,
-                    },
-                    data: {
-                        name: body.name,
-                        linkToPhase: body.isCategoryLinkedPhase,
-                        phaseIds: body.isCategoryLinkedPhase ? body.phaseIds : []
-                    }
-                })
-
-                return { category, message: ResponseMessages.CATEGORY_UPDATED };
-
-            } else {
+            // Validate user permissions
+            if (user.userType !== UserTypes.ADMIN && user.userType !== UserTypes.BUILDER) {
                 throw new ForbiddenException("Action Not Allowed");
             }
+
+            if (user.userType === UserTypes.BUILDER && user.companyId !== companyId) {
+                throw new ForbiddenException("Action Not Allowed");
+            }
+
+            // Validate template existence
+            const template = await this.databaseService.questionnaireTemplate.findUnique({
+                where: {
+                    id: templateId,
+                    isCompanyTemplate: true,
+                    companyId,
+                    isDeleted: false,
+                }
+            });
+
+            if (!template) {
+                throw new BadRequestException(ResponseMessages.RESOURCE_NOT_FOUND);
+            }
+            // Validate category existence
+            let category = await this.databaseService.category.findUnique({
+                where: {
+                    id: categoryId,
+                    questionnaireTemplateId: templateId,
+                    isDeleted: false,
+                    isCompanyCategory: true,
+                    companyId,
+                }
+            });
+
+            if (!category) {
+                throw new BadRequestException(ResponseMessages.RESOURCE_NOT_FOUND);
+            }
+
+            // Update category
+            category = await this.databaseService.category.update({
+                where: {
+                    id: categoryId,
+                    questionnaireTemplateId: templateId,
+                    isDeleted: false,
+                    isCompanyCategory: true,
+                    companyId,
+                },
+                data: {
+                    name: body.name,
+                    linkToPhase: body.isCategoryLinkedPhase,
+                    phaseIds: body.isCategoryLinkedPhase ? body.phaseIds : []
+                }
+            });
+
+            return { category, message: ResponseMessages.CATEGORY_UPDATED };
+
         } catch (error) {
-            console.log(error);
-            // Database Exceptions
+            console.error(error);
+            // Handle database exceptions
             if (error instanceof PrismaClientKnownRequestError) {
-                if (error.code == PrismaErrorCodes.NOT_FOUND)
+                if (error.code === PrismaErrorCodes.NOT_FOUND) {
                     throw new BadRequestException(ResponseMessages.RESOURCE_NOT_FOUND);
-                else {
-                    console.log(error.code);
+                } else {
+                    console.error(error.code);
                 }
             } else if (error instanceof ForbiddenException) {
                 throw error;
@@ -311,254 +303,187 @@ export class SelectionTemplateService {
     //delete category
     async deleteCategory(user: User, type: string, companyId: number, templateId: number, categoryId: number) {
         try {
+            // Validate user permissions
+            const isAdminOrBuilder = user.userType === UserTypes.ADMIN || user.userType === UserTypes.BUILDER;
+            const isBuilderAuthorized = user.userType === UserTypes.BUILDER && user.companyId === companyId;
 
-            // Check if User is Admin of the Company.
-            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
-                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
-                    throw new ForbiddenException("Action Not Allowed");
-                }
-
-                const templateType = {
-                    'initial-selection': TemplateType.SELECTION_INITIAL,
-                    'paint-selection': TemplateType.SELECTION_PAINT,
-                }[type];
-
-                if (!templateType) {
-                    throw new ForbiddenException("Action Not Allowed.");
-                }
-
-                await this.databaseService.questionnaireTemplate.findUniqueOrThrow({
-                    where: {
-                        id: templateId,
-                        isCompanyTemplate: true,
-                        companyId,
-                        isDeleted: false,
-                    }
-                });
-
-                let categoryToDelete = await this.databaseService.category.findUniqueOrThrow({
-                    where: {
-                        id: categoryId,
-                        questionnaireTemplateId: templateId,
-                        isCompanyCategory: true,
-                        companyId,
-                        isDeleted: false
-                    }
-                })
-
-                const deletedCategoryOrder = categoryToDelete.questionnaireOrder;
-                // Mark the category as deleted and set its questionnaireOrder to 0
-                await this.databaseService.$transaction([
-                    this.databaseService.category.update({
-                        where: {
-                            id: categoryToDelete.id,
-                            questionnaireTemplateId: templateId,
-                            isCompanyCategory: true,
-                            isDeleted: false,
-                        },
-                        data: {
-                            isDeleted: true,
-                            questionnaireOrder: 0, // Set the order to 0 for the deleted category
-                        }
-                    }),
-                    this.databaseService.templateQuestion.updateMany({
-                        where: {
-                            questionnaireTemplateId: templateId,
-                            categoryId: categoryToDelete.id,
-                            isDeleted: false,
-                        },
-                        data: {
-                            isDeleted: true,
-                        },
-                    }),
-                    // Decrement the questionnaireOrder of categories with higher orders
-                    this.databaseService.category.updateMany({
-                        where: {
-                            questionnaireTemplateId: templateId,
-                            isCompanyCategory: true,
-                            isDeleted: false,
-                            questionnaireOrder: {
-                                gt: deletedCategoryOrder
-                            }
-                        },
-                        data: {
-                            questionnaireOrder: {
-                                decrement: 1,
-                            }
-                        }
-                    }),
-                ]);
-
-                let deleteWhereClause: any = {
-                    questionnaireTemplateId: templateId,
-                    isCompanyCategory: true,
-                    isDeleted: false,
-                }
-
-                let quesWhereClause: any = {
-                    isDeleted: false,
-                }
-
-                if (templateType === TemplateType.SELECTION_INITIAL) {
-                    deleteWhereClause.linkToInitalSelection = true;
-                    quesWhereClause.linkToInitalSelection = true
-                }
-
-                if (templateType === TemplateType.SELECTION_PAINT) {
-                    deleteWhereClause.linkToPaintSelection = true
-                    quesWhereClause.linkToPaintSelection = true
-                }
-
-
-                // Fetch the updated list of categories
-                let categories = await this.databaseService.category.findMany({
-                    where: deleteWhereClause,
-                    include: {
-                        questions: {
-                            where: quesWhereClause,
-                            omit: {
-                                isDeleted: true,
-                                categoryId: true,
-                                questionnaireTemplateId: true,
-                            },
-                            orderBy: {
-                                questionOrder: 'asc'
-                            }
-                        }
-                    },
-                    orderBy: {
-                        questionnaireOrder: 'asc'
-                    }
-                });
-
-                return { categories, message: ResponseMessages.CATEGORY_DELETED };
-
-            } else {
+            if (!isAdminOrBuilder || (user.userType === UserTypes.BUILDER && !isBuilderAuthorized)) {
                 throw new ForbiddenException("Action Not Allowed");
             }
 
+            // Map category type
+            const templateTypeMap: Record<string, TemplateType> = {
+                'initial-selection': TemplateType.SELECTION_INITIAL,
+                'paint-selection': TemplateType.SELECTION_PAINT,
+            };
+
+            const templateType = templateTypeMap[type];
+            if (!templateType) throw new ForbiddenException("Invalid Template Type");
+
+            // Validate template and category
+            await this.databaseService.questionnaireTemplate.findUniqueOrThrow({
+                where: { id: templateId, isCompanyTemplate: true, companyId, isDeleted: false },
+            });
+
+            const category = await this.databaseService.category.findUniqueOrThrow({
+                where: {
+                    id: categoryId,
+                    questionnaireTemplateId: templateId,
+                    isCompanyCategory: true,
+                    companyId,
+                    isDeleted: false,
+                },
+            });
+
+            // Prepare query parameters based on template type
+            const typeSpecificFields = {
+                [TemplateType.SELECTION_INITIAL]: {
+                    orderField: 'initialOrder',
+                    linkField: 'linkToInitalSelection',
+                    questionOrderField: 'initialQuestionOrder',
+                },
+                [TemplateType.SELECTION_PAINT]: {
+                    orderField: 'paintOrder',
+                    linkField: 'linkToPaintSelection',
+                    questionOrderField: 'paintQuestionOrder',
+                },
+            };
+
+            const { orderField, linkField, questionOrderField } = typeSpecificFields[templateType];
+            const categoryOrder = category[orderField];
+            // Execute deletion within a transaction
+            await this.databaseService.$transaction(async (tx) => {
+                // Mark category and its questions as deleted
+                await tx.category.update({
+                    where: { id: categoryId, questionnaireTemplateId: templateId, isDeleted: false },
+                    data: { isDeleted: true, [orderField]: 0 },
+                });
+
+                await tx.templateQuestion.updateMany({
+                    where: { categoryId, questionnaireTemplateId: templateId, isDeleted: false },
+                    data: { isDeleted: true },
+                });
+
+                // Decrement order of subsequent categories
+                await tx.category.updateMany({
+                    where: {
+                        questionnaireTemplateId: templateId,
+                        isDeleted: false,
+                        isCompanyCategory: true,
+                        [orderField]: { gt: categoryOrder },
+                    },
+                    data: { [orderField]: { decrement: 1 } },
+                });
+            });
+
+            // Fetch updated categories
+            const updatedCategories = await this.databaseService.category.findMany({
+                where: { questionnaireTemplateId: templateId, isDeleted: false, isCompanyCategory: true, [linkField]: true },
+                include: {
+                    questions: {
+                        where: { isDeleted: false, [linkField]: true },
+                        orderBy: { [questionOrderField]: 'asc' },
+                    },
+                },
+                orderBy: { [orderField]: 'asc' },
+            });
+
+            return { categories: updatedCategories, message: ResponseMessages.CATEGORY_DELETED };
         } catch (error) {
-            console.log(error);
-            // Database Exceptions
-            if (error instanceof PrismaClientKnownRequestError) {
-                if (error.code == PrismaErrorCodes.NOT_FOUND)
-                    throw new BadRequestException(ResponseMessages.RESOURCE_NOT_FOUND);
-                else {
-                    console.log(error.code);
-                }
-            } else if (error instanceof ForbiddenException) {
-                throw error;
+            console.error(error);
+
+            // Handle database errors
+            if (error instanceof PrismaClientKnownRequestError && error.code === PrismaErrorCodes.NOT_FOUND) {
+                throw new BadRequestException(ResponseMessages.RESOURCE_NOT_FOUND);
             }
+
+            // Re-throw known exceptions
+            if (error instanceof ForbiddenException) throw error;
+
+            // Handle unexpected errors
             throw new InternalServerErrorException();
         }
     }
+
 
     // Create question
     async createLabel(user: User, type: string, companyId: number, templateId: number, categoryId: number, body: QuestionDTO) {
         try {
             // Check if User is Admin of the Company.
-            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
-                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
-                    throw new ForbiddenException("Action Not Allowed");
-                }
-
-                await this.databaseService.questionnaireTemplate.findUniqueOrThrow({
-                    where: {
-                        id: templateId,
-                        isCompanyTemplate: true,
-                        companyId,
-                        isDeleted: false,
-                    }
-                });
-
-                await this.databaseService.category.findUniqueOrThrow({
-                    where: {
-                        id: categoryId,
-                        isCompanyCategory: true,
-                        companyId,
-                        isDeleted: false,
-                    }
-                });
-
-                // Determine template type
-                const templateType = {
-                    'initial-selection': TemplateType.SELECTION_INITIAL,
-                    'paint-selection': TemplateType.SELECTION_PAINT,
-                }[type];
-
-                let isLinkedToInitialSelection = templateType === TemplateType.SELECTION_INITIAL ? true : false;
-                let isLinkedToPaintSelection = templateType === TemplateType.SELECTION_PAINT ? true : false;
-
-                let maxOrder = await this.databaseService.templateQuestion.aggregate({
-                    _max: {
-                        questionOrder: true,
-                    },
-                    where: {
-                        questionnaireTemplateId: templateId,
-                        categoryId,
-                        isDeleted: false,
-                    }
-                })
-
-                let order = body.questionOrder === 0 ?
-                    (maxOrder._max.questionOrder ?? 0) + 1 :
-                    body.questionOrder
-
-                let label = await this.databaseService.templateQuestion.create({
-                    data: {
-                        question: body.question,
-                        questionType: body.type,
-                        multipleOptions: body.multipleOptions,
-                        linkToPhase: body.isQuestionLinkedPhase,
-                        linkToQuestionnaire: false,
-                        linkToInitalSelection: isLinkedToInitialSelection,
-                        linkToPaintSelection: isLinkedToPaintSelection,
-                        questionnaireTemplateId: templateId,
-                        categoryId: categoryId,
-                        phaseId: body.linkedPhase || null,
-                        questionOrder: order,
-                        phaseIds: body.phaseIds || null
-                    },
-                    omit: {
-                        isDeleted: true,
-                    }
-                })
-
-                let quesWhere: any = {
-                    isDeleted: false,
-                }
-                if (templateType === TemplateType.SELECTION_INITIAL) {
-                    quesWhere.linkToInitalSelection = true;
-                }
-
-                if (templateType === TemplateType.SELECTION_PAINT) {
-                    quesWhere.linkToPaintSelection = true;
-                }
-
-                const category = await this.databaseService.category.findUniqueOrThrow({
-                    where: {
-                        id: categoryId,
-                        isCompanyCategory: true,
-                        isDeleted: false
-                    },
-                    include: {
-                        questions: {
-                            where: quesWhere,
-                            orderBy: {
-                                questionOrder: 'asc'
-                            }
-                        }
-                    }
-                })
-
-                return {
-                    questionId: label.id,
-                    category,
-                    message: ResponseMessages.LABEL_CREATED
-                }
-            } else {
+            if (user.userType !== UserTypes.ADMIN && (user.userType !== UserTypes.BUILDER || user.companyId !== companyId)) {
                 throw new ForbiddenException("Action Not Allowed");
             }
+
+            await this.databaseService.questionnaireTemplate.findUniqueOrThrow({
+                where: { id: templateId, isCompanyTemplate: true, companyId, isDeleted: false }
+            });
+
+            await this.databaseService.category.findUniqueOrThrow({
+                where: { id: categoryId, isCompanyCategory: true, companyId, isDeleted: false }
+            });
+
+            // Map template type
+            const templateTypeMapping = {
+                'initial-selection': TemplateType.SELECTION_INITIAL,
+                'paint-selection': TemplateType.SELECTION_PAINT,
+            };
+            const templateType = templateTypeMapping[type];
+            if (!templateType) {
+                throw new ForbiddenException("Action not allowed");
+            }
+
+            const isLinkedToInitialSelection = templateType === TemplateType.SELECTION_INITIAL;
+            const isLinkedToPaintSelection = templateType === TemplateType.SELECTION_PAINT;
+
+            // Fetch max order and calculate new order
+            const orderField = isLinkedToInitialSelection ? 'initialQuestionOrder' : 'paintQuestionOrder';
+            const aggregateResult = await this.databaseService.templateQuestion.aggregate({
+                _max: { [orderField]: true },
+                where: { questionnaireTemplateId: templateId, categoryId, isDeleted: false }
+            });
+
+            const maxOrder = aggregateResult._max?.[orderField] || 0;
+            const order = body.questionOrder || maxOrder + 1;
+
+            const label = await this.databaseService.templateQuestion.create({
+                data: {
+                    question: body.question,
+                    multipleOptions: body.multipleOptions,
+                    questionType: body.type,
+                    linkToPhase: body.isQuestionLinkedPhase,
+                    linkToInitalSelection: isLinkedToInitialSelection,
+                    linkToPaintSelection: isLinkedToPaintSelection,
+                    linkToQuestionnaire: false,
+                    questionnaireTemplateId: templateId,
+                    categoryId,
+                    phaseId: body.linkedPhase || null,
+                    questionOrder: 0,
+                    [orderField]: order,
+                    phaseIds: body.phaseIds || null
+                }
+            });
+
+            const questionsWhereClause: any = { isDeleted: false }
+            if (templateType === TemplateType.SELECTION_INITIAL) {
+                questionsWhereClause.linkToInitalSelection = true;
+            }
+
+            if (templateType === TemplateType.SELECTION_PAINT) {
+                questionsWhereClause.linkToPaintSelection = true;
+            }
+
+            const orderByClause = { [orderField]: 'asc' };
+            const category = await this.databaseService.category.findUniqueOrThrow({
+                where: { id: categoryId, isCompanyCategory: true, isDeleted: false },
+                include: {
+                    questions: {
+                        where: questionsWhereClause,
+                        orderBy: orderByClause
+                    }
+                }
+            });
+
+            return { questionId: label.id, category, message: ResponseMessages.LABEL_CREATED }
         } catch (error) {
             console.log(error);
             // Database Exceptions
@@ -577,215 +502,161 @@ export class SelectionTemplateService {
 
     // Update the label
     async updateLabel(user: User, type: string, companyId: number, templateId: number, categoryId: number, labelId: number, body: QuestionDTO) {
-
         try {
-            // Check if User is Admin of the Company.
-            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
-                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
-                    throw new ForbiddenException("Action Not Allowed");
-                }
-
-                await this.databaseService.templateQuestion.findUniqueOrThrow({
-                    where: {
-                        id: labelId,
-                        isDeleted: false,
-                        questionnaireTemplateId: templateId,
-                        categoryId
-                    }
-                })
-
-                let q = await this.databaseService.templateQuestion.update({
-                    where: {
-                        id: labelId,
-                        isDeleted: false,
-                        questionnaireTemplateId: templateId,
-                        categoryId
-                    },
-                    data: {
-                        question: body.question,
-                        linkToPhase: body.isQuestionLinkedPhase,
-                        questionType: body.type,
-                        multipleOptions: body.multipleOptions,
-                        phaseId: body.isQuestionLinkedPhase ? body.linkedPhase : null,
-                        phaseIds: body.phaseIds
-                    },
-                    omit: {
-                        isDeleted: true,
-                    }
-                });
-
-                // Determine template type
-                const templateType = {
-                    'initial-selection': TemplateType.SELECTION_INITIAL,
-                    'paint-selection': TemplateType.SELECTION_PAINT,
-                }[type];
-
-                let quesWhere: any = {
-                    isDeleted: false,
-                }
-                if (templateType === TemplateType.SELECTION_INITIAL) {
-                    quesWhere.linkToInitalSelection = true;
-                }
-
-                if (templateType === TemplateType.SELECTION_PAINT) {
-                    quesWhere.linkToPaintSelection = true;
-                }
-
-                const category = await this.databaseService.category.findUniqueOrThrow({
-                    where: {
-                        id: categoryId,
-                        questionnaireTemplateId: templateId,
-                        isCompanyCategory: true,
-                        isDeleted: false,
-                        companyId
-                    },
-                    include: {
-                        questions: {
-                            where: quesWhere,
-                            orderBy: {
-                                questionOrder: 'asc'
-                            }
-                        }
-                    }
-
-                })
-
-                return { category, message: ResponseMessages.LABEL_UPDATED }
-            } else {
+            if (user.userType !== UserTypes.ADMIN && (user.userType !== UserTypes.BUILDER || user.companyId !== companyId)) {
                 throw new ForbiddenException("Action Not Allowed");
             }
+
+            if (type !== 'initial-selection' && type !== 'paint-selection') {
+                throw new ForbiddenException("Action Not Allowed");
+            }
+            // Check if the label exists and belongs to the given template and category
+            await this.databaseService.templateQuestion.findUniqueOrThrow({
+                where: {
+                    id: labelId,
+                    isDeleted: false,
+                    questionnaireTemplateId: templateId,
+                    categoryId,
+                },
+            });
+
+            // Update the label
+            await this.databaseService.templateQuestion.update({
+                where: {
+                    id: labelId,
+                    isDeleted: false,
+                    questionnaireTemplateId: templateId,
+                    categoryId,
+                },
+                data: {
+                    question: body.question,
+                    linkToPhase: body.isQuestionLinkedPhase,
+                    phaseId: body.isQuestionLinkedPhase ? body.linkedPhase : null,
+                    phaseIds: body.phaseIds,
+                    questionType: body.type,
+                    multipleOptions: body.multipleOptions,
+                },
+            });
+
+            // Determine template type and build query conditions
+            const templateTypeMap = {
+                'initial-selection': { type: TemplateType.SELECTION_INITIAL, condition: 'linkToInitalSelection', order: 'initialQuestionOrder' },
+                'paint-selection': { type: TemplateType.SELECTION_PAINT, condition: 'linkToPaintSelection', order: 'paintQuestionOrder' },
+            };
+
+            const { condition, order } = templateTypeMap[type];
+            const quesWhere = { isDeleted: false, ...(condition && { [condition]: true }) };
+            const orderBy = { [order]: 'asc' };
+
+            // Fetch category with filtered questions
+            const category = await this.databaseService.category.findUniqueOrThrow({
+                where: {
+                    id: categoryId,
+                    questionnaireTemplateId: templateId,
+                    isCompanyCategory: true,
+                    isDeleted: false,
+                    companyId,
+                },
+                include: {
+                    questions: {
+                        where: quesWhere,
+                        orderBy,
+                    },
+                },
+            });
+
+            return { category, message: ResponseMessages.LABEL_UPDATED };
         } catch (error) {
-            console.log(error);
-            // Database Exceptions
+            console.error(error);
+
+            // Handle specific database errors
             if (error instanceof PrismaClientKnownRequestError) {
-                if (error.code == PrismaErrorCodes.NOT_FOUND)
+                if (error.code === PrismaErrorCodes.NOT_FOUND) {
                     throw new BadRequestException(ResponseMessages.RESOURCE_NOT_FOUND);
-                else {
-                    console.log(error.code);
                 }
-            } else if (error instanceof ForbiddenException) {
+            }
+
+            // Rethrow known exceptions
+            if (error instanceof ForbiddenException) {
                 throw error;
             }
+
+            // Handle unexpected errors
             throw new InternalServerErrorException();
         }
     }
+
 
     async deleteLabel(user: User, type: string, companyId: number, templateId: number, categoryId: number, labelId: number) {
         try {
-            // Check if User is Admin of the Company.
-            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
-                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
-                    throw new ForbiddenException("Action Not Allowed");
-                }
-
-                const question = await this.databaseService.templateQuestion.findUnique({
-                    where: {
-                        id: labelId,
-                        categoryId: categoryId,
-                        isDeleted: false,
-                        questionnaireTemplateId: templateId,
-                    }
-                })
-
-                if (!question) {
-                    throw new BadRequestException(ResponseMessages.LABEL_NOT_FOUND);
-                }
-
-                let whereClause: any = {
-                    isDeleted: false,
-                }
-
-                // Determine template type
-                const templateType = {
-                    'initial-selection': TemplateType.SELECTION_INITIAL,
-                    'paint-selection': TemplateType.SELECTION_PAINT,
-                }[type];
-
-                if (templateType === TemplateType.SELECTION_INITIAL) {
-                    whereClause.linkToInitalSelection = true;
-                }
-
-                if (templateType === TemplateType.SELECTION_PAINT) {
-                    whereClause.linkToPaintSelection = true;
-                }
-
-                const questionOrder = question.questionOrder;
-
-                // delete the template question.
-                await this.databaseService.templateQuestion.update({
-                    where: {
-                        id: labelId,
-                        categoryId: categoryId,
-                        ...whereClause,
-                        questionnaireTemplateId: templateId,
-                    },
-                    data: {
-                        isDeleted: true,
-                        questionOrder: 0
-                    }
-                });
-
-                await this.databaseService.$transaction([
-                    this.databaseService.templateQuestionAnswer.deleteMany({
-                        where: {
-                            questionId: question.id
-                        },
-                    }),
-                    this.databaseService.templateQuestion.update({
-                        where: {
-                            id: question.id,
-                        },
-                        data: {
-                            isDeleted: true,
-                            questionOrder: 0,
-                        },
-                    }),
-                    this.databaseService.templateQuestion.updateMany({
-                        where: {
-                            questionnaireTemplateId: templateId,
-                            categoryId: categoryId,
-                            isDeleted: false,
-                            ...whereClause,
-                            questionOrder: {
-                                gt: questionOrder
-                            },
-                        },
-                        data: {
-                            questionOrder: {
-                                decrement: 1,
-                            }
-                        }
-                    })
-                ]);
-
-                // Refetch the categories.
-                const category = await this.databaseService.category.findUniqueOrThrow({
-                    where: {
-                        id: categoryId,
-                        questionnaireTemplateId: templateId,
-                        isCompanyCategory: true,
-                        isDeleted: false,
-                        companyId
-                    },
-                    include: {
-                        questions: {
-                            where: {
-                                isDeleted: false,
-                                ...whereClause
-                            },
-                            orderBy: {
-                                questionOrder: 'asc'
-                            }
-                        }
-                    }
-                });
-
-                return { category, message: ResponseMessages.LABEL_DELETED }
-
-
-            } else {
+            // Validate user permissions
+            if (user.userType !== UserTypes.ADMIN && (user.userType !== UserTypes.BUILDER || user.companyId !== companyId)) {
                 throw new ForbiddenException("Action Not Allowed");
             }
+
+            if (type !== 'initial-selection' && type !== 'paint-selection') {
+                throw new ForbiddenException("Action Not Allowed");
+            }
+
+            // Fetch question and ensure it exists
+            const question = await this.databaseService.templateQuestion.findUnique({
+                where: { id: labelId, categoryId: categoryId, isDeleted: false, questionnaireTemplateId: templateId, }
+            })
+
+            if (!question) {
+                throw new BadRequestException("Question not found.");
+            }
+
+            // Determine template type and corresponding fields
+            const templateMapping = {
+                'initial-selection': { type: TemplateType.SELECTION_INITIAL, field: 'initialQuestionOrder' },
+                'paint-selection': { type: TemplateType.SELECTION_PAINT, field: 'paintQuestionOrder' },
+            };
+
+            const { type: templateType, field: questionOrderField } = templateMapping[type];
+            if (!templateType) throw new BadRequestException("Action Not Allowed");
+
+            // Prepare query filters and ordering
+            const whereClause: Record<string, any> = { isDeleted: false };
+            const orderBy = { [questionOrderField]: 'asc' };
+            if (templateType === TemplateType.SELECTION_INITIAL) whereClause.linkToInitalSelection = true;
+            if (templateType === TemplateType.SELECTION_PAINT) whereClause.linkToPaintSelection = true;
+
+            const questionOrder = question[questionOrderField];
+
+            // Perform deletion in a transaction
+            await this.databaseService.$transaction(async (tx) => {
+                // Mark the question as deleted
+                await tx.templateQuestion.update({
+                    where: { id: labelId, categoryId, questionnaireTemplateId: templateId, ...whereClause },
+                    data: { isDeleted: true, [questionOrderField]: 0 },
+                });
+
+                // Remove associated answers
+                await tx.templateQuestionAnswer.deleteMany({ where: { questionId: question.id } });
+
+
+                // Adjust the order of remaining questions
+                await tx.templateQuestion.updateMany({
+                    where: {
+                        questionnaireTemplateId: templateId,
+                        categoryId,
+                        isDeleted: false,
+                        ...whereClause,
+                        [questionOrderField]: { gt: questionOrder },
+                    },
+                    data: { [questionOrderField]: { decrement: 1 } },
+                });
+            });
+
+            // Fetch the updated category with its questions
+            const category = await this.databaseService.category.findUniqueOrThrow({
+                where: { id: categoryId, questionnaireTemplateId: templateId, companyId, isCompanyCategory: true, isDeleted: false },
+                include: { questions: { where: { isDeleted: false, ...whereClause }, orderBy } },
+            });
+
+            return { category, message: ResponseMessages.LABEL_DELETED };
+
         } catch (error) {
             console.log(error);
             // Database Exceptions
@@ -802,337 +673,95 @@ export class SelectionTemplateService {
         }
     }
 
-    async createAnswer(user: User, type: string, companyId: number, templateId: number, categoryId: number, body: AnswerDTO) {
+    async changeCategoryOrder(user: User, companyId: number, type: string, templateId: number, body: CategoryOrderDTO) {
         try {
             // Check if User is Admin of the Company.
-            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
-                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
-                    throw new ForbiddenException("Action Not Allowed");
-                }
-
-                await this.databaseService.templateQuestion.findUniqueOrThrow({
-                    where: {
-                        id: body.questionId,
-                        isDeleted: false,
-                    }
-                })
-
-                await this.databaseService.templateQuestionAnswer.create({
-                    data: {
-                        questionId: body.questionId,
-                        answerText: body.answerText
-                    }
-                })
-
-                const category = await this.databaseService.category.findUniqueOrThrow({
-                    where: {
-                        id: categoryId,
-                        isCompanyCategory: true,
-                        isDeleted: false,
-                    },
-                    include: {
-                        questions: {
-                            where: {
-                                isDeleted: false,
-                            },
-                            orderBy: {
-                                questionOrder: 'asc'
-                            }
-                        },
-                    }
-                });
-
-                return { category: category, message: ResponseMessages.LABEL_CREATED };
-
-            } else {
+            if (user.userType !== UserTypes.ADMIN && (user.userType !== UserTypes.BUILDER || user.companyId !== companyId)) {
                 throw new ForbiddenException("Action Not Allowed");
             }
-        } catch (error) {
-            // Database Exceptions
-            if (error instanceof PrismaClientKnownRequestError) {
-                if (error.code == PrismaErrorCodes.NOT_FOUND)
-                    throw new BadRequestException(ResponseMessages.RESOURCE_NOT_FOUND);
-                else {
-                    console.log(error.code);
-                }
-            }
-            throw new InternalServerErrorException();
-        }
-    }
+            let company = await this.databaseService.company.findUnique({
+                where: { id: companyId, isDeleted: false },
+            });
+            if (!company) throw new ForbiddenException("Action Not Allowed");
 
-    async updateAnswer(user: User, type: string, companyId: number, templateId: number, categoryId: number, body: AnswerDTO) {
-        try {
-            // Check if User is Admin of the Company.
-            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
-                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
-                    throw new ForbiddenException("Action Not Allowed");
-                }
+            let template = await this.databaseService.questionnaireTemplate.findUniqueOrThrow({
+                where: { id: templateId, isCompanyTemplate: true, isDeleted: false },
+            });
+            let category = await this.databaseService.category.findUniqueOrThrow({
+                where: { id: body.categoryId, questionnaireTemplateId: templateId, isCompanyCategory: true, isDeleted: false, },
+            });
 
-                const question = await this.databaseService.templateQuestion.findFirst({
-                    where: {
-                        id: body.questionId
-                    }
-                })
+            // Determine template type
+            const templateType = {
+                'initial-selection': TemplateType.SELECTION_INITIAL,
+                'paint-selection': TemplateType.SELECTION_PAINT,
+            }[type];
 
-                if (!question) {
-                    throw new Error(ResponseMessages.LABEL_NOT_FOUND);
-                }
+            if (!templateType) throw new BadRequestException('Action Not Allowed');
 
-                const answer = await this.databaseService.templateQuestionAnswer.findFirstOrThrow({
-                    where: {
-                        questionId: body.questionId
-                    }
-                })
+            // Define category and question query clauses
+            const categoryWhereClause = {
+                isDeleted: false,
+                isCompanyCategory: true,
+                questionnaireTemplateId: templateId,
+                [templateType === TemplateType.SELECTION_INITIAL ? 'linkToInitalSelection' : 'linkToPaintSelection']: true,
+            };
 
-                await this.databaseService.templateQuestionAnswer.update({
-                    where: {
-                        id: answer.id
-                    },
-                    data: {
-                        answerText: body.answerText
-                    }
-                })
+            const questionWhereClause = {
+                questionnaireTemplateId: templateId,
+                isDeleted: false,
+                [templateType === TemplateType.SELECTION_INITIAL ? 'linkToInitalSelection' : 'linkToPaintSelection']: true
+            };
 
-                const category = await this.databaseService.category.findUniqueOrThrow({
-                    where: {
-                        id: categoryId,
-                        isCompanyCategory: true,
-                        isDeleted: false,
-                    },
-                    include: {
-                        questions: {
-                            where: {
-                                isDeleted: false,
-                            },
-                            orderBy: {
-                                questionOrder: "asc"
-                            }
-                        },
-                    },
-                })
+            const orderBy = {
+                [templateType === TemplateType.SELECTION_INITIAL ? 'initialOrder' : 'paintOrder']: 'asc',
+            };
+            const currentOrder = templateType === TemplateType.SELECTION_INITIAL
+                ? category.initialOrder
+                : category.paintOrder;
 
-                return { category, message: ResponseMessages.QUESTION_UPDATED };
-            } else {
-                throw new ForbiddenException("Action Not Allowed");
-            }
+            if (currentOrder !== body.questionnaireOrder) {
+                const isIncreasingOrder = currentOrder > body.questionnaireOrder;
+                const updateData = isIncreasingOrder ? { increment: 1 } : { decrement: 1 };
+                const rangeCondition = isIncreasingOrder
+                    ? { gte: body.questionnaireOrder, lt: currentOrder }
+                    : { gte: currentOrder, lte: body.questionnaireOrder };
 
-
-        } catch (error) {
-            console.log(error);
-            // Database Exceptions
-            if (error instanceof PrismaClientKnownRequestError) {
-                if (error.code == PrismaErrorCodes.NOT_FOUND)
-                    throw new BadRequestException(ResponseMessages.RESOURCE_NOT_FOUND);
-                else {
-                    console.log(error.code);
-                }
-            }
-            throw new InternalServerErrorException();
-        }
-    }
-
-    async changeCategoryOrder(
-        user: User,
-        companyId: number,
-        type: string,
-        templateId: number,
-        body: CategoryOrderDTO
-    ) {
-        try {
-            // Check if User is Admin of the Company.
-            if (user.userType == UserTypes.ADMIN || (user.userType == UserTypes.BUILDER && user.companyId === companyId)) {
-                let company = await this.databaseService.company.findUnique({
-                    where: {
-                        id: companyId,
-                        isDeleted: false,
-                    },
-                });
-                if (!company) {
-                    throw new ForbiddenException("Action Not Allowed");
-                }
-
-                let template =
-                    await this.databaseService.questionnaireTemplate.findUniqueOrThrow({
-                        where: {
-                            id: templateId,
-                            isCompanyTemplate: true,
-                            isDeleted: false,
-                        },
+                await this.databaseService.$transaction(async (tx) => {
+                    // Update the affected categories
+                    await tx.category.updateMany({
+                        where: { ...categoryWhereClause, [templateType === TemplateType.SELECTION_INITIAL ? 'initialOrder' : 'paintOrder']: rangeCondition },
+                        data: { [templateType === TemplateType.SELECTION_INITIAL ? 'initialOrder' : 'paintOrder']: updateData }
                     });
-                let category = await this.databaseService.category.findUniqueOrThrow({
-                    where: {
-                        id: body.categoryId,
-                        questionnaireTemplateId: templateId,
-                        isCompanyCategory: true,
-                        isDeleted: false,
-                    },
+
+                    // Update the category with the new order
+                    await tx.category.update({
+                        where: { id: body.categoryId, ...categoryWhereClause },
+                        data: { [templateType === TemplateType.SELECTION_INITIAL ? 'initialOrder' : 'paintOrder']: body.questionnaireOrder },
+                    });
                 });
-
-                // Determine template type
-                const templateType = {
-                    'initial-selection': TemplateType.SELECTION_INITIAL,
-                    'paint-selection': TemplateType.SELECTION_PAINT,
-                }[type];
-
-                let categoryWhereClause: any = {
-                    isDeleted: false,
-                    isCompanyCategory: true,
-                }
-
-                let questionWhereClause: any = {
-                    questionnaireTemplateId: templateId,
-                    isDeleted: false,
-                }
-                if (templateType === TemplateType.SELECTION_INITIAL) {
-                    categoryWhereClause.linkToInitalSelection = true;
-                    questionWhereClause.linkToInitalSelection = true
-                }
-                if (templateType === TemplateType.SELECTION_PAINT) {
-                    categoryWhereClause.linkToPaintSelection = true;
-                    questionWhereClause.linkToPaintSelection = true
-                }
-
-                let currentOrder = category.questionnaireOrder;
-
-                if (currentOrder > body.questionnaireOrder) {
-                    // Category is moving up
-                    let result = await this.databaseService.$transaction([
-                        this.databaseService.category.updateMany({
-                            where: {
-                                questionnaireTemplateId: templateId,
-                                isCompanyCategory: true,
-                                isDeleted: false,
-                                questionnaireOrder: {
-                                    gte: body.questionnaireOrder,
-                                    lt: currentOrder,
-                                },
-                            },
-                            data: {
-                                questionnaireOrder: {
-                                    increment: 1,
-                                },
-                            },
-                        }),
-                        this.databaseService.category.update({
-                            where: {
-                                id: body.categoryId,
-                                questionnaireTemplateId: templateId,
-                                isCompanyCategory: true,
-                                isDeleted: false,
-                            },
-                            data: {
-                                questionnaireOrder: body.questionnaireOrder,
-                            },
-                        }),
-                        this.databaseService.questionnaireTemplate.findUniqueOrThrow({
-                            where: {
-                                id: templateId,
-                                isDeleted: false,
-                                isCompanyTemplate: true,
-                            },
-                            omit: {
-                                companyId: true,
-                                isDeleted: true,
-                                isCompanyTemplate: false,
-                            },
-                            include: {
-                                categories: {
-                                    where: categoryWhereClause,
-                                    omit: {
-                                        isDeleted: true,
-                                        isCompanyCategory: false,
-                                        companyId: true,
-                                    },
-                                    include: {
-                                        questions: {
-                                            where: questionWhereClause,
-                                            orderBy: {
-                                                questionOrder: 'asc'
-                                            }
-                                        },
-                                    },
-                                    orderBy: {
-                                        questionnaireOrder: "asc",
-                                    },
-                                },
-                            },
-                        }),
-                    ]);
-
-                    return {
-                        template: result[2],
-                        message: ResponseMessages.CATEGORY_ORDER_UPDATED,
-                    };
-                } else if (currentOrder < body.questionnaireOrder) {
-                    // Category is moving down
-                    let result = await this.databaseService.$transaction([
-                        this.databaseService.category.updateMany({
-                            where: {
-                                questionnaireTemplateId: templateId,
-                                isCompanyCategory: true,
-                                isDeleted: false,
-                                questionnaireOrder: {
-                                    gt: currentOrder,
-                                    lte: body.questionnaireOrder,
-                                },
-                            },
-                            data: {
-                                questionnaireOrder: {
-                                    decrement: 1,
-                                },
-                            },
-                        }),
-                        this.databaseService.category.update({
-                            where: {
-                                id: body.categoryId,
-                                questionnaireTemplateId: templateId,
-                                isCompanyCategory: true,
-                                isDeleted: false,
-                            },
-                            data: {
-                                questionnaireOrder: body.questionnaireOrder,
-                            },
-                        }),
-                        this.databaseService.questionnaireTemplate.findUniqueOrThrow({
-                            where: {
-                                id: templateId,
-                                isDeleted: false,
-                                isCompanyTemplate: true,
-                            },
-                            omit: {
-                                companyId: true,
-                                isDeleted: true,
-                                isCompanyTemplate: false,
-                            },
-                            include: {
-                                categories: {
-                                    where: categoryWhereClause,
-                                    omit: {
-                                        isDeleted: true,
-                                        isCompanyCategory: false,
-                                        companyId: true,
-                                    },
-                                    include: {
-                                        questions: {
-                                            where: questionWhereClause,
-                                            orderBy: {
-                                                questionOrder: 'asc'
-                                            }
-                                        },
-                                    },
-                                    orderBy: {
-                                        questionnaireOrder: "asc",
-                                    },
-                                },
-                            },
-                        }),
-                    ]);
-                    return {
-                        template: result[2],
-                        message: ResponseMessages.CATEGORY_ORDER_UPDATED,
-                    };
-                }
             }
+
+            // Retrieve the updated template with categories and questions
+            const data = await this.databaseService.questionnaireTemplate.findUniqueOrThrow({
+                where: { id: templateId, isDeleted: false, isCompanyTemplate: true },
+                omit: { companyId: true, isDeleted: true, isCompanyTemplate: false },
+                include: {
+                    categories: {
+                        where: categoryWhereClause,
+                        omit: { isDeleted: true, isCompanyCategory: false, companyId: true },
+                        include: {
+                            questions: {
+                                where: questionWhereClause,
+                                orderBy: { [templateType === TemplateType.SELECTION_INITIAL ? 'initialQuestionOrder' : 'paintQuestionOrder']: 'asc' },
+                            },
+                        },
+                        orderBy: orderBy,
+                    },
+                },
+            });
+
+            return { template: data, message: ResponseMessages.CATEGORY_ORDER_UPDATED, }
         } catch (error) {
             // Database Exceptions
             if (error instanceof PrismaClientKnownRequestError) {
@@ -1165,56 +794,30 @@ export class SelectionTemplateService {
                 }
 
                 await this.databaseService.company.findUniqueOrThrow({
-                    where: {
-                        id: companyId,
-                        isDeleted: false,
-                    }
+                    where: { id: companyId, isDeleted: false }
                 })
 
                 let template = await this.databaseService.questionnaireTemplate.findUniqueOrThrow({
-                    where: {
-                        id: templateId,
-                        isDeleted: false,
-                        isCompanyTemplate: true,
-                        companyId
-                    },
+                    where: { id: templateId, isDeleted: false, isCompanyTemplate: true, companyId },
                 });
 
                 await this.databaseService.$transaction(async (tx) => {
                     if (template.projectEstimatorTemplateId) {
                         await tx.projectEstimatorTemplate.update({
-                            where: {
-                                id: template.projectEstimatorTemplateId
-                            },
-                            data: {
-                                templateName: body.name
-                            }
+                            where: { id: template.projectEstimatorTemplateId },
+                            data: { templateName: body.name }
                         });
                     }
 
                     await tx.questionnaireTemplate.update({
-                        where: {
-                            id: templateId,
-                            isDeleted: false,
-                            isCompanyTemplate: true,
-                            companyId
-                        },
-                        data: {
-                            name: body.name
-                        }
+                        where: { id: templateId, isDeleted: false, isCompanyTemplate: true, companyId },
+                        data: { name: body.name }
                     });
                 });
 
                 let templates = await this.databaseService.questionnaireTemplate.findMany({
-                    where: {
-                        isCompanyTemplate: true,
-                        companyId,
-                        isDeleted: false,
-                    },
-                    omit: {
-                        isDeleted: true,
-                        isCompanyTemplate: false,
-                    },
+                    where: { isCompanyTemplate: true, companyId, isDeleted: false },
+                    select: { id: true, name: true }
                 })
                 return { templates, updatedTemplate: template }
 
@@ -1240,176 +843,102 @@ export class SelectionTemplateService {
     async changeQuestionOrder(user: User, companyId: number, type: string, templateId: number, questionId: number, categoryId: number, body: QuestionOrderDTO) {
         try {
             // Check if User is Admin of the Company.
-            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
-                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
-                    throw new ForbiddenException("Action Not Allowed");
-                }
-
-                let company = await this.databaseService.company.findUnique({
-                    where: {
-                        id: companyId,
-                        isDeleted: false
-                    }
-                });
-
-                if (!company) {
-                    throw new ForbiddenException("Action Not Allowed");
-                }
-
-                // Determine template type
-                const templateType = {
-                    'initial-selection': TemplateType.SELECTION_INITIAL,
-                    'paint-selection': TemplateType.SELECTION_PAINT,
-                }[type];
-
-                if (!templateType) {
-                    throw new ForbiddenException('Action Not Allowed');
-                }
-
-                let categoryWhereClause: any = {
-                    questionnaireTemplateId: templateId,
-                    isCompanyCategory: true,
-                    companyId,
-                    isDeleted: false,
-                }
-
-                let questionWhereClause: any = {
-                    isDeleted: false,
-                    categoryId: categoryId,
-                    questionnaireTemplateId: templateId
-                }
-
-                if (templateType === TemplateType.SELECTION_INITIAL) {
-                    categoryWhereClause.linkToInitalSelection = true;
-                    questionWhereClause.linkToInitalSelection = true;
-                }
-
-                if (templateType === TemplateType.SELECTION_PAINT) {
-                    categoryWhereClause.linkToPaintSelection = true
-                    questionWhereClause.linkToPaintSelection = true;
-                }
-
-                let template = await this.databaseService.questionnaireTemplate.findUniqueOrThrow({
-                    where: {
-                        id: templateId,
-                        isDeleted: false,
-                        isCompanyTemplate: true,
-                        companyId
-                    }
-                })
-
-                let category = await this.databaseService.category.findUniqueOrThrow({
-                    where: {
-                        id: categoryId,
-                        ...categoryWhereClause
-                    },
-                });
-
-                let question = await this.databaseService.templateQuestion.findUniqueOrThrow({
-                    where: {
-                        id: questionId,
-                        ...questionWhereClause
-                    }
-                });
-
-                let currentQuestOrder = question.questionOrder;
-
-                if (currentQuestOrder > body.questionOrder) {
-                    // question moving up
-                    let result = await this.databaseService.$transaction([
-                        this.databaseService.templateQuestion.updateMany({
-                            where: {
-                                ...questionWhereClause,
-                                questionOrder: {
-                                    gte: body.questionOrder,
-                                    lt: currentQuestOrder
-                                }
-                            },
-                            data: {
-                                questionOrder: {
-                                    increment: 1,
-                                }
-                            }
-                        }),
-                        this.databaseService.templateQuestion.update({
-                            where: {
-                                id: questionId,
-                                ...questionWhereClause
-                            },
-                            data: {
-                                questionOrder: body.questionOrder
-                            }
-                        }),
-                        this.databaseService.category.findMany({
-                            where: categoryWhereClause,
-                            include: {
-                                questions: {
-                                    where: questionWhereClause,
-                                    orderBy: {
-                                        questionOrder: 'asc'
-                                    }
-                                }
-                            },
-                            orderBy: {
-                                questionnaireOrder: 'asc'
-                            }
-                        })
-                    ]);
-
-                    return {
-                        categories: result[2],
-                        message: ResponseMessages.QUESTION_ORDER_UPDATED
-                    }
-                } else if (currentQuestOrder < body.questionOrder) {
-                    // question moving down
-                    let result = await this.databaseService.$transaction([
-                        this.databaseService.templateQuestion.updateMany({
-                            where: {
-                                ...questionWhereClause,
-                                questionOrder: {
-                                    gt: currentQuestOrder,
-                                    lte: body.questionOrder
-                                }
-                            },
-                            data: {
-                                questionOrder: {
-                                    decrement: 1,
-                                }
-                            }
-                        }),
-                        this.databaseService.templateQuestion.update({
-                            where: {
-                                id: questionId,
-                                ...questionWhereClause
-                            },
-                            data: {
-                                questionOrder: body.questionOrder
-                            }
-                        }),
-                        this.databaseService.category.findMany({
-                            where: categoryWhereClause,
-                            include: {
-                                questions: {
-                                    where: questionWhereClause,
-                                    orderBy: {
-                                        questionOrder: 'asc'
-                                    }
-                                }
-                            },
-                            orderBy: {
-                                questionnaireOrder: 'asc'
-                            }
-                        })
-                    ]);
-
-                    return {
-                        categories: result[2],
-                        message: ResponseMessages.QUESTION_ORDER_UPDATED
-                    }
-                }
-            } else {
+            if (user.userType !== UserTypes.ADMIN && (user.userType !== UserTypes.BUILDER || user.companyId !== companyId)) {
                 throw new ForbiddenException("Action Not Allowed");
             }
+
+            if (type !== 'initial-selection' && type !== 'paint-selection') {
+                throw new ForbiddenException("Action Not Allowed");
+            }
+
+            // Fetch company and template details
+            const company = await this.databaseService.company.findUnique({
+                where: { id: companyId, isDeleted: false },
+            });
+            if (!company) throw new ForbiddenException("Action Not Allowed");
+
+            // Determine template type
+            const templateType = {
+                'initial-selection': TemplateType.SELECTION_INITIAL,
+                'paint-selection': TemplateType.SELECTION_PAINT,
+            }[type];
+
+            if (!templateType) {
+                throw new ForbiddenException("Action Not Allowed");
+            }
+
+            // Prepare query conditions
+            const isInitial = templateType === TemplateType.SELECTION_INITIAL;
+            const questionOrderField = isInitial ? "initialQuestionOrder" : "paintQuestionOrder";
+            const categoryOrderField = isInitial ? "initialOrder" : "paintOrder";
+            const categoryField = isInitial ? "linkToInitalSelection" : "linkToPaintSelection";
+
+            const categoryWhereClause = {
+                questionnaireTemplateId: templateId,
+                isCompanyCategory: true,
+                isDeleted: false,
+                [categoryField]: true,
+            };
+
+            const questionWhereClause = {
+                isDeleted: false,
+                categoryId: categoryId,
+                questionnaireTemplateId: templateId,
+                [categoryField]: true,
+            };
+
+            // Fetch necessary entities
+            await this.databaseService.questionnaireTemplate.findUniqueOrThrow({
+                where: { id: templateId, isDeleted: false, isCompanyTemplate: true, companyId },
+            });
+
+            let category = await this.databaseService.category.findUniqueOrThrow({
+                where: { id: categoryId, ...categoryWhereClause },
+            });
+
+            const question = await this.databaseService.templateQuestion.findUniqueOrThrow({
+                where: { id: questionId, ...questionWhereClause },
+            });
+
+            const currentOrder = question[questionOrderField];
+
+            // If no change in order, exit early
+            if (currentOrder != body.questionOrder) {
+                const isMovingUp = currentOrder > body.questionOrder;
+                const rangeCondition = isMovingUp
+                    ? { gte: body.questionOrder, lt: currentOrder }
+                    : { gt: currentOrder, lte: body.questionOrder };
+
+                const orderAdjustment = isMovingUp ? { increment: 1 } : { decrement: 1 };
+                await this.databaseService.$transaction(async (tx) => {
+                    await tx.templateQuestion.updateMany({
+                        where: {
+                            ...questionWhereClause,
+                            [questionOrderField]: rangeCondition,
+                        },
+                        data: { [questionOrderField]: orderAdjustment },
+                    });
+
+                    await tx.templateQuestion.update({
+                        where: { id: questionId, ...questionWhereClause },
+                        data: { [questionOrderField]: body.questionOrder },
+                    });
+                });
+            }
+
+            let { categoryId: updatedCategoryId, ...rest } = questionWhereClause;
+            let result = await this.databaseService.category.findMany({
+                where: categoryWhereClause,
+                include: {
+                    questions: {
+                        where: rest,
+                        orderBy: { [questionOrderField]: "asc" }
+                    }
+                },
+                orderBy: { [categoryOrderField]: "asc" }
+            })
+
+            return { categories: result, message: ResponseMessages.QUESTION_ORDER_UPDATED };
         } catch (error) {
             // Database Exceptions
             if (error instanceof PrismaClientKnownRequestError) {
@@ -1434,18 +963,12 @@ export class SelectionTemplateService {
                 }
 
                 const company = await this.databaseService.company.findUniqueOrThrow({
-                    where: {
-                        id: companyId,
-                        isDeleted: false,
-                    }
+                    where: { id: companyId, isDeleted: false, }
                 })
 
                 const createResponse = await this.databaseService.$transaction(async (tx) => {
                     const projectEstimator = await tx.projectEstimatorTemplate.create({
-                        data: {
-                            templateName: body.name,
-                            companyId,
-                        }
+                        data: { templateName: body.name, companyId, }
                     });
 
                     const questionnaire = await tx.questionnaireTemplate.create({
@@ -1501,22 +1024,12 @@ export class SelectionTemplateService {
                 }
 
                 const tempToDelete = await this.databaseService.questionnaireTemplate.findUniqueOrThrow({
-                    where: {
-                        id: templateId,
-                        isDeleted: false,
-                        isCompanyTemplate: true,
-                        companyId
-                    }
+                    where: { id: templateId, isDeleted: false, isCompanyTemplate: true, companyId }
                 });
 
                 await this.databaseService.$transaction(async (tx) => {
                     // if project estimator template exist , delete template, headers and data
                     if (tempToDelete.projectEstimatorTemplateId) {
-                        await tx.projectEstimatorTemplate.update({
-                            where: { id: tempToDelete.projectEstimatorTemplateId, },
-                            data: { isDeleted: true }
-                        })
-
                         const deleteHeaders = await tx.projectEstimatorTemplateHeader.findMany({
                             where: { petId: tempToDelete.projectEstimatorTemplateId, },
                             select: { id: true, }
@@ -1526,10 +1039,7 @@ export class SelectionTemplateService {
 
                         if (deleteHeaderIds.length > 0) {
                             const deleteData = await tx.projectEstimatorTemplateData.updateMany({
-                                where: {
-                                    petHeaderId: { in: deleteHeaderIds },
-                                    isDeleted: false,
-                                },
+                                where: { petHeaderId: { in: deleteHeaderIds }, isDeleted: false },
                                 data: { isDeleted: true, order: 0 }
                             })
 
@@ -1543,6 +1053,10 @@ export class SelectionTemplateService {
                                 data: { isDeleted: true, headerOrder: 0 }
                             })
                         }
+                        await tx.projectEstimatorTemplate.update({
+                            where: { id: tempToDelete.projectEstimatorTemplateId, },
+                            data: { isDeleted: true }
+                        })
                     }
                     // if project estimator template exist , delete template, headers and data ends.
 
@@ -1552,23 +1066,26 @@ export class SelectionTemplateService {
                     })
                     await tx.category.updateMany({
                         where: { questionnaireTemplateId: templateId, isDeleted: false, },
-                        data: { isDeleted: true, }
+                        data: { isDeleted: true, questionnaireOrder: 0, initialOrder: 0, paintOrder: 0 }
                     })
                     await tx.templateQuestion.updateMany({
                         where: { questionnaireTemplateId: templateId, isDeleted: false, },
-                        data: { isDeleted: true, }
+                        data: { isDeleted: true, questionOrder: 0, initialQuestionOrder: 0, paintQuestionOrder: 0 }
                     })
                 })
 
-                let whereClause: any = {
-                    isDeleted: false,
-                }
-
+                let whereClause: any = { isDeleted: false }
+                let orderByCategory: any = {}
+                let orderByQuestion: any = {}
                 if (templateType === TemplateType.SELECTION_INITIAL) {
                     whereClause.linkToInitalSelection = true;
+                    orderByCategory.initialOrder = 'asc'
+                    orderByQuestion.initialQuestionOrder = 'asc'
                 }
                 if (templateType === TemplateType.SELECTION_PAINT) {
                     whereClause.linkToPaintSelection = true
+                    orderByCategory.paintOrder = 'asc'
+                    orderByQuestion.paintQuestionOrder = 'asc'
                 }
 
                 let template = await this.databaseService.questionnaireTemplate.findMany({
@@ -1586,14 +1103,10 @@ export class SelectionTemplateService {
                             include: {
                                 questions: {
                                     where: whereClause,
-                                    orderBy: {
-                                        questionOrder: 'asc'
-                                    }
+                                    orderBy: orderByQuestion
                                 }
                             },
-                            orderBy: {
-                                questionnaireOrder: 'asc'
-                            }
+                            orderBy: orderByCategory
                         }
                     }
                 })

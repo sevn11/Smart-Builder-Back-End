@@ -18,45 +18,58 @@ export class TemplateQuestionService {
             // Check if User is Admin of the Company.
             if (user.userType == UserTypes.ADMIN || (user.userType == UserTypes.BUILDER && user.companyId === companyId)) {
                 let company = await this.databaseService.company.findUnique({
-                    where: {
-                        id: companyId,
-                        isDeleted: false
-                    }
+                    where: { id: companyId, isDeleted: false }
                 });
                 if (!company) throw new ForbiddenException("Action Not Allowed");
 
                 // Get the highest question order for the given templateId and categoryId
                 let maxOrder = await this.databaseService.templateQuestion.aggregate({
-                    _max: {
-                        questionOrder: true,
-                    },
-                    where: {
-                        questionnaireTemplateId: templateId,
-                        categoryId: categoryId,
-                        isDeleted: false,
-                    }
-                })
+                    _max: { questionOrder: true, initialQuestionOrder: true, paintQuestionOrder: true },
+                    where: { questionnaireTemplateId: templateId, categoryId: categoryId, isDeleted: false, }
+                });
 
                 // Find the category if it exists and is not deleted.
                 let categoryItem = await this.databaseService.category.findUniqueOrThrow({
-                    where: {
-                        id: categoryId,
-                        isDeleted: false,
-                    }
+                    where: { id: categoryId, isDeleted: false }
                 });
+
+                let { _max: catAggregate } = await this.databaseService.category.aggregate({
+                    _max: { questionnaireOrder: true, initialOrder: true, paintOrder: true },
+                    where: { questionnaireTemplateId: templateId, isDeleted: false, }
+                });
+
                 // set the update data.
                 const updateData = {
-                    ...(body.linkedSelections.includes(SelectionTemplates.INITIAL_SELECTION) && !categoryItem.linkToInitalSelection && { linkToInitalSelection: true }),
-                    ...(body.linkedSelections.includes(SelectionTemplates.PAINT_SELECTION) && !categoryItem.linkToPaintSelection && { linkToPaintSelection: true })
+                    ...(body.linkedSelections.includes(SelectionTemplates.INITIAL_SELECTION) &&
+                        !categoryItem.linkToInitalSelection &&
+                    {
+                        linkToInitalSelection: true,
+                        initialOrder: (catAggregate.initialOrder ?? 0) + 1,
+                    }
+                    ),
+                    ...(body.linkedSelections.includes(SelectionTemplates.PAINT_SELECTION) &&
+                        !categoryItem.linkToPaintSelection &&
+                    {
+                        linkToPaintSelection: true,
+                        paintOrder: (catAggregate.paintOrder ?? 0) + 1
+                    }
+                    )
                 };
+
+                let selQuestionOrder: any = {}
+
+                if (body.linkedSelections.includes(SelectionTemplates.INITIAL_SELECTION)) {
+                    selQuestionOrder.initialQuestionOrder = (maxOrder._max.initialQuestionOrder ?? 0) + 1;
+                }
+
+                if (body.linkedSelections.includes(SelectionTemplates.PAINT_SELECTION)) {
+                    selQuestionOrder.paintQuestionOrder = (maxOrder._max.paintQuestionOrder ?? 0) + 1;
+                }
 
                 // Update the category if there are changes to be made.
                 if (Object.keys(updateData).length > 0) {
                     categoryItem = await this.databaseService.category.update({
-                        where: {
-                            id: categoryId,
-                            isDeleted: false,
-                        },
+                        where: { id: categoryId, isDeleted: false, },
                         data: updateData
                     });
                 }
@@ -77,7 +90,8 @@ export class TemplateQuestionService {
                         linkToPaintSelection: body.linkedSelections.includes(SelectionTemplates.PAINT_SELECTION),
                         questionnaireTemplateId: templateId,
                         categoryId: categoryId,
-                        phaseIds: body.phaseIds
+                        phaseIds: body.phaseIds,
+                        ...selQuestionOrder
                     },
                     omit: {
                         isDeleted: true,
@@ -85,6 +99,7 @@ export class TemplateQuestionService {
                         categoryId: true
                     }
                 });
+
                 // Fetch the updated category with updated questions
                 const category = await this.databaseService.category.findUniqueOrThrow({
                     where: {
@@ -99,10 +114,7 @@ export class TemplateQuestionService {
                                 isDeleted: false,
                                 linkToQuestionnaire: true,
                             },
-                            orderBy: {
-                                questionOrder: 'asc'
-                            }
-
+                            orderBy: { questionOrder: 'asc' }
                         }
                     }
                 });
@@ -212,7 +224,6 @@ export class TemplateQuestionService {
         try {
 
             // Check if User is Admin of the Company.
-
             if (user.userType == UserTypes.ADMIN || (user.userType == UserTypes.BUILDER && user.companyId === companyId)) {
                 let company = await this.databaseService.company.findUnique({
                     where: {
@@ -231,51 +242,121 @@ export class TemplateQuestionService {
                     }
                 });
 
-                if (!categoryItem.linkToInitalSelection || !categoryItem.linkToPaintSelection) {
-                    const updateData = {
-                        ...(
-                            body.linkedSelections.includes(SelectionTemplates.INITIAL_SELECTION) &&
-                            !categoryItem.linkToInitalSelection &&
-                            { linkToInitalSelection: true }
-                        ),
-                        ...(
-                            body.linkedSelections.includes(SelectionTemplates.PAINT_SELECTION) &&
-                            !categoryItem.linkToPaintSelection &&
-                            { linkToPaintSelection: true }
-                        )
-                    }
-
-                    // Update the category if there are changes to be made.
-                    if (Object.keys(updateData).length > 0) {
-                        categoryItem = await this.databaseService.category.update({
-                            where: {
-                                id: categoryId,
-                                isDeleted: false,
-                            },
-                            data: updateData
-                        });
-                    }
-                }
-
-                let question = await this.databaseService.templateQuestion.update({
+                let templateQuestion = await this.databaseService.templateQuestion.findUnique({
                     where: {
                         id: questionId,
                         categoryId: categoryId,
                         isDeleted: false,
-                    },
-                    data: {
-                        question: body.question,
-                        questionType: body.type,
-                        multipleOptions: body.multipleOptions,
-                        linkToPhase: body.isQuestionLinkedPhase,
-                        linkToInitalSelection: body.linkedSelections.includes(SelectionTemplates.INITIAL_SELECTION),
-                        linkToPaintSelection: body.linkedSelections.includes(SelectionTemplates.PAINT_SELECTION),
-                        phaseIds: body.phaseIds
-                    },
-                    omit: {
-                        isDeleted: true,
+                        questionnaireTemplateId: templateId
                     }
                 })
+
+                let maxOrder = await this.databaseService.templateQuestion.aggregate({
+                    _max: {
+                        questionOrder: true,
+                        initialQuestionOrder: true,
+                        paintQuestionOrder: true
+                    },
+                    where: {
+                        categoryId: categoryId,
+                        isDeleted: false,
+                    }
+                })
+                if (!categoryItem.linkToInitalSelection || !categoryItem.linkToPaintSelection) {
+
+                    let { _max: maxOrders } = await this.databaseService.category.aggregate({
+                        _max: { questionnaireOrder: true, initialOrder: true, paintOrder: true },
+                        where: { questionnaireTemplateId: templateId, isDeleted: false }
+                    });
+                    const updatePayload: Record<string, any> = {};
+
+                    if (body.linkedSelections.includes(SelectionTemplates.INITIAL_SELECTION) && !categoryItem.linkToInitalSelection) {
+                        updatePayload.initialOrder = (maxOrders.initialOrder ?? 0) + 1;
+                        updatePayload.linkToInitalSelection = true;
+                    }
+
+                    if (body.linkedSelections.includes(SelectionTemplates.PAINT_SELECTION) && !categoryItem.linkToPaintSelection) {
+                        updatePayload.paintOrder = (maxOrders.paintOrder ?? 0) + 1;
+                        updatePayload.linkToPaintSelection = true;
+                    }
+
+                    // Update only if there's data to update
+                    if (Object.keys(updatePayload).length > 0) {
+                        categoryItem = await this.databaseService.category.update({
+                            where: { id: categoryId, isDeleted: false },
+                            data: updatePayload,
+                        });
+                    }
+                }
+
+                let selQuestionOrder: any = {}
+                if (templateQuestion.initialQuestionOrder === 0 && body.linkedSelections.includes(SelectionTemplates.INITIAL_SELECTION)) {
+                    selQuestionOrder.initialQuestionOrder = (maxOrder._max.initialQuestionOrder ?? 0) + 1;
+                } else {
+                    selQuestionOrder.initialQuestionOrder = templateQuestion.initialQuestionOrder
+                }
+
+                if (templateQuestion.paintQuestionOrder === 0 && body.linkedSelections.includes(SelectionTemplates.PAINT_SELECTION)) {
+                    selQuestionOrder.paintQuestionOrder = (maxOrder._max.paintQuestionOrder ?? 0) + 1;
+                } else {
+                    selQuestionOrder.paintQuestionOrder = templateQuestion.paintQuestionOrder
+                }
+
+                const initialValue = templateQuestion.initialQuestionOrder;
+                const paintValue = templateQuestion.paintQuestionOrder;
+                let decrement = { initialOrder: false, paintOrder: false };
+                if (!body.linkedSelections.includes(SelectionTemplates.PAINT_SELECTION) && templateQuestion.linkToPaintSelection) {
+                    decrement.paintOrder = true;
+                    selQuestionOrder.paintQuestionOrder = 0
+                }
+                if (!body.linkedSelections.includes(SelectionTemplates.INITIAL_SELECTION) && templateQuestion.linkToInitalSelection) {
+                    decrement.initialOrder = true;
+                    selQuestionOrder.initialQuestionOrder = 0
+                }
+                await this.databaseService.$transaction(async (tx) => {
+                    await tx.templateQuestion.update({
+                        where: {
+                            id: questionId,
+                            categoryId: categoryId,
+                            isDeleted: false,
+                        },
+                        data: {
+                            question: body.question,
+                            questionType: body.type,
+                            multipleOptions: body.multipleOptions,
+                            linkToPhase: body.isQuestionLinkedPhase,
+                            linkToInitalSelection: body.linkedSelections.includes(SelectionTemplates.INITIAL_SELECTION),
+                            linkToPaintSelection: body.linkedSelections.includes(SelectionTemplates.PAINT_SELECTION),
+                            phaseIds: body.phaseIds,
+                            ...selQuestionOrder
+                        },
+                        omit: {
+                            isDeleted: true,
+                        }
+                    });
+
+                    if (decrement.initialOrder) {
+                        await tx.templateQuestion.updateMany({
+                            where: {
+                                isDeleted: false,
+                                categoryId: categoryId,
+                                initialQuestionOrder: { gt: initialValue }
+                            },
+                            data: { initialQuestionOrder: { decrement: 1 } }
+                        })
+                    }
+
+                    if (decrement.paintOrder) {
+                        await tx.templateQuestion.updateMany({
+                            where: {
+                                isDeleted: false,
+                                categoryId: categoryId,
+                                paintQuestionOrder: { gt: paintValue }
+                            },
+                            data: { paintQuestionOrder: { decrement: 1 } }
+                        })
+                    }
+                });
                 // Fetch the updated category with updated questions
                 const category = await this.databaseService.category.findUniqueOrThrow({
                     where: {
@@ -343,23 +424,26 @@ export class TemplateQuestionService {
                 }
 
                 const deletedQuesOrder = question.questionOrder;
+                const deletedInitial = question.initialQuestionOrder;
+                const deletedPaint = question.paintQuestionOrder;
 
-                await this.databaseService.$transaction([
-                    this.databaseService.templateQuestionAnswer.deleteMany({
+                await this.databaseService.$transaction(async (tx) => {
+                    await tx.templateQuestionAnswer.deleteMany({
                         where: {
                             questionId: questionId
-                        },
-                    }),
-                    this.databaseService.templateQuestion.update({
-                        where: {
-                            id: questionId,
-                        },
+                        }
+                    });
+                    await tx.templateQuestion.update({
+                        where: { id: questionId },
                         data: {
                             isDeleted: true,
-                            questionOrder: 0, // Set the order to 0 for the deleted template
+                            questionOrder: 0,
+                            initialQuestionOrder: 0,
+                            paintQuestionOrder: 0
                         }
-                    }),
-                    this.databaseService.templateQuestion.updateMany({
+                    });
+                    // Arrange the order of questionnaire template questions
+                    await tx.templateQuestion.updateMany({
                         where: {
                             questionnaireTemplateId: templateId,
                             categoryId: categoryId,
@@ -369,13 +453,36 @@ export class TemplateQuestionService {
                             }
                         },
                         data: {
-                            questionOrder: {
-                                decrement: 1,
-                            }
+                            questionOrder: { decrement: 1 },
                         }
-                    })
-                ]);
-
+                    });
+                    if (deletedInitial > 0) {
+                        await tx.templateQuestion.updateMany({
+                            where: {
+                                questionnaireTemplateId: templateId,
+                                categoryId: categoryId,
+                                isDeleted: false,
+                                initialQuestionOrder: {
+                                    gt: deletedInitial
+                                }
+                            },
+                            data: { initialQuestionOrder: { decrement: 1 } }
+                        })
+                    }
+                    if (deletedPaint > 0) {
+                        await tx.templateQuestion.updateMany({
+                            where: {
+                                questionnaireTemplateId: templateId,
+                                categoryId: categoryId,
+                                isDeleted: false,
+                                paintQuestionOrder: {
+                                    gt: deletedPaint
+                                }
+                            },
+                            data: { paintQuestionOrder: { decrement: 1 } }
+                        })
+                    }
+                });
                 // Fetch the updated category with non-deleted questions
                 const category = await this.databaseService.category.findMany({
                     where: {
