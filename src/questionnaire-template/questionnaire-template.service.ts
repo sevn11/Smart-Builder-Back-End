@@ -457,7 +457,6 @@ export class QuestionnaireTemplateService {
                 });
 
                 if (!parsedData.length) throw new ForbiddenException('Could not read csv file. please check the format and retry.')
-
                 let groupedData = await this.questionnaireImportService.groupContent(parsedData);
                 if (!groupedData.length) throw new ForbiddenException('Could not read csv file. please check the format and retry.')
 
