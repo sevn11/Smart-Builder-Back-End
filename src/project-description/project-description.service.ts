@@ -13,7 +13,7 @@ export class ProjectDescriptionService {
     async getProjectDescriptions(user: User, companyId: number) {
         try {
             // Check if User is Admin of the Company.
-            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) {
                 if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
@@ -55,7 +55,7 @@ export class ProjectDescriptionService {
     async createProjectDescription(user: User, companyId: number, body: ProjectDescriptionDTO) {
         try {
             // Check if User is Admin of the Company.
-            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER  || user.userType == UserTypes.EMPLOYEE) {
                 if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
@@ -92,7 +92,7 @@ export class ProjectDescriptionService {
     async updateProjectDescription(user: User, companyId: number, descriptionId: number, body: ProjectDescriptionDTO) {
         try {
             // Check if User is Admin of the Company.
-            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER  || user.userType == UserTypes.EMPLOYEE) {
                 if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
@@ -144,7 +144,7 @@ export class ProjectDescriptionService {
     async deleteProjectDescription(user: User, companyId: number, descriptionId: number) {
         try {
             // Check if User is Admin or Builder of the Company
-            if (user.userType === UserTypes.ADMIN || user.userType === UserTypes.BUILDER) {
+            if (user.userType === UserTypes.ADMIN || user.userType === UserTypes.BUILDER  || user.userType == UserTypes.EMPLOYEE) {
                 if (user.userType === UserTypes.BUILDER && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }

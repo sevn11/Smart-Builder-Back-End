@@ -17,8 +17,7 @@ export class JobsService {
 
     async createJob(user: User, companyId: number, body: CreateJobDTO) {
         try {
-            // Check if User is Admin of the Company.
-            if (user.userType == UserTypes.ADMIN || (user.userType == UserTypes.BUILDER && user.companyId === companyId)) {
+            if (user.userType == UserTypes.ADMIN || (user.userType == UserTypes.BUILDER && user.companyId === companyId) || user.userType == UserTypes.EMPLOYEE) {
                 let company = await this.databaseService.company.findUnique({
                     where: {
                         id: companyId,
@@ -91,8 +90,7 @@ export class JobsService {
     }
     async getJobList(user: User, companyId: number, query: GetJobListDTO) {
         try {
-            // Check if User is Admin of the Company.
-            if (user.userType == UserTypes.ADMIN || (user.userType == UserTypes.BUILDER && user.companyId === companyId)) {
+            if (user.userType == UserTypes.ADMIN || (user.userType == UserTypes.BUILDER && user.companyId === companyId) || user.userType == UserTypes.EMPLOYEE) {
                 let company = await this.databaseService.company.findUnique({
                     where: {
                         id: companyId,
@@ -178,8 +176,7 @@ export class JobsService {
     }
     async getJobDetails(user: User, companyId: number, jobId: number) {
         try {
-            // Check if User is Admin of the Company.
-            if (user.userType == UserTypes.ADMIN || (user.userType == UserTypes.BUILDER && user.companyId === companyId)) {
+            if (user.userType == UserTypes.ADMIN || (user.userType == UserTypes.BUILDER && user.companyId === companyId) || user.userType == UserTypes.EMPLOYEE) {
                 let company = await this.databaseService.company.findUnique({
                     where: {
                         id: companyId,
@@ -246,10 +243,10 @@ export class JobsService {
         body: UpdateJobStatusCalendarColorTemplateDto
     ) {
         try {
-            // Check if User is Admin of the Company.
             if (
                 user.userType == UserTypes.ADMIN ||
-                (user.userType == UserTypes.BUILDER && user.companyId === companyId)
+                (user.userType == UserTypes.BUILDER && user.companyId === companyId) || 
+                user.userType == UserTypes.EMPLOYEE
             ) {
                 let company = await this.databaseService.company.findUnique({
                     where: {
@@ -327,10 +324,10 @@ export class JobsService {
         body: UpdateJobDTO
     ) {
         try {
-            // Check if User is Admin of the Company.
             if (
                 user.userType == UserTypes.ADMIN ||
-                (user.userType == UserTypes.BUILDER && user.companyId === companyId)
+                (user.userType == UserTypes.BUILDER && user.companyId === companyId) ||
+                user.userType == UserTypes.EMPLOYEE
             ) {
                 let company = await this.databaseService.company.findUnique({
                     where: {
@@ -409,8 +406,7 @@ export class JobsService {
     // delete a particular job
     async deleteJob(user: User, companyId: number, jobId: number) {
         try {
-            // Check if User is Admin of the Company.
-            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) {
                 if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
@@ -466,8 +462,7 @@ export class JobsService {
     // get the list of open jobs for calendar.
     async getOpenJobList(user: User, companyId: number) {
         try {
-            // Check if User is Admin of the Company.
-            if (user.userType == UserTypes.ADMIN || (user.userType == UserTypes.BUILDER && user.companyId === companyId)) {
+            if (user.userType == UserTypes.ADMIN || (user.userType == UserTypes.BUILDER && user.companyId === companyId) || user.userType == UserTypes.EMPLOYEE) {
                 let company = await this.databaseService.company.findUnique({
                     where: {
                         id: companyId,
@@ -591,10 +586,10 @@ export class JobsService {
         body: { salesTaxStatus: boolean }
     ) {
         try {
-            // Check if User is Admin of the Company.
             if (
                 user.userType == UserTypes.ADMIN ||
-                (user.userType == UserTypes.BUILDER && user.companyId === companyId)
+                (user.userType == UserTypes.BUILDER && user.companyId === companyId) ||
+                user.userType == UserTypes.EMPLOYEE
             ) {
                 let job = await this.databaseService.job.findUnique({
                     where: {
@@ -662,8 +657,7 @@ export class JobsService {
 
     async getJobAndSchedules(user: User, companyId: number, jobId: number) {
         try {
-            // Check if User is Admin of the Company.
-            if (user.userType == UserTypes.ADMIN || (user.userType == UserTypes.BUILDER && user.companyId === companyId)) {
+            if (user.userType == UserTypes.ADMIN || (user.userType == UserTypes.BUILDER && user.companyId === companyId) || user.userType == UserTypes.EMPLOYEE) {
                 let company = await this.databaseService.company.findUnique({
                     where: {
                         id: companyId,

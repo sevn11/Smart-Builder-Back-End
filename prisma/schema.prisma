@@ -119,10 +119,12 @@ model PermissionSet {
   userId         Int      @unique @map("user_id")
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   fullAccess     Boolean  @default(false) @map("full_access")
+  accounting     Boolean  @default(false)
   specifications Boolean  @default(false)
   questionnaire  Boolean  @default(false)
   selection      Boolean  @default(false)
   schedule       Boolean  @default(false)
+  proposal       Boolean  @default(false)
   viewOnly       Boolean  @default(true) @map("view_only")
   isDeleted      Boolean? @default(false) @map("is_deleted")
 
