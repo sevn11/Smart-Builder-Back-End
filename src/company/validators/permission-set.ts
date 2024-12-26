@@ -33,6 +33,10 @@ export class PermissionSetDTO {
 
     @IsBoolean()
     @IsNotEmpty()
+    contractorAndFiles: boolean
+
+    @IsBoolean()
+    @IsNotEmpty()
     viewOnly: boolean
 
 }

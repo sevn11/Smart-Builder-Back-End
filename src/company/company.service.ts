@@ -126,6 +126,7 @@ export class CompanyService {
                                 schedule: body.PermissionSet.schedule,
                                 selection: body.PermissionSet.selection,
                                 proposal: body.PermissionSet.proposal,
+                                contractorAndFiles: body.PermissionSet.contractorAndFiles,
                                 viewOnly: body.PermissionSet.viewOnly
                             }
                         }
@@ -301,6 +302,7 @@ export class CompanyService {
                                     schedule: body.PermissionSet.schedule,
                                     selection: body.PermissionSet.selection,
                                     proposal: body.PermissionSet.proposal,
+                                    contractorAndFiles: body.PermissionSet.contractorAndFiles,
                                     viewOnly: body.PermissionSet.viewOnly
                                 }
                             },
