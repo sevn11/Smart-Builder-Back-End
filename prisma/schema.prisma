@@ -125,6 +125,7 @@ model PermissionSet {
   selection      Boolean  @default(false)
   schedule       Boolean  @default(false)
   proposal       Boolean  @default(false)
+  contractorAndFiles      Boolean  @default(false) @map("contractor_and_files")
   viewOnly       Boolean  @default(true) @map("view_only")
   isDeleted      Boolean? @default(false) @map("is_deleted")
 
