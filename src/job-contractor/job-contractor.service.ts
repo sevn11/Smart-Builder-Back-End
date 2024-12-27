@@ -250,29 +250,7 @@ export class JobContractorService {
                             }
                         })
                         // Fetching all linked info of phase
-                        const [categoryDetails, clientCategoryDetails] = await Promise.all([
-                            await this.databaseService.category.findMany({
-                                where: {
-                                    companyId,
-                                    isDeleted: false,
-                                    phaseIds: {
-                                        has: contractor.phaseId
-                                    },
-                                    questionnaireTemplateId: clientTemplateInfo.questionnaireTemplateId
-                                },
-                                orderBy: { questionnaireOrder: 'asc' },
-                                include: {
-                                    questions: {
-                                        where: {
-                                            isDeleted: false,
-                                            phaseIds: {
-                                                has: contractor.phaseId
-                                            }
-                                        },
-                                        orderBy: { questionOrder: 'asc' },
-                                    }
-                                }
-                            }),
+                        const [clientCategoryDetails] = await Promise.all([
                             await this.databaseService.clientCategory.findMany({
                                 where: {
                                     companyId,
@@ -304,15 +282,6 @@ export class JobContractorService {
                             }),
                         ]);
                         let formattedDetails = [
-                            ...categoryDetails.map(category => ({
-                                category: category.id,
-                                categoryName: category.name,
-                                questions: category.questions.map(question => ({
-                                    questionId: question.id,
-                                    questionText: question.question,
-                                    questionType: question.questionType
-                                }))
-                            })),
                             ...clientCategoryDetails.map(clientCategory => ({
                                 category: clientCategory.id,
                                 categoryName: clientCategory.name,
