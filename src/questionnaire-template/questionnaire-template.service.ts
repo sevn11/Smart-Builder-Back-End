@@ -346,12 +346,12 @@ export class QuestionnaireTemplateService {
 
                     await tx.category.updateMany({
                         where: { questionnaireTemplateId: templateId, isDeleted: false },
-                        data: { isDeleted: true }
+                        data: { isDeleted: true, questionnaireOrder: 0, initialOrder: 0, paintOrder: 0 }
                     });
 
                     await tx.templateQuestion.updateMany({
                         where: { questionnaireTemplateId: templateId, isDeleted: false, },
-                        data: { isDeleted: true }
+                        data: { isDeleted: true, questionOrder: 0, initialQuestionOrder: 0, paintQuestionOrder: 0 }
                     })
                 })
 
@@ -421,7 +421,7 @@ export class QuestionnaireTemplateService {
         }
     }
 
-    async importTemplate(user: User, file: Express.Multer.File, companyId: number, body: { templatename: string }) {
+    async importTemplate(user: User, file: Express.Multer.File, companyId: number, body: { templateId: string }) {
         try {
             // Check if User is Admin of the Company.
             if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
@@ -457,13 +457,12 @@ export class QuestionnaireTemplateService {
                 });
 
                 if (!parsedData.length) throw new ForbiddenException('Could not read csv file. please check the format and retry.')
-                // const templateId = template.id
                 let groupedData = await this.questionnaireImportService.groupContent(parsedData);
                 if (!groupedData.length) throw new ForbiddenException('Could not read csv file. please check the format and retry.')
 
-                const template = await this.questionnaireImportService.createTemplate(body, companyId,);
+                const template = await this.questionnaireImportService.checkTemplateExist('questionnaire', body, companyId);
                 const templateId = template.id;
-                // return groupedData;
+
                 groupedData.forEach(async (element: any) => {
                     await this.questionnaireImportService.processImport(element, templateId, companyId)
                 });

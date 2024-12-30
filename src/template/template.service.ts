@@ -145,16 +145,24 @@ export class TemplateService {
             }
 
             let whereClause: any = {};
+            let orderByQuestion: any = {};
+            let orderByCategory: any = {};
             if (type === 'initial-selection') {
                 whereClause.linkToInitalSelection = true;
+                orderByQuestion.initialQuestionOrder = 'asc';
+                orderByCategory.initialOrder = 'asc'
             }
 
             if (type === 'paint-selection') {
                 whereClause.linkToPaintSelection = true;
+                orderByQuestion.paintQuestionOrder = 'asc';
+                orderByCategory.paintOrder = 'asc'
             }
 
             if (type === 'questionnaire') {
                 whereClause.linkToQuestionnaire = true;
+                orderByQuestion.questionOrder = 'asc';
+                orderByCategory.questionnaireOrder = 'asc'
             }
 
             const clientCategories = await this.databaseService.clientCategory.findMany({
@@ -163,7 +171,7 @@ export class TemplateService {
                     ClientTemplateQuestion: {
                         where: { isDeleted: false, clientTemplateId: template.id, jobId: job.id, customerId: job.customerId, ...whereClause },
                         omit: { createdAt: true, updatedAt: true, },
-                        orderBy: { questionOrder: 'asc' },
+                        orderBy: orderByQuestion,
                         include: {
                             answer: {
                                 where: {
@@ -176,7 +184,7 @@ export class TemplateService {
                         }
                     },
                 },
-                orderBy: { questionnaireOrder: 'asc' }
+                orderBy: orderByCategory
             });
 
             return { category: clientCategories, message: ResponseMessages.ANSWER_UPDATED_SUCCESSFULLY }
@@ -274,27 +282,61 @@ export class TemplateService {
     }
 
     private async getSelectionTemplate(type: string, templateId: number, companyId: number, customerId: number, jobId: number) {
-        let whereClause: any = {};
-        if (type === 'initial') { whereClause.linkToInitalSelection = true }
-        if (type === 'paint') { whereClause.linkToPaintSelection = true }
+        const selectionTypeMap = {
+            'initial': {
+                linkField: 'linkToInitalSelection',
+                orderField: 'initialOrder',
+                questionOrderField: 'initialQuestionOrder'
+            },
+            'paint': {
+                linkField: 'linkToPaintSelection',
+                orderField: 'paintOrder',
+                questionOrderField: 'paintQuestionOrder'
+            }
+        };
+        const { linkField, orderField, questionOrderField } = selectionTypeMap[type];
 
-        let selectionTemplate = await this.databaseService.clientTemplate.findFirst({
-            where: { id: templateId, isDeleted: false, companyId, customerId, jobId },
+        const selectionTemplate = await this.databaseService.clientTemplate.findFirst({
+            where: {
+                id: templateId,
+                isDeleted: false,
+                companyId,
+                customerId,
+                jobId
+            },
             orderBy: { id: 'desc' },
             take: 1,
             include: {
                 clientCategory: {
-                    where: { isDeleted: false, clientTemplateId: templateId, ...whereClause, companyId, jobId, customerId },
-                    omit: { createdAt: true, updatedAt: true, },
-                    orderBy: { questionnaireOrder: 'asc' },
+                    where: {
+                        isDeleted: false,
+                        clientTemplateId: templateId,
+                        [linkField]: true,
+                        companyId,
+                        jobId,
+                        customerId
+                    },
+                    omit: { createdAt: true, updatedAt: true },
+                    orderBy: { [orderField]: 'asc' },
                     include: {
                         ClientTemplateQuestion: {
-                            where: { isDeleted: false, clientTemplateId: templateId, ...whereClause, jobId, customerId },
-                            omit: { createdAt: true, updatedAt: true, },
-                            orderBy: { questionOrder: 'asc' },
+                            where: {
+                                isDeleted: false,
+                                clientTemplateId: templateId,
+                                [linkField]: true,
+                                jobId,
+                                customerId
+                            },
+                            omit: { createdAt: true, updatedAt: true },
+                            orderBy: { [questionOrderField]: 'asc' },
                             include: {
                                 answer: {
-                                    where: { clientTemplateId: templateId, jobId, companyId, customerId },
+                                    where: {
+                                        clientTemplateId: templateId,
+                                        jobId,
+                                        companyId,
+                                        customerId
+                                    },
                                     omit: { createdAt: true, updatedAt: true }
                                 }
                             }
@@ -304,7 +346,7 @@ export class TemplateService {
             }
         });
 
-        return { template: selectionTemplate || {} }
+        return { template: selectionTemplate || {} };
     }
 
     private async getJobProjectEstimator(templateId: number, companyId: number, customerId: number, jobId: number) {

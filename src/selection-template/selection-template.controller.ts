@@ -17,8 +17,6 @@ export class SelectionTemplateController {
 
     constructor(private selectionTemplateService: SelectionTemplateService) { }
 
-
-
     @HttpCode(HttpStatus.OK)
     @Post(':type')
     createTemplateName(
@@ -41,8 +39,6 @@ export class SelectionTemplateController {
     ) {
         return this.selectionTemplateService.updateTemplateName(user, type, companyId, templateId, body);
     }
-
-
 
     @HttpCode(HttpStatus.OK)
     @Patch('/:type/:templateId/re-order')
@@ -188,34 +184,6 @@ export class SelectionTemplateController {
         return this.selectionTemplateService.deleteLabel(user, type, companyId, templateId, categoryId, labelId)
     }
 
-    // create answer
-    @Post('/:type/:templateId/category/:categoryId')
-    @HttpCode(HttpStatus.OK)
-    createAnswer(
-        @GetUser() user: User,
-        @Param('type') type: string,
-        @Param('companyId', ParseIntPipe) companyId: number,
-        @Param('templateId', ParseIntPipe) templateId: number,
-        @Param('categoryId', ParseIntPipe) categoryId: number,
-        @Body() body: AnswerDTO
-    ) {
-        return this.selectionTemplateService.createAnswer(user, type, companyId, templateId, categoryId, body);
-    }
-
-    // update answer
-    @Patch('/:type/:templateId/:categoryId/question/:quesId')
-    @HttpCode(HttpStatus.OK)
-    updateAnswer(
-        @GetUser() user: User,
-        @Param('type') type: string,
-        @Param('companyId', ParseIntPipe) companyId: number,
-        @Param('templateId', ParseIntPipe) templateId: number,
-        @Param('categoryId', ParseIntPipe) categoryId: number,
-        @Body() body: AnswerDTO
-    ) {
-        return this.selectionTemplateService.updateAnswer(user, type, companyId, templateId, categoryId, body);
-    }
-
     @Post('/:type/import-template')
     @HttpCode(HttpStatus.OK)
     @UseInterceptors(
@@ -233,7 +201,7 @@ export class SelectionTemplateController {
         @GetUser() user: User,
         @Param('companyId', ParseIntPipe) companyId: number,
         @UploadedFile() file: Express.Multer.File,
-        @Body() body: { templatename: string },
+        @Body() body: { templateId: string },
         @Param('type') type: string,
     ) {
         return this.selectionTemplateService.importTemplate(user, companyId, file, body, type)

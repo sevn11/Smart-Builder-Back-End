@@ -4,3 +4,5 @@ export enum TemplateType {
     SELECTION_PAINT = 'Selection Paint',
     PROJECT_ESTIMATOR = 'Project Estimator'
 }
+
+export type TemplateTypeValue = 'questionnaire' | 'initial-selection' | 'paint-selection';

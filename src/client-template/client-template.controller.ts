@@ -6,6 +6,7 @@ import { ClientCategory, User } from '@prisma/client';
 import { TypeValidationPipe } from './type-validation/type-validation.pipe';
 import { ClientCategoryDTO } from './validators/client-category';
 import { ClientQuestionDTO } from './validators/client-question';
+import { TemplateTypeValue } from 'src/core/utils';
 
 @UseGuards(JwtGuard)
 @Controller('company/:companyId/job/:jobId/client-template')
@@ -18,7 +19,7 @@ export class ClientTemplateController {
         @GetUser() user: User,
         @Param('companyId', ParseIntPipe) companyId: number,
         @Param('jobId', ParseIntPipe) jobId: number,
-        @Param('type', TypeValidationPipe) type: string,
+        @Param('type', TypeValidationPipe) type: TemplateTypeValue,
         @Param('templateId', ParseIntPipe) templateId: number,
         @Body() body: ClientCategoryDTO
     ) {
@@ -31,7 +32,7 @@ export class ClientTemplateController {
         @GetUser() user: User,
         @Param('companyId', ParseIntPipe) companyId: number,
         @Param('jobId', ParseIntPipe) jobId: number,
-        @Param('type', TypeValidationPipe) type: string,
+        @Param('type', TypeValidationPipe) type: TemplateTypeValue,
         @Param('templateId', ParseIntPipe) templateId: number,
         @Param('categoryId', ParseIntPipe) categoryId: number,
         @Body() body: ClientCategoryDTO
@@ -39,6 +40,7 @@ export class ClientTemplateController {
         return this.clientTemplateService.updateCategory(user, companyId, jobId, type, templateId, categoryId, body);
     }
 
+    // TODO: Add the orders
     @HttpCode(HttpStatus.OK)
     @Delete('/:type/:templateId/category/:categoryId')
     deleteCategory(
@@ -46,7 +48,7 @@ export class ClientTemplateController {
         @Param('companyId', ParseIntPipe) companyId: number,
         @Param('jobId', ParseIntPipe) jobId: number,
         @Param('templateId', ParseIntPipe) templateId: number,
-        @Param('type') type: string,
+        @Param('type') type: TemplateTypeValue,
         @Param('categoryId', ParseIntPipe) categoryId: number,
     ) {
         return this.clientTemplateService.deleteCategory(user, type, companyId, jobId, templateId, categoryId);
@@ -57,7 +59,7 @@ export class ClientTemplateController {
     createQuestion(
         @GetUser() user: User,
         @Param('companyId', ParseIntPipe) companyId: number,
-        @Param('type', TypeValidationPipe) type: string,
+        @Param('type', TypeValidationPipe) type: TemplateTypeValue,
         @Param('jobId', ParseIntPipe) jobId: number,
         @Param('templateId', ParseIntPipe) templateId: number,
         @Param('categoryId', ParseIntPipe) categoryId: number,
@@ -72,7 +74,7 @@ export class ClientTemplateController {
         @GetUser() user: User,
         @Param('companyId', ParseIntPipe) companyId: number,
         @Param('jobId', ParseIntPipe) jobId: number,
-        @Param('type', TypeValidationPipe) type: string,
+        @Param('type', TypeValidationPipe) type: TemplateTypeValue,
         @Param('templateId', ParseIntPipe) templateId: number,
         @Param('categoryId', ParseIntPipe) categoryId: number,
         @Param('questionId', ParseIntPipe) questionId: number,
@@ -87,7 +89,7 @@ export class ClientTemplateController {
         @GetUser() user: User,
         @Param('companyId', ParseIntPipe) companyId: number,
         @Param('jobId', ParseIntPipe) jobId: number,
-        @Param('type', TypeValidationPipe) type: string,
+        @Param('type', TypeValidationPipe) type: TemplateTypeValue,
         @Param('templateId', ParseIntPipe) templateId: number,
         @Param('categoryId', ParseIntPipe) categoryId: number,
         @Param('questionId', ParseIntPipe) questionId: number,
