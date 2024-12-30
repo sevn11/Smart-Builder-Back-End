@@ -109,7 +109,7 @@ export class QuestionnaireTemplateService {
 
         try {
             // Check if User is Admin of the Company.
-            if (user.userType == UserTypes.ADMIN || (user.userType == UserTypes.BUILDER && user.companyId === companyId)) {
+            if (user.userType == UserTypes.ADMIN || (user.userType == UserTypes.BUILDER && user.companyId === companyId) || user.userType == UserTypes.EMPLOYEE) {
                 let company = await this.databaseService.company.findUnique({
                     where: {
                         id: companyId,
