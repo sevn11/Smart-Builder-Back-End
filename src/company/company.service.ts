@@ -120,10 +120,13 @@ export class CompanyService {
                         PermissionSet: {
                             update: {
                                 fullAccess: body.PermissionSet.fullAccess,
+                                accounting: body.PermissionSet.accounting,
                                 questionnaire: body.PermissionSet.questionnaire,
                                 specifications: body.PermissionSet.specifications,
                                 schedule: body.PermissionSet.schedule,
                                 selection: body.PermissionSet.selection,
+                                proposal: body.PermissionSet.proposal,
+                                contractorAndFiles: body.PermissionSet.contractorAndFiles,
                                 viewOnly: body.PermissionSet.viewOnly
                             }
                         }
@@ -293,10 +296,13 @@ export class CompanyService {
                             PermissionSet: {
                                 create: {
                                     fullAccess: body.PermissionSet.fullAccess,
+                                    accounting: body.PermissionSet.accounting,
                                     questionnaire: body.PermissionSet.questionnaire,
                                     specifications: body.PermissionSet.specifications,
                                     schedule: body.PermissionSet.schedule,
                                     selection: body.PermissionSet.selection,
+                                    proposal: body.PermissionSet.proposal,
+                                    contractorAndFiles: body.PermissionSet.contractorAndFiles,
                                     viewOnly: body.PermissionSet.viewOnly
                                 }
                             },

@@ -12,7 +12,7 @@ export class TemplateService {
     // Get the template names which is linked on all three templates.
     async getTemplate(user: User, companyId: number) {
         try {
-            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) {
                 if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
@@ -48,7 +48,7 @@ export class TemplateService {
     // get template data
     async getTemplateData(user: User, companyId: number, type: string, jobId: number) {
         try {
-            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) {
                 if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
@@ -85,7 +85,7 @@ export class TemplateService {
     async createAnswer(user: User, companyId: number, templateId: number, questionId: number, categoryId: number, body: QuestionAnswerDTO, type: string) {
         try {
             // Check user permissions
-            if (![UserTypes.ADMIN, UserTypes.BUILDER].includes(user.userType)) {
+            if (![UserTypes.ADMIN, UserTypes.BUILDER, UserTypes.EMPLOYEE].includes(user.userType)) {
                 throw new ForbiddenException("Action Not Allowed");
             }
 

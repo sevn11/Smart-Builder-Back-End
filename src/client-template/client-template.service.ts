@@ -89,7 +89,7 @@ export class ClientTemplateService {
     // add category: Questionnaire & Selection
     async addCategory(user: User, companyId: number, jobId: number, type: TemplateTypeValue, templateId: number, body: ClientCategoryDTO) {
         try {
-            const isAllowed = user.userType === UserTypes.ADMIN || (user.userType === UserTypes.BUILDER && user.companyId === companyId);
+            const isAllowed = user.userType === UserTypes.ADMIN || (user.userType === UserTypes.BUILDER && user.companyId === companyId) || user.userType == UserTypes.EMPLOYEE;
 
             if (!isAllowed) throw new ForbiddenException("Action Not Allowed");
             const linkFieldMapping = { 'initial-selection': 'linkToInitalSelection', 'paint-selection': 'linkToPaintSelection', 'questionnaire': 'linkToQuestionnaire', };
@@ -197,7 +197,7 @@ export class ClientTemplateService {
     async updateCategory(user: User, companyId: number, jobId: number, type: TemplateTypeValue, templateId: number, categoryId: number, body: ClientCategoryDTO) {
 
         try {
-            const isAllowed = user.userType === UserTypes.ADMIN || (user.userType === UserTypes.BUILDER && user.companyId === companyId);
+            const isAllowed = user.userType === UserTypes.ADMIN || (user.userType === UserTypes.BUILDER && user.companyId === companyId) || user.userType == UserTypes.EMPLOYEE;
 
             if (!isAllowed) {
                 throw new ForbiddenException("Action Not Allowed");
@@ -345,7 +345,7 @@ export class ClientTemplateService {
     // delete category: Questionnnaire & Selection
     async deleteCategory(user: User, type: TemplateTypeValue, companyId: number, jobId: number, templateId: number, categoryId: number) {
         try {
-            const isAllowed = user.userType === UserTypes.ADMIN || (user.userType === UserTypes.BUILDER && user.companyId === companyId);
+            const isAllowed = user.userType === UserTypes.ADMIN || (user.userType === UserTypes.BUILDER && user.companyId === companyId) || user.userType == UserTypes.EMPLOYEE;
 
             if (!isAllowed) {
                 throw new ForbiddenException("Action Not Allowed");
@@ -497,7 +497,7 @@ export class ClientTemplateService {
     // Create Question: Questionnaire & Selection
     async createQuestion(user: User, type: TemplateTypeValue, companyId: number, jobId: number, templateId: number, categoryId: number, body: ClientQuestionDTO) {
         try {
-            const isAllowed = user.userType === UserTypes.ADMIN || (user.userType === UserTypes.BUILDER && user.companyId === companyId);
+            const isAllowed = user.userType === UserTypes.ADMIN || (user.userType === UserTypes.BUILDER && user.companyId === companyId) || user.userType == UserTypes.EMPLOYEE;
 
             if (!isAllowed) {
                 throw new ForbiddenException("Action Not Allowed");
@@ -612,7 +612,7 @@ export class ClientTemplateService {
     // Edit Question: Questionnaire & Selection
     async editQuestion(user: User, type: TemplateTypeValue, companyId: number, jobId: number, templateId: number, categoryId: number, questionId: number, body: ClientQuestionDTO) {
         try {
-            const isAllowed = user.userType === UserTypes.ADMIN || (user.userType === UserTypes.BUILDER && user.companyId === companyId);
+            const isAllowed = user.userType === UserTypes.ADMIN || (user.userType === UserTypes.BUILDER && user.companyId === companyId) || user.userType == UserTypes.EMPLOYEE;
             if (!isAllowed) throw new ForbiddenException("Action Not Allowed");
 
             await this.checkCompanyExist(companyId);
@@ -770,7 +770,7 @@ export class ClientTemplateService {
     // Delete Question: Questionnaire & Selection
     async deleteQuestion(user: User, type: TemplateTypeValue, companyId: number, jobId: number, templateId: number, categoryId: number, questionId: number) {
         try {
-            const isAllowed = user.userType === UserTypes.ADMIN || (user.userType === UserTypes.BUILDER && user.companyId === companyId);
+            const isAllowed = user.userType === UserTypes.ADMIN || (user.userType === UserTypes.BUILDER && user.companyId === companyId) || user.userType == UserTypes.EMPLOYEE;
 
             if (!isAllowed) throw new ForbiddenException("Action Not Allowed");
             const linkFieldMapping = { 'initial-selection': 'linkToInitalSelection', 'paint-selection': 'linkToPaintSelection', 'questionnaire': 'linkToQuestionnaire', };
