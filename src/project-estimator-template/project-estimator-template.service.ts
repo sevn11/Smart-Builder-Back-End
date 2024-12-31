@@ -11,6 +11,7 @@ import { ProjectEstimatorAccountingTemplateDTO } from './validators/add-project-
 import { BulkUpdateProjectEstimatorTemplateDTO } from './validators/pet-bulk-update';
 import { ItemOrderDTO } from './validators/item-order';
 import { ImportTemplateService } from './import-template/import-template.service';
+import { ProfitCalculationType } from 'src/core/utils/company';
 
 @Injectable()
 export class ProjectEstimatorTemplateService {
@@ -425,6 +426,12 @@ export class ProjectEstimatorTemplateService {
                 if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
+                const company = await this.databaseService.company.findUniqueOrThrow({
+                    where: {
+                        id: companyId,
+                        isDeleted: false,
+                    }
+                });
                 let maxOrder = await this.databaseService.projectEstimatorTemplateData.aggregate({
                     _max: {
                         order: true
@@ -438,11 +445,12 @@ export class ProjectEstimatorTemplateService {
                 let order =
                     (maxOrder._max.order ?? 0) + 1;
 
+                body.profitCalculationType = company.profitCalculationType === body.profitCalculationType ?
+                    body.profitCalculationType : ProfitCalculationType.MARGIN
                 let projectEstimator = await this.databaseService.projectEstimatorTemplateData.create({
                     data: {
                         ...body,
-                        order: order
-
+                        order: order,
                     }
                 });
                 return { projectEstimator }
@@ -682,6 +690,13 @@ export class ProjectEstimatorTemplateService {
                     }
                 });
 
+                let company = await this.databaseService.company.findUniqueOrThrow({
+                    where: {
+                        id: companyId,
+                        isDeleted: false,
+                    }
+                })
+
                 // Check if change order header exist or not. If not create one
                 let accountingHeader = await this.databaseService.projectEstimatorTemplateHeader.findFirst({
                     where: {
@@ -717,6 +732,9 @@ export class ProjectEstimatorTemplateService {
 
                 let order = (maxOrder?._max.order ?? 0) + 1;
                 const { headerName, ...projectEstimatorData } = body;
+
+                projectEstimatorData.profitCalculationType = company.profitCalculationType === body.profitCalculationType ?
+                    body.profitCalculationType : ProfitCalculationType.MARGIN
 
                 // insert new row for accounting
                 let projectEstimator = await this.databaseService.projectEstimatorTemplateData.create({

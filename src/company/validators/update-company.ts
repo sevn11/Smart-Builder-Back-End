@@ -1,6 +1,6 @@
 import { IsEmail, IsOptional, IsString, IsNumber, IsDecimal, ValidateIf, IsNotEmpty, IsEnum } from "class-validator";
 import { BuilderPlanTypes } from "src/core/utils/builder-plan-types";
-
+import { ProfitCalculationType } from "src/core/utils/company"
 export class UpdateCompanyDTO {
 
 
@@ -43,4 +43,7 @@ export class UpdateCompanyDTO {
 
     @IsEnum(BuilderPlanTypes)
     planType: BuilderPlanTypes;
+
+    @IsEnum(ProfitCalculationType)
+    profitCalculationType: ProfitCalculationType
 }

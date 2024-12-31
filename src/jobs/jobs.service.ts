@@ -7,6 +7,7 @@ import { JobStatus, PrismaErrorCodes, ResponseMessages, UserTypes } from 'src/co
 import { UpdateJobStatusCalendarColorTemplateDto } from './validators/update-jobstatus-calendarcolor-template';
 import { UpdateJobDTO } from './validators/update-job';
 import { GoogleService } from 'src/core/services/google.service';
+import { ProfitCalculationType } from 'src/core/utils/company';
 
 @Injectable()
 export class JobsService {
@@ -1009,7 +1010,10 @@ export class JobsService {
                             grossProfit: x.grossProfit,
                             contractPrice: x.contractPrice,
                             order: x.order,
-                            invoiceId: currentInvoiceId
+                            invoiceId: currentInvoiceId,
+                            profitCalculationType: x.profitCalculationType  === ProfitCalculationType.MARKUP ?
+                                ProfitCalculationType.MARKUP :
+                                ProfitCalculationType.MARGIN
                         }
                     })
                 }));

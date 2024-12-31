@@ -1,6 +1,7 @@
 import { BadRequestException, ForbiddenException, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { PrismaErrorCodes, ResponseMessages, TemplateType } from 'src/core/utils';
+import { ProfitCalculationType } from 'src/core/utils/company';
 import { DatabaseService } from 'src/database/database.service';
 export interface ImportData {
     _is_project_estimator: string;
@@ -15,6 +16,7 @@ export interface ImportData {
     actualcost: string | number;
     itemorder: string | number;
     headerorder: string | number;
+    profit_calculation_type: string;
 }
 
 export interface GroupedImportData {
@@ -73,7 +75,10 @@ export class ImportTemplateService {
                                     contractPrice: parseFloat(String(val.contractprice)),
                                     isDeleted: false,
                                     petHeaderId: header.id,
-                                    order: Number(val.itemorder)
+                                    order: Number(val.itemorder),
+                                    profitCalculationType: val.profit_calculation_type === ProfitCalculationType.MARKUP ?
+                                        ProfitCalculationType.MARKUP :
+                                        ProfitCalculationType.MARGIN
                                 }
                             });
                         })

@@ -58,6 +58,11 @@ model SeoSettings {
   @@map("seo_settings")
 }
 
+enum ProfitCalculationType {
+  MARKUP
+  MARGIN
+}
+
 model Company {
   id                     Int                     @id @default(autoincrement())
   name                   String?
@@ -90,12 +95,13 @@ model Company {
   CustomizedContent      CustomizedContent[]
   isActive               Boolean                 @default(true) @map("is_active")
   isDeleted              Boolean?                @default(false) @map("is_deleted")
-
+  profitCalculationType  ProfitCalculationType?  @default(MARGIN) @map("profilt_calculation_type")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
   ClientCategory         ClientCategory[]
   ClientTemplate         ClientTemplate[]
   clientQuestionAnswer   ClientQuestionAnswer[]
+
   @@map("companies")
 }
 
@@ -458,6 +464,8 @@ model JobProjectEstimator {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
+  profitCalculationType  ProfitCalculationType?  @default(MARGIN) @map("profilt_calculation_type")
+
   @@map("job_project_estimator")
 }
 
@@ -580,6 +588,8 @@ model ProjectEstimatorTemplateData {
   petHeader         ProjectEstimatorTemplateHeader? @relation(fields: [petHeaderId], references: [id], onDelete: Cascade)
 
   order             Int?               @default(0) @map("order")
+
+  profitCalculationType  ProfitCalculationType?  @default(MARGIN) @map("profilt_calculation_type")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
