@@ -450,6 +450,7 @@ model JobProjectEstimator {
   contractPrice     Decimal            @map("contract_price") @db.Decimal(10, 2) @default(0.00)
   invoiceId         Int?               @map("invoice_id")
   isLootCost        Boolean?           @default(false) @map("is_loot_cost")
+  isCourtesyCredit  Boolean?           @default(false) @map("is_courtesy_credit")
   isDeleted         Boolean?           @default(false) @map("is_deleted")
   order             Int?               @default(0) @map("order")
   jobProjectEstimatorHeaderId          Int? @map("job_project_estimator_header_id")
@@ -574,6 +575,7 @@ model ProjectEstimatorTemplateData {
   grossProfit       Decimal            @map("gross_profit") @db.Decimal(10, 2) @default(0.00)
   contractPrice     Decimal            @map("contract_price") @db.Decimal(10, 2) @default(0.00)
   isLotCost         Boolean?           @default(false) @map("is_lot_cost")
+  isCourtesyCredit  Boolean?           @default(false) @map("is_courtesy_credit")
   isDeleted         Boolean?           @default(false) @map("is_deleted")
 
   petHeaderId       Int?               @map("project_estimator_template_header_id")

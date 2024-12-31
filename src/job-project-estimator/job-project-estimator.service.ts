@@ -50,6 +50,7 @@ export class JobProjectEstimatorService {
                                 contractPrice: true,
                                 invoiceId: true,
                                 isLootCost: true,
+                                isCourtesyCredit: true,
                                 isDeleted: true,
                                 jobProjectEstimatorHeaderId: true,
                             }
