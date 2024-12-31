@@ -8,6 +8,7 @@ import { JobProjectEstimatorDTO } from './validators/add-project-estimator';
 import { JobProjectEstimatorAccountingDTO } from './validators/add-project-estimator-accounting';
 import { BulkUpdateProjectEstimatorDTO } from './validators/pe-bulk-update';
 import { UpdateStatementDTO } from './validators/update-statement';
+import { ProfitCalculationType } from 'src/core/utils/company';
 
 @Injectable()
 export class JobProjectEstimatorService {
@@ -53,11 +54,15 @@ export class JobProjectEstimatorService {
                                 isCourtesyCredit: true,
                                 isDeleted: true,
                                 jobProjectEstimatorHeaderId: true,
+                                profitCalculationType: true
+                            },
+                            orderBy: {
+                                order: 'asc'
                             }
                         }
                     },
                     orderBy: {
-                        createdAt: 'asc'
+                        headerOrder: 'asc'
                     }
                 });
                 // Filter out headers named 'Statements'
@@ -126,12 +131,29 @@ export class JobProjectEstimatorService {
                     throw new ForbiddenException('Template not found');
                 }
 
+                let { _max: order } = await this.databaseService.jobProjectEstimatorHeader.aggregate({
+                    _max: {
+                        headerOrder: true,
+                    },
+                    where: {
+                        isDeleted: false,
+                        jobId,
+                        clientTemplateId: clientTemplate.id,
+                        companyId,
+                        name: {
+                            not: "Change Orders"
+                        }
+                    },
+                })
+
+                let headerOrder = (order.headerOrder ?? 0) + 1;
                 let projectEstimatorHeader = await this.databaseService.jobProjectEstimatorHeader.create({
                     data: {
                         companyId,
                         jobId,
                         clientTemplateId: clientTemplate.id,
-                        name: body.name
+                        name: body.name,
+                        headerOrder
                     }
                 })
                 return { projectEstimatorHeader }
@@ -225,21 +247,49 @@ export class JobProjectEstimatorService {
                     }
                 });
 
+                let job = await this.databaseService.job.findUnique({
+                    where: { id: jobId }
+                });
+
+                let clientTemplate = await this.databaseService.clientTemplate.findFirst({
+                    where: {
+                        jobId,
+                        customerId: job.customerId,
+                        companyId,
+                        isDeleted: false,
+                        questionnaireTemplateId: job.templateId
+                    },
+                    orderBy: { id: 'desc' },
+                    take: 1,
+                });
+
                 // restrict Change Orders header delete
                 if (header.name.toLowerCase().replace(/\s/g, '') === "changeorders") {
                     throw new ForbiddenException("Action Not Allowed");
                 }
 
-                // Delete header
-                await this.databaseService.jobProjectEstimatorHeader.update({
-                    where: { id: headerId },
-                    data: { isDeleted: true }
-                });
+                const delHeaderOrder = header.headerOrder;
+                const delHeaderId = header.id;
+                const delTemplateId = header.clientTemplateId
+                const res = await this.databaseService.$transaction(async (tx) => {
+                    await tx.jobProjectEstimatorHeader.updateMany({
+                        where: { id: delHeaderId },
+                        data: { isDeleted: true, headerOrder: 0 }
+                    }),
+                        await tx.jobProjectEstimator.updateMany({
+                            where: { jobProjectEstimatorHeaderId: delHeaderId },
+                            data: { isDeleted: true, order: 0 }
+                        }),
+                        await tx.jobProjectEstimatorHeader.updateMany({
+                            where: {
+                                clientTemplateId: delTemplateId,
+                                headerOrder: {
+                                    gt: delHeaderOrder
+                                }
+                            },
+                            data: { headerOrder: { decrement: 1 } }
 
-                // Delete related project estimator rows
-                await this.databaseService.jobProjectEstimator.updateMany({
-                    where: { jobProjectEstimatorHeaderId: headerId },
-                    data: { isDeleted: true }
+                        })
                 });
 
                 return { message: ResponseMessages.SUCCESSFUL }
@@ -271,9 +321,30 @@ export class JobProjectEstimatorService {
                 if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
+                const company = await this.databaseService.company.findUniqueOrThrow({
+                    where: {
+                        id: companyId,
+                        isDeleted: false,
+                    }
+                })
+
+                let { _max: maxOrder } = await this.databaseService.jobProjectEstimator.aggregate({
+                    _max: {
+                        order: true
+                    },
+                    where: {
+                        isDeleted: false,
+                        jobProjectEstimatorHeaderId: body.jobProjectEstimatorHeaderId,
+
+                    }
+                })
+                const order = (maxOrder?.order ?? 0) + 1;
+                body.profitCalculationType = company.profitCalculationType === body.profitCalculationType ?
+                    body.profitCalculationType : ProfitCalculationType.MARGIN
                 let projectEstimator = await this.databaseService.jobProjectEstimator.create({
                     data: {
-                        ...body
+                        ...body,
+                        order
                     }
                 });
 
@@ -355,23 +426,35 @@ export class JobProjectEstimatorService {
                     throw new ForbiddenException("Action Not Allowed");
                 }
 
-                await this.databaseService.jobProjectEstimator.findFirstOrThrow({
+                const prEstToDelete = await this.databaseService.jobProjectEstimator.findFirstOrThrow({
                     where: {
                         id: projectEstimatorId,
                         isDeleted: false
                     }
                 });
 
-                await this.databaseService.jobProjectEstimator.update({
-                    where: {
-                        id: projectEstimatorId,
-                        isDeleted: false
-                    },
-                    data: {
-                        isDeleted: true
-                    }
-                });
-
+                const deleteOrder = prEstToDelete.order;
+                const deleteHeaderId = prEstToDelete.jobProjectEstimatorHeaderId;
+                await this.databaseService.$transaction(async (tx) => {
+                    await tx.jobProjectEstimator.update({
+                        where: {
+                            id: projectEstimatorId,
+                            isDeleted: false
+                        },
+                        data: {
+                            isDeleted: true,
+                            order: 0
+                        }
+                    })
+                    await tx.jobProjectEstimator.updateMany({
+                        where: {
+                            jobProjectEstimatorHeaderId: deleteHeaderId,
+                            isDeleted: false,
+                            order: { gt: deleteOrder }
+                        },
+                        data: { order: { decrement: 1 } }
+                    })
+                })
                 return { message: ResponseMessages.SUCCESSFUL }
             } else {
                 throw new ForbiddenException("Action Not Allowed");
@@ -446,13 +529,25 @@ export class JobProjectEstimatorService {
 
                 const { headerName, ...projectEstimatorData } = body;
 
+                let { _max: itemOrder } = await this.databaseService.jobProjectEstimator.aggregate({
+                    _max: {
+                        order: true
+                    },
+                    where: {
+                        jobProjectEstimatorHeaderId: accountingHeader.id,
+                        isDeleted: false
+                    }
+                })
+
+                let order = (itemOrder.order ?? 0) + 1;
                 // insert new row for accounting
                 let projectEstimator = await this.databaseService.jobProjectEstimator.create({
                     data: {
                         jobProjectEstimatorHeader: {
                             connect: { id: accountingHeader.id }
                         },
-                        ...projectEstimatorData
+                        ...projectEstimatorData,
+                        order
                     }
                 });
                 // insert invoice id for change orders
