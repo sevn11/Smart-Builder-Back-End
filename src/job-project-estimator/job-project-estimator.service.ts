@@ -53,6 +53,9 @@ export class JobProjectEstimatorService {
                                 isCourtesyCredit: true,
                                 isDeleted: true,
                                 jobProjectEstimatorHeaderId: true,
+                            },
+                            orderBy: {
+                                createdAt: 'asc'
                             }
                         }
                     },
