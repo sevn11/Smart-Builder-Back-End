@@ -1,5 +1,5 @@
 import { ProfitCalculationType } from "@prisma/client";
-import { IsEnum, IsNotEmpty, IsNumber, IsString } from "class-validator";
+import { IsBoolean, IsEnum, IsNotEmpty, IsNumber, IsString, IsOptional } from "class-validator";
 
 
 export class ProjectEstimatorAccountingTemplateDTO {
@@ -39,6 +39,10 @@ export class ProjectEstimatorAccountingTemplateDTO {
     @IsNumber()
     @IsNotEmpty()
     contractPrice: number
+    
+    @IsBoolean()
+    @IsOptional()
+    isCourtesyCredit: boolean
 
     @IsString()
     @IsEnum(ProfitCalculationType)

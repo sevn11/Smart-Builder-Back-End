@@ -243,33 +243,14 @@ export class JobContractorService {
                         // Get template attached to project
                         const clientTemplateInfo = await this.databaseService.clientTemplate.findFirst({
                             where: {
-                                questionnaireTemplateId: jobDetails.templateId
+                                companyId,
+                                jobId: jobId,
+                                isDeleted: false,
+                                questionnaireTemplateId: jobDetails.templateId,
                             }
                         })
                         // Fetching all linked info of phase
-                        const [categoryDetails, clientCategoryDetails] = await Promise.all([
-                            await this.databaseService.category.findMany({
-                                where: {
-                                    companyId,
-                                    isDeleted: false,
-                                    phaseIds: {
-                                        has: contractor.phaseId
-                                    },
-                                    questionnaireTemplateId: clientTemplateInfo.questionnaireTemplateId
-                                },
-                                orderBy: { questionnaireOrder: 'asc' },
-                                include: {
-                                    questions: {
-                                        where: {
-                                            isDeleted: false,
-                                            phaseIds: {
-                                                has: contractor.phaseId
-                                            }
-                                        },
-                                        orderBy: { questionOrder: 'asc' },
-                                    }
-                                }
-                            }),
+                        const [clientCategoryDetails] = await Promise.all([
                             await this.databaseService.clientCategory.findMany({
                                 where: {
                                     companyId,
@@ -301,15 +282,6 @@ export class JobContractorService {
                             }),
                         ]);
                         let formattedDetails = [
-                            ...categoryDetails.map(category => ({
-                                category: category.id,
-                                categoryName: category.name,
-                                questions: category.questions.map(question => ({
-                                    questionId: question.id,
-                                    questionText: question.question,
-                                    questionType: question.questionType
-                                }))
-                            })),
                             ...clientCategoryDetails.map(clientCategory => ({
                                 category: clientCategory.id,
                                 categoryName: clientCategory.name,
@@ -340,7 +312,7 @@ export class JobContractorService {
                             }))
                         ];
 
-                        let htmlContent = await this.generateDetailsHtml(jobDetails, formattedDetails);
+                        let htmlContent = await this.generateDetailsHtml(jobDetails, formattedDetails, contractor.phase);
                         // Generate pdf from HTML and add as attachment
                         await convertHTMLToPDF(
                             htmlContent,
@@ -352,7 +324,14 @@ export class JobContractorService {
                                     disposition: 'attachment',
                                 })
                             },
-                            { format: 'A4' },
+                            {
+                                format: 'A4', printBackground: true, margin: {
+                                    top: '1cm',
+                                    bottom: '2cm',
+                                    left: '1cm',
+                                    right: '1cm',
+                                }
+                            },
                             {
                                 args: [
                                     '--no-sandbox',
@@ -406,8 +385,8 @@ export class JobContractorService {
         return `${month}/${day}/${year}`;
     }
 
-    private async generateDetailsHtml(jobDetails: any, formattedDetails: any[]) {
-
+    private async generateDetailsHtml(jobDetails: any, formattedDetails: any[], phase: any) {
+        const phaseName = phase?.name || "N/A";
         let logo = jobDetails.company.logo ? jobDetails.company.logo : "https://smart-builder-asset.s3.us-east-1.amazonaws.com/companies/53/logos/smartbuilder-logo.png"
         const response = await fetch(logo);
         const arrayBuffer = await response.arrayBuffer();
@@ -421,6 +400,10 @@ export class JobContractorService {
                 <div style="width: 900px; padding: 20px;">
                     <div style="margin-bottom: 10px;">
                         <img src="${logoBase64}" style="width: 100px" />
+                    </div>
+                      <!-- Phase Name (Title) -->
+                    <div>
+                       <h2 style="text-align: center; margin: 20px 0; font-weight: bold; font-size: 16px; font-size: 25px;">${phaseName}</h2>
                     </div>
                     <div style="display: flex; flex-direction: row; justify-content: space-between;align-items: flex-end; width: 100%;margin-top: 30px;">
                         <div>
@@ -450,9 +433,9 @@ export class JobContractorService {
                 <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
                    <thead>
                         <tr style="color: #000000; font-size: bold;">
-                            <th colspan="2" style="font-size: 22px;padding: 8px; text-align: center;border: 1px solid #ddd;">
-                                ${category.categoryName}
-                            </th>
+                            <th colspan="2" style="font-size: 14px; font-size: 16px; font-weight: bold; padding: 8px; text-align: left; text-transform: uppercase; border: 1px solid #ddd; background-color: rgb(38, 67, 115); color: white;">
+                        ${category.categoryName}
+                      </th>
                         </tr>
                     </thead>
                     <tbody>
