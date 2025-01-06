@@ -489,6 +489,9 @@ export class JobProjectEstimatorService {
                     where: { id: jobId }
                 });
 
+                let company = await this.databaseService.company.findUniqueOrThrow({
+                    where: { id: companyId, isDeleted: false, }
+                })
                 let clientTemplate = await this.databaseService.clientTemplate.findFirst({
                     where: {
                         jobId: job.id,
@@ -540,6 +543,8 @@ export class JobProjectEstimatorService {
                 })
 
                 let order = (itemOrder.order ?? 0) + 1;
+                body.profitCalculationType = company.profitCalculationType === body.profitCalculationType ?
+                    body.profitCalculationType : ProfitCalculationType.MARGIN
                 // insert new row for accounting
                 let projectEstimator = await this.databaseService.jobProjectEstimator.create({
                     data: {
