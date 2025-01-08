@@ -980,6 +980,10 @@ export class JobsService {
 
         await this.databaseService.$transaction(async (tx) => {
             await Promise.all(estimatorData.map(async (header) => {
+                await tx.clientTemplate.update({
+                    where: { id: customerTemplateId },
+                    data: { accProfitCalculationType: template.profitCalculationType }
+                })
                 let projectHeader = await tx.jobProjectEstimatorHeader.create({
                     data: {
                         companyId,
@@ -1011,9 +1015,6 @@ export class JobsService {
                             contractPrice: x.contractPrice,
                             order: x.order,
                             invoiceId: currentInvoiceId,
-                            profitCalculationType: x.profitCalculationType  === ProfitCalculationType.MARKUP ?
-                                ProfitCalculationType.MARKUP :
-                                ProfitCalculationType.MARGIN
                         }
                     })
                 }));

@@ -9,6 +9,8 @@ import { AWSService, SendgridService } from 'src/core/services';
 import { StripeService } from 'src/core/services/stripe.service';
 import { PaymentMethodDTO } from './validators/payment-method';
 import { BuilderPlanTypes } from 'src/core/utils/builder-plan-types';
+import { ProfitCalculationType } from 'src/core/utils/company';
+import { marginCalculation, markupCalculation } from 'src/core/utils/profit-calculation';
 
 @Injectable()
 export class CompanyService {
@@ -525,6 +527,7 @@ export class CompanyService {
                 if (!company) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
+                const profitCalType = company.profitCalculationType
                 // Check is plan updated or not
                 let sentPlanUpdateMessage = false;
                 if(company.planType !== body.planType) {
@@ -592,7 +595,11 @@ export class CompanyService {
                         ...body
                     }
                 });
-                return { company, isPlanChanged:sentPlanUpdateMessage  }
+                if (profitCalType !== company.profitCalculationType) {
+                    this.updateProjectEstimatorTransaction(company.id);
+                }
+
+                return { company, isPlanChanged: sentPlanUpdateMessage }
             } else {
                 throw new ForbiddenException("Action Not Allowed");
             }
@@ -757,4 +764,69 @@ export class CompanyService {
             })
         }
     }
+
+    private async updateProjectEstimatorTransaction(companyId: number) {
+        try {
+            await this.databaseService.$transaction(async (tx) => {
+                // Fetch the company data
+                const company = await tx.company.findFirstOrThrow({
+                    where: { id: companyId, isDeleted: false }
+                });
+
+                // Fetch project estimator templates
+                const templates = await tx.projectEstimatorTemplate.findMany({
+                    where: { companyId, isDeleted: false }
+                });
+
+                // Loop through each template
+                for (const template of templates) {
+
+                    // update profit calculation type.
+                    const updatedTemplate = await tx.projectEstimatorTemplate.update({
+                        where: {
+                            id: template.id,
+                            isDeleted: false
+                        },
+                        data: { profitCalculationType: company.profitCalculationType }
+                    })
+
+                    const headers = await tx.projectEstimatorTemplateHeader.findMany({
+                        where: { petId: template.id, isDeleted: false, companyId },
+                        include: {
+                            ProjectEstimatorTemplateData: {
+                                where: { isDeleted: false }
+                            }
+                        }
+                    });
+                    // Loop through each header
+                    for (const header of headers) {
+                        const dataItems = header.ProjectEstimatorTemplateData;
+
+                        // Loop through each data item
+                        for (const data of dataItems) {
+                            const unitCost = parseFloat(data.unitCost.toString());
+                            const quantity = parseFloat(data.quantity.toString());
+                            const grossProfit = parseFloat(data.grossProfit.toString());
+
+                            const contractPrice =
+                                company.profitCalculationType === ProfitCalculationType.MARKUP
+                                    ? markupCalculation(quantity * unitCost, grossProfit)
+                                    : marginCalculation(quantity * unitCost, grossProfit);
+
+                            // Update the data
+                            const result = await tx.projectEstimatorTemplateData.update({
+                                where: { id: data.id, isDeleted: false },
+                                data: {
+                                    contractPrice,
+                                }
+                            });
+                        }
+                    }
+                }
+            });
+        } catch (error) {
+            console.error("Error updating project estimator transaction:", error);
+        }
+    }
+
 }

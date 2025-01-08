@@ -465,7 +465,6 @@ model JobProjectEstimator {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
-  profitCalculationType  ProfitCalculationType?  @default(MARGIN) @map("profilt_calculation_type")
 
   @@map("job_project_estimator")
 }
@@ -548,6 +547,9 @@ model ProjectEstimatorTemplate {
   questionnaireTemplates  QuestionnaireTemplate[]  
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  profitCalculationType  ProfitCalculationType?  @default(MARGIN) @map("profilt_calculation_type")
+
   clientTemplate          ClientTemplate[]
   @@map("project_estimator_template")
 }
@@ -591,8 +593,6 @@ model ProjectEstimatorTemplateData {
 
   order             Int?               @default(0) @map("order")
 
-  profitCalculationType  ProfitCalculationType?  @default(MARGIN) @map("profilt_calculation_type")
-
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
@@ -624,6 +624,8 @@ model ClientTemplate {
   clientQuestionAnswer    ClientQuestionAnswer[]
   createdAt               DateTime                 @default(now()) @map("created_at")
   updatedAt               DateTime                 @updatedAt @map("updated_at")
+
+  accProfitCalculationType  ProfitCalculationType?  @default(MARGIN) @map("acc_profilt_calculation_type")
 
   jobProjectEstimatorHeader JobProjectEstimatorHeader[]
   @@map("client_template")

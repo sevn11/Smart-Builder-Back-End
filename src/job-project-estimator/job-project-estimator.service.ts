@@ -9,6 +9,7 @@ import { JobProjectEstimatorAccountingDTO } from './validators/add-project-estim
 import { BulkUpdateProjectEstimatorDTO } from './validators/pe-bulk-update';
 import { UpdateStatementDTO } from './validators/update-statement';
 import { ProfitCalculationType } from 'src/core/utils/company';
+import { marginCalculation, markupCalculation, ProfitCalculationTypeEnum } from 'src/core/utils/profit-calculation';
 
 @Injectable()
 export class JobProjectEstimatorService {
@@ -54,7 +55,6 @@ export class JobProjectEstimatorService {
                                 isCourtesyCredit: true,
                                 isDeleted: true,
                                 jobProjectEstimatorHeaderId: true,
-                                profitCalculationType: true
                             },
                             orderBy: {
                                 order: 'asc'
@@ -339,8 +339,6 @@ export class JobProjectEstimatorService {
                     }
                 })
                 const order = (maxOrder?.order ?? 0) + 1;
-                body.profitCalculationType = company.profitCalculationType === body.profitCalculationType ?
-                    body.profitCalculationType : ProfitCalculationType.MARGIN
                 let projectEstimator = await this.databaseService.jobProjectEstimator.create({
                     data: {
                         ...body,
@@ -543,8 +541,6 @@ export class JobProjectEstimatorService {
                 })
 
                 let order = (itemOrder.order ?? 0) + 1;
-                body.profitCalculationType = company.profitCalculationType === body.profitCalculationType ?
-                    body.profitCalculationType : ProfitCalculationType.MARGIN
                 // insert new row for accounting
                 let projectEstimator = await this.databaseService.jobProjectEstimator.create({
                     data: {
@@ -841,6 +837,95 @@ export class JobProjectEstimatorService {
                 throw error;
             }
             throw new InternalServerErrorException();
+        }
+    }
+
+    async updateProfitCalculationType(user: User, companyId: number, jobId: number, body: { profitCalculationType: ProfitCalculationTypeEnum }) {
+        try {
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) {
+                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
+                    throw new ForbiddenException("Action Not Allowed");
+                }
+
+                const clientTemplate = await this.databaseService.clientTemplate.findFirstOrThrow({
+                    where: { jobId, isDeleted: false, companyId, },
+                    orderBy: { createdAt: 'desc' }
+                })
+
+                await this.databaseService.clientTemplate.update({
+                    where: { id: clientTemplate.id, isDeleted: false },
+                    data: { accProfitCalculationType: body.profitCalculationType }
+                });
+
+                if (body.profitCalculationType !== clientTemplate.accProfitCalculationType) {
+                    this.updateProjectEstimatorRows(companyId, jobId);
+                }
+
+                return { message: ResponseMessages.SUCCESSFUL }
+            } else {
+                throw new ForbiddenException("Action Not Allowed");
+            }
+        } catch (error) {
+            console.log(error);
+            // Database Exceptions
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code == PrismaErrorCodes.NOT_FOUND)
+                    throw new BadRequestException(ResponseMessages.RESOURCE_NOT_FOUND);
+                else {
+                    console.log(error.code);
+                }
+            } else if (error instanceof ForbiddenException) {
+                throw error;
+            }
+            throw new InternalServerErrorException();
+
+        }
+    }
+
+    private async updateProjectEstimatorRows(companyId: number, jobId: number) {
+        try {
+            const company = await this.databaseService.company.findFirstOrThrow({
+                where: { id: companyId, isDeleted: false }
+            });
+
+            const headers = await this.databaseService.jobProjectEstimatorHeader.findMany({
+                where: { isDeleted: false, companyId, jobId },
+                include: {
+                    JobProjectEstimator: {
+                        where: { isDeleted: false }
+                    }
+                }
+            });
+            // Loop through each header
+            for (const header of headers) {
+                const dataItems = header.JobProjectEstimator;
+
+                // Loop through each data item
+                for (const data of dataItems) {
+                    const unitCost = parseFloat(data.unitCost.toString());
+                    const quantity = parseFloat(data.quantity.toString());
+                    const grossProfit = parseFloat(data.grossProfit.toString());
+
+                    const contractPrice =
+                        company.profitCalculationType === ProfitCalculationType.MARKUP
+                            ? markupCalculation(quantity * unitCost, grossProfit)
+                            : marginCalculation(quantity * unitCost, grossProfit);
+
+                    // Update the data
+                    const result = await this.databaseService.jobProjectEstimator.update({
+                        where: { id: data.id, isDeleted: false },
+                        data: {
+                            contractPrice,
+                        }
+                    });
+                }
+            }
+        } catch (error) {
+            console.error("Error updating project estimator transaction:", error);
+            throw new InternalServerErrorException({
+                error: "An unexpected error occured.",
+                errorDetails: error.message
+            })
         }
     }
 
