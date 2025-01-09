@@ -1,6 +1,4 @@
-import { IsBoolean, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString } from "class-validator";
-import { ProfitCalculationType } from "src/core/utils/company";
-
+import { IsBoolean, IsNotEmpty, IsNumber, IsOptional, IsString } from "class-validator";
 
 export class ProjectEstimatorTemplateDTO {
 
@@ -47,8 +45,4 @@ export class ProjectEstimatorTemplateDTO {
     @IsBoolean()
     @IsOptional()
     isLotCost: boolean
-
-    @IsString()
-    @IsEnum(ProfitCalculationType)
-    profitCalculationType: ProfitCalculationType
 }

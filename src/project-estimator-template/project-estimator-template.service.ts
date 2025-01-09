@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, ForbiddenException, Injectable, InternalServerErrorException, Res } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { User } from '@prisma/client';
 import { DatabaseService } from 'src/database/database.service';
 import * as csv from 'csv-parse';
@@ -11,7 +11,6 @@ import { ProjectEstimatorAccountingTemplateDTO } from './validators/add-project-
 import { BulkUpdateProjectEstimatorTemplateDTO } from './validators/pet-bulk-update';
 import { ItemOrderDTO } from './validators/item-order';
 import { ImportTemplateService } from './import-template/import-template.service';
-import { ProfitCalculationType } from 'src/core/utils/company';
 
 @Injectable()
 export class ProjectEstimatorTemplateService {
@@ -445,8 +444,6 @@ export class ProjectEstimatorTemplateService {
                 let order =
                     (maxOrder._max.order ?? 0) + 1;
 
-                body.profitCalculationType = company.profitCalculationType === body.profitCalculationType ?
-                    body.profitCalculationType : ProfitCalculationType.MARGIN
                 let projectEstimator = await this.databaseService.projectEstimatorTemplateData.create({
                     data: {
                         ...body,
@@ -732,9 +729,6 @@ export class ProjectEstimatorTemplateService {
 
                 let order = (maxOrder?._max.order ?? 0) + 1;
                 const { headerName, ...projectEstimatorData } = body;
-
-                projectEstimatorData.profitCalculationType = company.profitCalculationType === body.profitCalculationType ?
-                    body.profitCalculationType : ProfitCalculationType.MARGIN
 
                 // insert new row for accounting
                 let projectEstimator = await this.databaseService.projectEstimatorTemplateData.create({
