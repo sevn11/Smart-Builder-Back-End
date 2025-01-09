@@ -45,13 +45,11 @@ export class UpdateCustomerDTO {
     @IsString()
     @IsOptional()
     @ValidateIf((o) => o.emailAddress1 !== '' && o.emailAddress1 != null)
-    @IsEmail()
     emailAddress1: string
 
 
     @IsString()
     @ValidateIf((o) => o.emailAddress2 !== '' && o.emailAddress2 != null)
-    @IsEmail()
     @IsOptional()
     emailAddress2: string
 
