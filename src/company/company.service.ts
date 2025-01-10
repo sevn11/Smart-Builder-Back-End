@@ -152,9 +152,9 @@ export class CompanyService {
                         }
                     }
                 });
-                if(result.userType == UserTypes.BUILDER && result.stripeCustomerId) {
+                if (result.userType == UserTypes.BUILDER && result.stripeCustomerId) {
                     await this.stripeService.updateCustomerEmail(result);
-                } 
+                }
                 return { message: ResponseMessages.SUCCESSFUL, result }
             } else {
                 throw new ForbiddenException("Action Not Allowed");
@@ -266,7 +266,7 @@ export class CompanyService {
                         email: body.email
                     }
                 });
-                if(existingUser) {
+                if (existingUser) {
                     throw new ForbiddenException("User alredy exist!");
                 }
 
@@ -283,9 +283,9 @@ export class CompanyService {
                         company: true
                     }
                 });
-                let res =  await this.stripeService.createEmployeeSubscription(builder, body);
-                
-                if(res.status) {
+                let res = await this.stripeService.createEmployeeSubscription(builder, body);
+
+                if (res.status) {
                     // After successfull payment insert employee
                     const invitationToken = HelperFunctions.generateRandomString(16);
                     const employee = await this.databaseService.user.create({
@@ -410,7 +410,7 @@ export class CompanyService {
                     }
                 });
                 // Remove subscription from stripe
-                if(employee.subscriptionId) {
+                if (employee.subscriptionId) {
                     await this.stripeService.removeSubscription(employee.subscriptionId);
                 }
                 await this.databaseService.user.delete({
@@ -530,19 +530,19 @@ export class CompanyService {
                 const profitCalType = company.profitCalculationType
                 // Check is plan updated or not
                 let sentPlanUpdateMessage = false;
-                if(company.planType !== body.planType) {
+                if (company.planType !== body.planType) {
                     let planAmount = 0;
                     const planType = body.planType == BuilderPlanTypes.MONTHLY ? 'month' : 'year';
 
                     let data = await this.databaseService.seoSettings.findMany();
                     let seoSettings = data[0];
-                    body.planType == BuilderPlanTypes.MONTHLY 
-                        ? planAmount = seoSettings.monthlyPlanAmount.toNumber() 
+                    body.planType == BuilderPlanTypes.MONTHLY
+                        ? planAmount = seoSettings.monthlyPlanAmount.toNumber()
                         : planAmount = seoSettings.yearlyPlanAmount.toNumber()
 
                     let res = await this.stripeService.changeUserSubscriptionType(user, planAmount * 100, planType);
 
-                    if(res.status) {
+                    if (res.status) {
                         // Update company with new price
                         sentPlanUpdateMessage = true;
                         company = await this.databaseService.company.update({
@@ -595,9 +595,7 @@ export class CompanyService {
                         ...body
                     }
                 });
-                if (profitCalType !== company.profitCalculationType) {
-                    this.updateProjectEstimatorTransaction(company.id);
-                }
+
 
                 return { company, isPlanChanged: sentPlanUpdateMessage }
             } else {
@@ -614,7 +612,7 @@ export class CompanyService {
 
     // Get default payment method from stripe
     async getDefaultPaymentMethod(user: User, companyId: number) {
-        if(user.stripeCustomerId) {
+        if (user.stripeCustomerId) {
             return this.stripeService.getDefaultPaymentMethod(user.stripeCustomerId);
         }
         else {
@@ -624,7 +622,7 @@ export class CompanyService {
 
     // Set default payment method in stripe
     async setDefaultPaymentMethod(user: User, body: PaymentMethodDTO) {
-        if(user.stripeCustomerId) {
+        if (user.stripeCustomerId) {
             return this.stripeService.setDefaultPaymentMethod(user.stripeCustomerId, body.paymentMethodId);
         }
         throw new InternalServerErrorException();
@@ -642,7 +640,7 @@ export class CompanyService {
                     where: { companyId: companyId, isActive: true },
                     select: { id: true },
                 });
-            
+
                 const usersIds = users.map(users => users.id);
 
                 const transactionLogs = await this.databaseService.paymentLog.findMany({
@@ -684,7 +682,7 @@ export class CompanyService {
                 }
             });
             let res = await this.stripeService.retryFailedPayment(user, paymentLog.paymentId, body.paymentMethodId);
-            if(res.status) {
+            if (res.status) {
                 await this.databaseService.paymentLog.update({
                     where: {
                         id: paymentLogId
@@ -710,7 +708,7 @@ export class CompanyService {
                 }
             });
             let res = await this.stripeService.renewEmployeeSubscription(user, employee, body.paymentMethodId);
-            if(res.status) {
+            if (res.status) {
                 await this.databaseService.user.update({
                     where: { id: employeeId },
                     data: {
@@ -736,7 +734,7 @@ export class CompanyService {
                 }
             });
             // Remove subscription from stripe
-            if(builder.subscriptionId) {
+            if (builder.subscriptionId) {
                 await this.stripeService.removeSubscription(builder.subscriptionId);
             }
             // Cancel employee subscription
@@ -750,7 +748,7 @@ export class CompanyService {
             });
             if (employees.length > 0) {
                 for (const employee of employees) {
-                    if(employee.subscriptionId) {
+                    if (employee.subscriptionId) {
                         await this.stripeService.removeSubscription(employee.subscriptionId);
                     }
                 }
@@ -764,69 +762,4 @@ export class CompanyService {
             })
         }
     }
-
-    private async updateProjectEstimatorTransaction(companyId: number) {
-        try {
-            await this.databaseService.$transaction(async (tx) => {
-                // Fetch the company data
-                const company = await tx.company.findFirstOrThrow({
-                    where: { id: companyId, isDeleted: false }
-                });
-
-                // Fetch project estimator templates
-                const templates = await tx.projectEstimatorTemplate.findMany({
-                    where: { companyId, isDeleted: false }
-                });
-
-                // Loop through each template
-                for (const template of templates) {
-
-                    // update profit calculation type.
-                    const updatedTemplate = await tx.projectEstimatorTemplate.update({
-                        where: {
-                            id: template.id,
-                            isDeleted: false
-                        },
-                        data: { profitCalculationType: company.profitCalculationType }
-                    })
-
-                    const headers = await tx.projectEstimatorTemplateHeader.findMany({
-                        where: { petId: template.id, isDeleted: false, companyId },
-                        include: {
-                            ProjectEstimatorTemplateData: {
-                                where: { isDeleted: false }
-                            }
-                        }
-                    });
-                    // Loop through each header
-                    for (const header of headers) {
-                        const dataItems = header.ProjectEstimatorTemplateData;
-
-                        // Loop through each data item
-                        for (const data of dataItems) {
-                            const unitCost = parseFloat(data.unitCost.toString());
-                            const quantity = parseFloat(data.quantity.toString());
-                            const grossProfit = parseFloat(data.grossProfit.toString());
-
-                            const contractPrice =
-                                company.profitCalculationType === ProfitCalculationType.MARKUP
-                                    ? markupCalculation(quantity * unitCost, grossProfit)
-                                    : marginCalculation(quantity * unitCost, grossProfit);
-
-                            // Update the data
-                            const result = await tx.projectEstimatorTemplateData.update({
-                                where: { id: data.id, isDeleted: false },
-                                data: {
-                                    contractPrice,
-                                }
-                            });
-                        }
-                    }
-                }
-            });
-        } catch (error) {
-            console.error("Error updating project estimator transaction:", error);
-        }
-    }
-
 }

@@ -28,11 +28,15 @@ export class ProjectEstimatorTemplateService {
                     throw new ForbiddenException("Action Not Allowed");
                 }
 
+                const company = await this.databaseService.company.findUniqueOrThrow({
+                    where: { id: companyId, isDeleted: false }
+                });
                 let projectEstimator = await this.databaseService.$transaction(async (tx) => {
                     const projectEstTemplate = await tx.projectEstimatorTemplate.create({
                         data: {
                             templateName: body.name,
-                            companyId: user.companyId
+                            companyId: user.companyId,
+                            profitCalculationType: company.profitCalculationType
                         }
                     });
 
