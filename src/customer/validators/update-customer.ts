@@ -32,14 +32,12 @@ export class UpdateCustomerDTO {
 
     @IsString()
     @ValidateIf((o) => o.mobileNumber1 !== '' && o.mobileNumber1 != null)
-    @IsMobilePhone('en-US')
     @IsOptional()
     mobileNumber1: string
 
 
     @IsString()
     @ValidateIf((o) => o.mobileNumber2 !== '' && o.mobileNumber2 != null)
-    @IsPhoneNumber()
     @IsOptional()
     mobileNumber2: string
 
@@ -47,13 +45,11 @@ export class UpdateCustomerDTO {
     @IsString()
     @IsOptional()
     @ValidateIf((o) => o.emailAddress1 !== '' && o.emailAddress1 != null)
-    @IsEmail()
     emailAddress1: string
 
 
     @IsString()
     @ValidateIf((o) => o.emailAddress2 !== '' && o.emailAddress2 != null)
-    @IsEmail()
     @IsOptional()
     emailAddress2: string
 
