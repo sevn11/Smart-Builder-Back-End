@@ -11,6 +11,8 @@ import { ProjectEstimatorAccountingTemplateDTO } from './validators/add-project-
 import { BulkUpdateProjectEstimatorTemplateDTO } from './validators/pet-bulk-update';
 import { ItemOrderDTO } from './validators/item-order';
 import { ImportTemplateService } from './import-template/import-template.service';
+import { marginCalculation, markupCalculation, ProfitCalculationTypeEnum } from 'src/core/utils/profit-calculation';
+import { ProfitCalculationType } from 'src/core/utils/company';
 
 @Injectable()
 export class ProjectEstimatorTemplateService {
@@ -1166,6 +1168,79 @@ export class ProjectEstimatorTemplateService {
                 throw error;
             }
 
+            throw new InternalServerErrorException();
+        }
+    }
+
+    async updateTemplateProfitCalculationType (user: User, companyId: number, templateId: number, body: { profitCalculationType: ProfitCalculationTypeEnum }) {
+        try {
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
+                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
+                    throw new ForbiddenException("Action Not Allowed");
+                }
+
+                const template = await this.databaseService.projectEstimatorTemplate.findFirstOrThrow({
+                    where: { id: templateId, isDeleted: false }
+                });
+
+                const updatedTemplate = await this.databaseService.projectEstimatorTemplate.update({
+                    where: { id: templateId, isDeleted: false },
+                    data: { profitCalculationType: body.profitCalculationType }
+                });
+
+                if (body.profitCalculationType !== template.profitCalculationType) {
+                    const headers = await this.databaseService.projectEstimatorTemplateHeader.findMany({
+                        where: { petId: template.id, isDeleted: false, companyId },
+                        include: {
+                            ProjectEstimatorTemplateData: {
+                                where: { isDeleted: false }
+                            }
+                        }
+                    });
+                    // Loop through each header
+                    for (const header of headers) {
+                        const dataItems = header.ProjectEstimatorTemplateData;
+
+                        // Loop through each data item
+                        for (const data of dataItems) {
+                            const unitCost = parseFloat(data.unitCost.toString());
+                            const quantity = parseFloat(data.quantity.toString());
+                            const grossProfit = parseFloat(data.grossProfit.toString());
+                            
+                            const contractPrice =
+                                updatedTemplate.profitCalculationType === ProfitCalculationType.MARKUP
+                                    ? markupCalculation(quantity * unitCost, grossProfit)
+                                    : marginCalculation(quantity * unitCost, grossProfit);
+
+                            // Update the data
+                            await this.databaseService.projectEstimatorTemplateData.update({
+                                where: { id: data.id, isDeleted: false },
+                                data: {
+                                    contractPrice,
+                                }
+                            });
+                        }
+                    }
+                }
+
+                return { message: ResponseMessages.SUCCESSFUL }
+               
+            } else {
+                throw new ForbiddenException("Action Not Allowed");
+            }
+
+        } catch (error) {
+            console.log(error);
+            // Database Exceptions
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code == PrismaErrorCodes.NOT_FOUND)
+                    throw new BadRequestException(ResponseMessages.RESOURCE_NOT_FOUND);
+                else {
+                    console.log(error.code);
+                }
+            } else if (error instanceof ForbiddenException || error instanceof ConflictException) {
+                throw error;
+            }
             throw new InternalServerErrorException();
         }
     }
