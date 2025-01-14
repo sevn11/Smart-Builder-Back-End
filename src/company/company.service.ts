@@ -9,6 +9,8 @@ import { AWSService, SendgridService } from 'src/core/services';
 import { StripeService } from 'src/core/services/stripe.service';
 import { PaymentMethodDTO } from './validators/payment-method';
 import { BuilderPlanTypes } from 'src/core/utils/builder-plan-types';
+import { ProfitCalculationType } from 'src/core/utils/company';
+import { marginCalculation, markupCalculation } from 'src/core/utils/profit-calculation';
 
 @Injectable()
 export class CompanyService {
@@ -150,9 +152,9 @@ export class CompanyService {
                         }
                     }
                 });
-                if(result.userType == UserTypes.BUILDER && result.stripeCustomerId) {
+                if (result.userType == UserTypes.BUILDER && result.stripeCustomerId) {
                     await this.stripeService.updateCustomerEmail(result);
-                } 
+                }
                 return { message: ResponseMessages.SUCCESSFUL, result }
             } else {
                 throw new ForbiddenException("Action Not Allowed");
@@ -264,7 +266,7 @@ export class CompanyService {
                         email: body.email
                     }
                 });
-                if(existingUser) {
+                if (existingUser) {
                     throw new ForbiddenException("User alredy exist!");
                 }
 
@@ -281,9 +283,9 @@ export class CompanyService {
                         company: true
                     }
                 });
-                let res =  await this.stripeService.createEmployeeSubscription(builder, body);
-                
-                if(res.status) {
+                let res = await this.stripeService.createEmployeeSubscription(builder, body);
+
+                if (res.status) {
                     // After successfull payment insert employee
                     const invitationToken = HelperFunctions.generateRandomString(16);
                     const employee = await this.databaseService.user.create({
@@ -408,7 +410,7 @@ export class CompanyService {
                     }
                 });
                 // Remove subscription from stripe
-                if(employee.subscriptionId) {
+                if (employee.subscriptionId) {
                     await this.stripeService.removeSubscription(employee.subscriptionId);
                 }
                 await this.databaseService.user.delete({
@@ -525,21 +527,22 @@ export class CompanyService {
                 if (!company) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
+                const profitCalType = company.profitCalculationType
                 // Check is plan updated or not
                 let sentPlanUpdateMessage = false;
-                if(company.planType !== body.planType) {
+                if (company.planType !== body.planType) {
                     let planAmount = 0;
                     const planType = body.planType == BuilderPlanTypes.MONTHLY ? 'month' : 'year';
 
                     let data = await this.databaseService.seoSettings.findMany();
                     let seoSettings = data[0];
-                    body.planType == BuilderPlanTypes.MONTHLY 
-                        ? planAmount = seoSettings.monthlyPlanAmount.toNumber() 
+                    body.planType == BuilderPlanTypes.MONTHLY
+                        ? planAmount = seoSettings.monthlyPlanAmount.toNumber()
                         : planAmount = seoSettings.yearlyPlanAmount.toNumber()
 
                     let res = await this.stripeService.changeUserSubscriptionType(user, planAmount * 100, planType);
 
-                    if(res.status) {
+                    if (res.status) {
                         // Update company with new price
                         sentPlanUpdateMessage = true;
                         company = await this.databaseService.company.update({
@@ -592,7 +595,9 @@ export class CompanyService {
                         ...body
                     }
                 });
-                return { company, isPlanChanged:sentPlanUpdateMessage  }
+
+
+                return { company, isPlanChanged: sentPlanUpdateMessage }
             } else {
                 throw new ForbiddenException("Action Not Allowed");
             }
@@ -607,7 +612,7 @@ export class CompanyService {
 
     // Get default payment method from stripe
     async getDefaultPaymentMethod(user: User, companyId: number) {
-        if(user.stripeCustomerId) {
+        if (user.stripeCustomerId) {
             return this.stripeService.getDefaultPaymentMethod(user.stripeCustomerId);
         }
         else {
@@ -617,7 +622,7 @@ export class CompanyService {
 
     // Set default payment method in stripe
     async setDefaultPaymentMethod(user: User, body: PaymentMethodDTO) {
-        if(user.stripeCustomerId) {
+        if (user.stripeCustomerId) {
             return this.stripeService.setDefaultPaymentMethod(user.stripeCustomerId, body.paymentMethodId);
         }
         throw new InternalServerErrorException();
@@ -635,7 +640,7 @@ export class CompanyService {
                     where: { companyId: companyId, isActive: true },
                     select: { id: true },
                 });
-            
+
                 const usersIds = users.map(users => users.id);
 
                 const transactionLogs = await this.databaseService.paymentLog.findMany({
@@ -677,7 +682,7 @@ export class CompanyService {
                 }
             });
             let res = await this.stripeService.retryFailedPayment(user, paymentLog.paymentId, body.paymentMethodId);
-            if(res.status) {
+            if (res.status) {
                 await this.databaseService.paymentLog.update({
                     where: {
                         id: paymentLogId
@@ -703,7 +708,7 @@ export class CompanyService {
                 }
             });
             let res = await this.stripeService.renewEmployeeSubscription(user, employee, body.paymentMethodId);
-            if(res.status) {
+            if (res.status) {
                 await this.databaseService.user.update({
                     where: { id: employeeId },
                     data: {
@@ -729,7 +734,7 @@ export class CompanyService {
                 }
             });
             // Remove subscription from stripe
-            if(builder.subscriptionId) {
+            if (builder.subscriptionId) {
                 await this.stripeService.removeSubscription(builder.subscriptionId);
             }
             // Cancel employee subscription
@@ -743,7 +748,7 @@ export class CompanyService {
             });
             if (employees.length > 0) {
                 for (const employee of employees) {
-                    if(employee.subscriptionId) {
+                    if (employee.subscriptionId) {
                         await this.stripeService.removeSubscription(employee.subscriptionId);
                     }
                 }

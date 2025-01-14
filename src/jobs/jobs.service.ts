@@ -7,6 +7,7 @@ import { JobStatus, PrismaErrorCodes, ResponseMessages, UserTypes } from 'src/co
 import { UpdateJobStatusCalendarColorTemplateDto } from './validators/update-jobstatus-calendarcolor-template';
 import { UpdateJobDTO } from './validators/update-job';
 import { GoogleService } from 'src/core/services/google.service';
+import { ProfitCalculationType } from 'src/core/utils/company';
 
 @Injectable()
 export class JobsService {
@@ -979,6 +980,10 @@ export class JobsService {
 
         await this.databaseService.$transaction(async (tx) => {
             await Promise.all(estimatorData.map(async (header) => {
+                await tx.clientTemplate.update({
+                    where: { id: customerTemplateId },
+                    data: { accProfitCalculationType: template.profitCalculationType }
+                })
                 let projectHeader = await tx.jobProjectEstimatorHeader.create({
                     data: {
                         companyId,
@@ -1009,7 +1014,7 @@ export class JobsService {
                             grossProfit: x.grossProfit,
                             contractPrice: x.contractPrice,
                             order: x.order,
-                            invoiceId: currentInvoiceId
+                            invoiceId: currentInvoiceId,
                         }
                     })
                 }));

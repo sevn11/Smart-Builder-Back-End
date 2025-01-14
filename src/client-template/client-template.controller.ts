@@ -40,7 +40,6 @@ export class ClientTemplateController {
         return this.clientTemplateService.updateCategory(user, companyId, jobId, type, templateId, categoryId, body);
     }
 
-    // TODO: Add the orders
     @HttpCode(HttpStatus.OK)
     @Delete('/:type/:templateId/category/:categoryId')
     deleteCategory(

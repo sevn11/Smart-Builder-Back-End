@@ -6,6 +6,7 @@ import { DatabaseService } from 'src/database/database.service';
 import { ClientCategoryDTO } from './validators/client-category';
 import { SelectionTemplates } from 'src/core/utils/selection-template';
 import { ClientQuestionDTO } from './validators/client-question';
+import { ProfitCalculationTypeEnum } from 'src/core/utils/profit-calculation';
 
 @Injectable()
 export class ClientTemplateService {
@@ -874,6 +875,30 @@ export class ClientTemplateService {
                 throw new InternalServerErrorException();
             }
 
+        }
+    }
+
+    // Update profit calculation type
+    async updateProfitCalculationType(user: User, companyId: number, jobId: number, templateId: number, body: { profitCalculationType: ProfitCalculationTypeEnum }) {
+        try {
+            const isAllowed = user.userType === UserTypes.ADMIN || (user.userType === UserTypes.BUILDER && user.companyId === companyId) || user.userType == UserTypes.EMPLOYEE;
+            if (!isAllowed) throw new ForbiddenException("Action Not Allowed");
+
+
+        } catch (error) {
+            console.log(error);
+            // Database Exceptions
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code == PrismaErrorCodes.UNIQUE_CONSTRAINT_ERROR)
+                    throw new BadRequestException(ResponseMessages.CATEGORY_UPDATED);
+                else {
+                    console.log(error.code);
+                }
+            } else if (error instanceof ForbiddenException) {
+                throw error;
+            } else {
+                throw new InternalServerErrorException();
+            }
         }
     }
 }

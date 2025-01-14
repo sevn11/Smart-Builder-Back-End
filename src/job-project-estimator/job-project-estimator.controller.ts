@@ -2,12 +2,13 @@ import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseIntPip
 import { JwtGuard } from 'src/core/guards';
 import { JobProjectEstimatorService } from './job-project-estimator.service';
 import { GetUser } from 'src/core/decorators';
-import { User } from '@prisma/client';
+import { ProfitCalculationType, User } from '@prisma/client';
 import { JobProjectEstimatorHeaderDTO } from './validators/add-header';
 import { JobProjectEstimatorDTO } from './validators/add-project-estimator';
 import { JobProjectEstimatorAccountingDTO } from './validators/add-project-estimator-accounting';
 import { BulkUpdateProjectEstimatorDTO } from './validators/pe-bulk-update';
 import { UpdateStatementDTO } from './validators/update-statement';
+import { ProfitCalculationTypeEnum } from 'src/core/utils/profit-calculation';
 
 @UseGuards(JwtGuard)
 @Controller('companies/:companyId/jobs/:jobId/job-project-estimator')
@@ -157,5 +158,16 @@ export class JobProjectEstimatorController {
         @Body() body: UpdateStatementDTO
     ) {
         return this.jobProjectEstimatorService.updateStatement(user, companyId, jobId, id, body);
+    }
+
+    @HttpCode(HttpStatus.OK)
+    @Patch('/update/profit-calculation-type')
+    updateProfitCalculationType(
+        @GetUser() user: User,
+        @Param('companyId', ParseIntPipe) companyId: number,
+        @Param('jobId', ParseIntPipe) jobId: number,
+        @Body() body: { profitCalculationType: ProfitCalculationTypeEnum }
+    ) {
+        return this.jobProjectEstimatorService.updateProfitCalculationType(user, companyId, jobId, body);
     }
 }
