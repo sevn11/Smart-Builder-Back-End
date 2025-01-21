@@ -79,7 +79,7 @@ export class GoogleCalendarService {
                     }
                 });
                 if(job.startDate && job.endDate) {
-                    let response = await this.googleService.syncToCalendar(user.id, job);
+                    let response = await this.googleService.syncToCalendar(user.id, {...job,startDate: new Date(job.startDate), endDate: new Date(job.endDate)});
                     if(response.status) {
                         let jobSchedules = await this.databaseService.jobSchedule.findMany({
                             where: {
@@ -112,7 +112,9 @@ export class GoogleCalendarService {
 
                         if(jobSchedules.length > 0) {
                             for(const jobSchedule of jobSchedules) {
-                                let response = await this.googleService.syncJobSchedule(user.id,  jobSchedule);
+                                let response = await this.googleService.syncJobSchedule(user.id, 
+                                    {...jobSchedule, startDate: new Date(jobSchedule.startDate), endDate: new Date(jobSchedule.endDate)}
+                                );
                                 if(response.status && response.eventId) {
                                     await this.databaseService.jobSchedule.update({
                                         where: { id: jobSchedule.id },
@@ -158,7 +160,9 @@ export class GoogleCalendarService {
                     let synced = 0;
                     if(jobSchedules.length > 0) {
                         for(const jobSchedule of jobSchedules) {
-                            let response = await this.googleService.syncJobSchedule(user.id,  jobSchedule);
+                            let response = await this.googleService.syncJobSchedule(user.id,  
+                                {...jobSchedule, startDate: new Date(jobSchedule.startDate), endDate: new Date(jobSchedule.endDate)}
+                            );
                             if(response.status && response.eventId) {
                                 synced += 1;
                                 await this.databaseService.jobSchedule.update({
@@ -237,7 +241,9 @@ export class GoogleCalendarService {
                 if(company.jobs.length > 0 ) {
                     for (let job of company.jobs) {
                         if(job.startDate && job.endDate) {
-                            let response = await this.googleService.syncToCalendar(user.id, job);
+                            let response = await this.googleService.syncToCalendar(user.id,
+                                {...job, startDate: new Date(job.startDate), endDate: new Date(job.endDate)}
+                            );
                             if(response.status) {
                                 let jobSchedules = await this.databaseService.jobSchedule.findMany({
                                     where: {
