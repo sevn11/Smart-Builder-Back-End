@@ -249,25 +249,17 @@ export class JobScheduleService {
                     }
                 });
                 body.contractorId = parseInt(body.contractor);
-                body.startDate = `${body.start_date}`;
-                body.endDate = `${body.end_date}`;
+                body.start_date = `${body.start_date}Z`;
+                body.end_date = `${body.end_date}Z`;
                 body.isScheduledOnWeekend = body.weekendschedule
-
-                // Split the string into components
-                const [startDay, startMonth, startYear] = body.start_date.match(/(\d+)/g)!;
-                const [endDay, endMonth, endYear] = body.end_date.match(/(\d+)/g)!;
-
-                // Construct the ISO string
-                const isoStartDate = new Date(`${startYear}-${startMonth}-${startDay}T00:00:00.000`);
-                const isoEndDate = new Date(`${endYear}-${endMonth}-${endDay}T00:00:00.000`);
 
                 await this.databaseService.jobSchedule.create({
                     data: {
                         companyId,
                         jobId,
                         contractorId: body.contractorId,
-                        startDate: isoStartDate,
-                        endDate: isoEndDate,
+                        startDate: body.start_date,
+                        endDate: body.end_date,
                         isScheduledOnWeekend: body.isScheduledOnWeekend,
                         duration: body.duration
                     }
@@ -296,23 +288,15 @@ export class JobScheduleService {
                     where: { id: id, isDeleted: false, }
                 })
                 body.contractorId = body.contractor ? parseInt(body.contractor) : jobSchedule.contractorId;
-                body.startDate = `${body.start_date}`;
-                body.endDate = `${body.end_date}`;
-
-                // Split the string into components
-                const [startDay, startMonth, startYear] = body.start_date.match(/(\d+)/g)!;
-                const [endDay, endMonth, endYear] = body.end_date.match(/(\d+)/g)!;
-
-                // Construct the ISO string
-                const isoStartDate = new Date(`${startYear}-${startMonth}-${startDay}T00:00:00.000`);
-                const isoEndDate = new Date(`${endYear}-${endMonth}-${endDay}T00:00:00.000`);
+                body.start_date = `${body.start_date}Z`;
+                body.end_date = `${body.end_date}Z`;
 
                 await this.databaseService.jobSchedule.update({
                     where: { id: id },
                     data: {
                         contractorId: body.contractorId,
-                        startDate: isoStartDate,
-                        endDate: isoEndDate,
+                        startDate: body.start_date,
+                        endDate: body.end_date,
                         duration: body.duration,
                         isScheduledOnWeekend: body.weekendschedule
                     }
