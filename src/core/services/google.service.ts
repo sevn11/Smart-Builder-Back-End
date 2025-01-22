@@ -13,9 +13,11 @@ interface RequestBody {
     description: string,
     start: {
         dateTime: string;
+        timeZone: string;
     };
     end: {
         dateTime: string;
+        timeZone: string;
     };
     colorId?: string;
 }
@@ -194,14 +196,16 @@ export class GoogleService {
 
             this.setCredentials(user.googleAccessToken);
 
-            let requestBody:RequestBody = {
+            let requestBody: RequestBody = {
                 summary: job.customer.name ?? "",
                 description: job.description ?? "",
                 start: {
-                    'dateTime': job.startDate
+                    'dateTime': job.startDate,
+                    'timeZone': 'Etc/UTC'
                 },
                 end: {
-                    'dateTime': job.endDate
+                    'dateTime': job.endDate,
+                    'timeZone': 'Etc/UTC'
                 }
             }
 
@@ -274,14 +278,16 @@ export class GoogleService {
 
             this.setCredentials(user.googleAccessToken);
 
-            let requestBody:RequestBody = {
+            let requestBody: RequestBody = {
                 summary: `${schedule.contractor.phase.name} - ${schedule.contractor.name} (${schedule.job.customer.name})`,
                 description: schedule.job.description.name ?? "",
                 start: {
-                    'dateTime': schedule.startDate
+                    'dateTime': schedule.startDate,
+                    'timeZone': 'Etc/UTC'
                 },
                 end: {
-                    'dateTime': schedule.endDate
+                    'dateTime': schedule.endDate,
+                    'timeZone': 'Etc/UTC'
                 }
             }
 
@@ -313,7 +319,7 @@ export class GoogleService {
 
     // Fn to create new calendar
     async createCalendar(user: User) {
-        try {  
+        try {
             // Set the credentials using the user's Google access token
             this.setCredentials(user.googleAccessToken);
 
