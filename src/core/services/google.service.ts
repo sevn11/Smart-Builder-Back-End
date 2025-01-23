@@ -12,12 +12,10 @@ interface RequestBody {
     summary: string,
     description: string,
     start: {
-        dateTime: string;
-        timeZone: string;
+        date: string;
     };
     end: {
-        dateTime: string;
-        timeZone: string;
+        date: string;
     };
     colorId?: string;
 }
@@ -196,16 +194,24 @@ export class GoogleService {
 
             this.setCredentials(user.googleAccessToken);
 
+            // Format the date to yyyy-mm-dd
+            let startObj = new Date(job.startDate);
+            const isoDate = startObj.toISOString();
+            const formattedStartDate = isoDate.split("T")[0];
+
+            // Format the date to yyyy-mm-dd
+            let endObj = new Date(job.endDate);
+            const isoEnd = endObj.toISOString();
+            const formattedEndDate = isoEnd.split("T")[0];
+
             let requestBody: RequestBody = {
                 summary: job.customer.name ?? "",
                 description: job.description ?? "",
                 start: {
-                    'dateTime': job.startDate,
-                    'timeZone': 'Etc/UTC'
+                    'date': formattedStartDate,
                 },
                 end: {
-                    'dateTime': job.endDate,
-                    'timeZone': 'Etc/UTC'
+                    'date': formattedEndDate,
                 }
             }
 
@@ -278,16 +284,24 @@ export class GoogleService {
 
             this.setCredentials(user.googleAccessToken);
 
+            // Format the date to yyyy-mm-dd
+            let startObj = new Date(schedule.startDate);
+            const isoDate = startObj.toISOString();
+            const formattedStartDate = isoDate.split("T")[0];
+
+            // Format the date to yyyy-mm-dd
+            let endObj = new Date(schedule.endDate);
+            const isoEnd = endObj.toISOString();
+            const formattedEndDate = isoEnd.split("T")[0];
+
             let requestBody: RequestBody = {
                 summary: `${schedule.contractor.phase.name} - ${schedule.contractor.name} (${schedule.job.customer.name})`,
                 description: schedule.job.description.name ?? "",
                 start: {
-                    'dateTime': schedule.startDate,
-                    'timeZone': 'Etc/UTC'
+                    'date': formattedStartDate,
                 },
                 end: {
-                    'dateTime': schedule.endDate,
-                    'timeZone': 'Etc/UTC'
+                    'date': formattedEndDate
                 }
             }
 
