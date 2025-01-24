@@ -53,7 +53,9 @@ export class AdminUsersService {
                                 id: true,
                                 extraFee: true,
                                 planType: true,
-                                planAmount: true
+                                planAmount: true,
+                                signNowStripeProductId: true,
+                                signNowSubscriptionId: true
                             }
                         },
                         PaymentLog: {
@@ -86,6 +88,24 @@ export class AdminUsersService {
                 })
 
             ]);
+            for (let builder of builders) {
+                if (builder.company) {
+                    let signNowPlanStatus = false;
+            
+                    if (builder.company.signNowSubscriptionId) {
+                        const res = await this.stripeService.getSignNowPlanStatus(builder.company.signNowSubscriptionId);
+                        signNowPlanStatus = res.status;
+                    }
+            
+                    const company = {
+                        ...builder.company,
+                        signNowPlanStatus, 
+                    };
+            
+                    builder.company = company;
+                }
+            }
+            
             return { builders, totalCount }
         } catch (error) {
             console.log(error);
