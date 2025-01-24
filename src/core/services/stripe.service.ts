@@ -314,6 +314,165 @@ export class StripeService {
         }
     }
 
+    // Function to create new subscription for sign now
+    async createBuilderSignNowSubscriptionOnSignup(body: SignUpDTO, stripeCustomerId: string, planAmount: number) {
+        try {
+            const signNowPlanType = body.signNowPlanType == BuilderPlanTypes.MONTHLY ? 'month' : 'year';
+    
+            // Create new product in stripe
+            const product = await this.StripeClient.products.create({
+                name: `${body.companyName}-SignNow`
+            });
+    
+            // Create a price for the product
+            const price = await this.StripeClient.prices.create({
+                unit_amount: planAmount * 100,
+                currency: 'usd',
+                recurring: { interval: signNowPlanType },
+                product: product.id,
+            });
+            const trialEndDate = Math.floor((new Date().getTime() + 30 * 24 * 60 * 60 * 1000) / 1000);
+            const trialEndDateObj = new Date(trialEndDate * 1000);
+            const firstOfNextMonthAfterTrial = new Date(trialEndDateObj.getFullYear(), trialEndDateObj.getMonth() + 1, 1);
+            const firstOfNextMonthAfterTrialTimestamp = Math.floor(firstOfNextMonthAfterTrial.getTime() / 1000);
+    
+            // Create a subscription for sign-now
+            const subscription = await this.StripeClient.subscriptions.create({
+                customer: stripeCustomerId,
+                items: [{ price: price.id }],
+                default_payment_method: body.paymentMethodId,
+                trial_end: trialEndDate,
+                billing_cycle_anchor: firstOfNextMonthAfterTrialTimestamp,
+                proration_behavior: 'create_prorations',
+            });
+            return {
+                status: true,
+                stripeCustomerId: stripeCustomerId,
+                subscriptionId: subscription.id,
+                productId: product.id,
+                message: "SignNow Subscription added"
+            }
+        }
+        catch (error) {
+            console.log(error);
+            throw new InternalServerErrorException({
+                message: "Failed to create signnow subscription"
+            });
+        }
+    }
+
+    // Function to get sign now subscription status
+    async getSignNowPlanStatus (subscriptionId: string) {
+        let subInfo = await this.StripeClient.subscriptions.retrieve(subscriptionId);
+        if(subInfo.status == "active" || subInfo.status == "trialing" ) {
+            return { status: true };
+        } else {
+            return { status: false };
+        }
+    }
+
+    // Function re create sign-now subscription
+    async createBuilderSignNowSubscriptionAfterSignup(company: any, builder: any) {
+        try {
+            let customer = await this.StripeClient.customers.retrieve(builder.stripeCustomerId);
+            let builderSubscription = await this.StripeClient.subscriptions.retrieve(builder.subscriptionId);
+            const planType = company.planType == BuilderPlanTypes.MONTHLY ? 'month' : 'year';
+            let data = await this.databaseService.seoSettings.findMany();
+            let seoSettings = data[0];
+            let signNowPlanAmount = 0;
+            company.planType == BuilderPlanTypes.MONTHLY
+                ? signNowPlanAmount = seoSettings.signNowMonthlyAmount.toNumber()
+                : signNowPlanAmount = seoSettings.signNowYearlyAmount.toNumber()
+            
+            // Create new product in stripe
+            const product = await this.StripeClient.products.create({
+                name: `${company.name}-SignNow`
+            });
+
+            // Create a price for the product
+            const price = await this.StripeClient.prices.create({
+                unit_amount: signNowPlanAmount * 100,
+                currency: 'usd',
+                recurring: { interval: planType },
+                product: product.id,
+            });
+
+            // Create a subscription for sign now
+            let subscription: Stripe.Subscription;
+            const now = Math.floor(Date.now() / 1000);
+            const trialEndDateObj = new Date(builderSubscription.trial_end * 1000);
+            const firstOfNextMonthAfterTrial = new Date(trialEndDateObj.getFullYear(), trialEndDateObj.getMonth() + 1, 1);
+            const firstOfNextMonthAfterTrialTimestamp = Math.floor(firstOfNextMonthAfterTrial.getTime() / 1000);
+            if (builderSubscription.trial_end > now) {
+                // Adding sign-now subscription within builder's trial period
+                subscription = await this.StripeClient.subscriptions.create({
+                    customer: customer.id,
+                    items: [{ price: price.id }],
+                    trial_end: builderSubscription.trial_end,
+                    billing_cycle_anchor: firstOfNextMonthAfterTrialTimestamp,
+                    proration_behavior: 'create_prorations',
+                });
+            } else {
+                // Adding sign-now subscription after builder's trial ended
+                subscription = await this.StripeClient.subscriptions.create({
+                    customer: customer.id,
+                    items: [{ price: price.id }],
+                    billing_cycle_anchor: builderSubscription.current_period_end,
+                    proration_behavior: 'create_prorations'
+                });
+            }
+
+            // Update info inside company table
+            await this.databaseService.company.update({
+                where: { id: company.id },
+                data: {
+                    signNowSubscriptionId: subscription.id,
+                    signNowStripeProductId: product.id,
+                }
+            })
+
+            return { status: true, message: "Subscription added" };
+        } catch (error) {
+            console.log(error);
+            throw new InternalServerErrorException({
+                message: "Failed to create signnow subscription"
+            });
+        }
+    }
+
+    async changeSignNowSubscriptionPlanType (company: any, planAmount: number, planType: any) {
+        try {
+            let subscription = await this.StripeClient.subscriptions.retrieve(company.signNowSubscriptionId);
+            const isTrialActive = subscription.trial_end && subscription.trial_end > Math.floor(Date.now() / 1000);
+
+            // Create new price in stripe
+            let newPrice = await this.StripeClient.prices.create({
+                unit_amount: planAmount,
+                currency: 'usd',
+                recurring: { interval: planType },
+                product: company.signNowStripeProductId,
+            });
+
+            const newPlanStartDate = isTrialActive ? subscription.trial_end : subscription.current_period_end;
+
+            // Updating builder subscription / plan
+            await this.StripeClient.subscriptions.update(company.signNowSubscriptionId,
+                {
+                    items: [{
+                        id: subscription.items.data[0].id,
+                        price: newPrice.id,
+                    }],
+                    trial_end: newPlanStartDate,
+                    proration_behavior: 'none'
+                }
+            )
+            return { status: true };
+        } catch (error) {
+            console.log("change plan error", error);
+            return { status: false };
+        }
+    }
+
     // Function to create a coupon with 100% discount
     async createCoupon() {
         try {

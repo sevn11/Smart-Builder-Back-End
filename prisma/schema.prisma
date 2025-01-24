@@ -54,6 +54,8 @@ model SeoSettings {
   yearlyPlanAmount      Decimal         @map("yearly_plan_amount") @db.Decimal(10, 2)
   monthlyPlanAmount     Decimal         @map("monthly_plan_amount") @db.Decimal(10, 2)
   additionalEmployeeFee Decimal         @map("additional_employee_fee") @db.Decimal(10, 2) 
+  signNowYearlyAmount   Decimal         @map("sign_now_yearly_amount") @db.Decimal(10, 2) @default(0.00)
+  signNowMonthlyAmount  Decimal         @map("sign_now_monthly_amount") @db.Decimal(10, 2) @default(0.00)
 
   @@map("seo_settings")
 }
@@ -80,6 +82,8 @@ model Company {
   extraFee               Decimal                 @map("extra_fee") @db.Decimal(10, 2) @default(0.00)
   planType               PlanType?               @map("plan_type")        
   planAmount             Decimal                 @map("plan_amount") @db.Decimal(10, 2) @default(0.00)
+  signNowSubscriptionId  String?                 @map("sign_now_subscription_id")
+  signNowStripeProductId String?                 @map("sign_now_stripe_product_id")
   categories             Category[]
   contractors            Contractor[]
   JobContractor          JobContractor[]

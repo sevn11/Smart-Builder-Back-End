@@ -1,4 +1,5 @@
-import { IsEmail, IsNotEmpty, IsString, IsOptional, IsEnum } from 'class-validator'
+import { Optional } from '@nestjs/common';
+import { IsEmail, IsNotEmpty, IsString, IsOptional, IsEnum, ValidateIf } from 'class-validator'
 import { BuilderPlanTypes } from 'src/core/utils/builder-plan-types';
 
 export class SignUpDTO {
@@ -33,6 +34,11 @@ export class SignUpDTO {
 
   @IsEnum(BuilderPlanTypes)
   planType: BuilderPlanTypes;
+
+  @ValidateIf((o) => o.signNowPlanType && o.signNowPlanType !== '' && o.signNowPlanType != null)
+  @Optional()
+  @IsEnum(BuilderPlanTypes)
+  signNowPlanType: BuilderPlanTypes;
 }
 
 

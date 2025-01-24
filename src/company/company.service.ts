@@ -444,13 +444,20 @@ export class CompanyService {
     async getCompanyDetails(user: User, companyId: number) {
         try {
             if (user.companyId === companyId || user.userType === UserTypes.ADMIN) {
-                let company = await this.databaseService.company.findUniqueOrThrow({
+                let companyData = await this.databaseService.company.findUniqueOrThrow({
                     where: {
                         id: companyId,
                         isActive: true,
                         isDeleted: false
                     }
                 });
+                let company: any = {...companyData};
+                if (companyData.signNowSubscriptionId) {
+                    let res = await this.stripeService.getSignNowPlanStatus(companyData.signNowSubscriptionId);
+                    company.signNowPlanStatus = res.status;
+                } else {
+                    company.signNowPlanStatus = false;
+                }
                 return { company }
             } else {
                 throw new ForbiddenException("Action Not Allowed");
@@ -558,6 +565,15 @@ export class CompanyService {
                                 planAmount
                             }
                         });
+                        // Update sign-now plan
+                        if(company.signNowSubscriptionId) {
+                            let price = 0;
+                            planType == 'month'
+                                ? price = seoSettings.signNowMonthlyAmount.toNumber()
+                                : price = seoSettings.signNowYearlyAmount.toNumber()
+
+                            await this.stripeService.changeSignNowSubscriptionPlanType(company, price * 100, planType);
+                        }
                         // Update plan for each employee under builder
                         let employees = await this.databaseService.user.findMany({
                             where: {
@@ -582,6 +598,7 @@ export class CompanyService {
                         }
                     }
                 }
+                const { signNowPlanStatus, ...updatedBody } = body; // Filtering our sign-now plan status
                 company = await this.databaseService.company.update({
                     where: {
                         id: companyId,
@@ -592,9 +609,46 @@ export class CompanyService {
                         isDeleted: true
                     },
                     data: {
-                        ...body
+                        ...updatedBody
                     }
                 });
+                // Check is sign now plan status
+                let builder = await this.databaseService.user.findUniqueOrThrow({
+                    where: {
+                        id: user.id,
+                        userType: UserTypes.BUILDER,
+                        isDeleted: false,
+                        isActive: true,
+                    }
+                })
+                if (body.signNowPlanStatus) {
+                    // Check plan already exist and active
+                    if (company.signNowSubscriptionId) {
+                        let planInfo = await this.stripeService.getSignNowPlanStatus(company.signNowSubscriptionId);
+                        if (planInfo.status) {
+                            return; // Active subscription already exist
+                        }
+                        await this.stripeService.createBuilderSignNowSubscriptionAfterSignup(company, builder);
+                    } else {
+                        await this.stripeService.createBuilderSignNowSubscriptionAfterSignup(company, builder);
+                    }
+                } 
+                else {
+                    // Check plan already exist and active
+                    if (company.signNowSubscriptionId) {
+                        let planInfo = await this.stripeService.getSignNowPlanStatus(company.signNowSubscriptionId);
+                        if (planInfo.status) {
+                            // Cancel subscription
+                            let result = await this.stripeService.removeSubscription(company.signNowSubscriptionId);
+                            if (result) {
+                                await this.databaseService.company.update({
+                                    where: { id: company.id },
+                                    data: { signNowSubscriptionId: null, signNowStripeProductId: null }
+                                })
+                            }
+                        } 
+                    }
+                }
 
 
                 return { company, isPlanChanged: sentPlanUpdateMessage }
@@ -606,7 +660,9 @@ export class CompanyService {
             if (error instanceof ForbiddenException) {
                 throw error;
             }
-            throw new InternalServerErrorException();
+            throw new InternalServerErrorException({
+                error: "An unexpected error occured."
+            });
         }
     }
 
@@ -737,6 +793,24 @@ export class CompanyService {
             if (builder.subscriptionId) {
                 await this.stripeService.removeSubscription(builder.subscriptionId);
             }
+            // Cancel sign-now subscription
+            let company = await this.databaseService.company.findFirst({
+                where: { id: user.companyId, isDeleted: false }
+            });
+            if (company && company.signNowSubscriptionId) {
+                try {
+                    await this.stripeService.removeSubscription(company.signNowSubscriptionId);
+                    await this.databaseService.company.update({
+                        where: { id: user.companyId, isDeleted: false },
+                        data: {
+                            signNowStripeProductId: null,
+                            signNowSubscriptionId: null
+                        }
+                    })
+                } catch (error) {
+                    console.log(error)
+                }
+            }
             // Cancel employee subscription
             let employees = await this.databaseService.user.findMany({
                 where: {
@@ -760,6 +834,17 @@ export class CompanyService {
                 error: "An unexpected error occured.",
                 errorDetails: error.message
             })
+        }
+    }
+
+    async getSignNowPlanPriceInfo(user:User, companyId: number) {
+        try {
+            let data = await this.databaseService.seoSettings.findMany();
+            let seoSettings = data[0];
+            const { signNowMonthlyAmount, signNowYearlyAmount } = seoSettings;
+            return { signNowPlanPriceInfo: { signNowMonthlyAmount, signNowYearlyAmount } }
+        } catch (error) {
+            console.log(error);
         }
     }
 }

@@ -35,4 +35,10 @@ export class UserController {
     tos(@GetUser() user: User) {
         return this.userService.tos(user);
     }
+
+    @HttpCode(HttpStatus.OK)
+    @Get('/me/sign-now-plan-status')
+    getSignNowPlanStatus(@GetUser() user: User) {
+        return this.userService.getSignNowPlanStatus(user);
+    }
 }
