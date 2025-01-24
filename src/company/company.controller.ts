@@ -107,4 +107,10 @@ export class CompanyController {
     cancelBuilderSubscription(@GetUser() user: User, @Param('id', ParseIntPipe) companyId: number) {
         return this.companyService.cancelBuilderSubscription(user);
     }
+
+    @HttpCode(HttpStatus.OK)
+    @Get(':id/sign-now-plan-info')
+    getSignNowPlanInfo(@GetUser() user: User, @Param('id', ParseIntPipe) companyId: number) {
+        return this.companyService.getSignNowPlanPriceInfo(user, companyId);
+    }
 }

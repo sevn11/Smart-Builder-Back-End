@@ -5,7 +5,7 @@ import { ChangeBuilderAccessDTO, GetBuilderListDTO } from '../validators';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { CreateUpdateExtraFeeDTO } from '../validators/create-update-extra-fee';
 import { StripeService } from 'src/core/services/stripe.service';
-import { UpdateBuilderPlanInfoDTO } from '../validators/update-plan-info';
+import { UpdateBuilderPlanInfoDTO, UpdateBuilderSignNowPlanInfoDTO } from '../validators/update-plan-info';
 import { BuilderPlanTypes } from 'src/core/utils/builder-plan-types';
 import { SendgridService } from 'src/core/services';
 import * as argon from 'argon2';
@@ -349,7 +349,9 @@ export class AdminUsersService {
                 id: data[0].id,
                 monthlyPlanAmount: data[0].monthlyPlanAmount,
                 yearlyPlanAmount: data[0].yearlyPlanAmount,
-                employeeFee: data[0].additionalEmployeeFee
+                employeeFee: data[0].additionalEmployeeFee,
+                signNowMonthlyPlanAmount: data[0].signNowMonthlyAmount,
+                signNowYearlyPlanAmount: data[0].signNowYearlyAmount,
             }
             return { planInfo }
         } catch (error) {
@@ -423,6 +425,24 @@ export class AdminUsersService {
             return updatedPlan;
         } catch (error) {
             throw new InternalServerErrorException();
+        }
+    }
+
+    async updateBuilderSignNowPlanInfo(body: UpdateBuilderSignNowPlanInfoDTO) {
+        try {
+            await this.databaseService.seoSettings.update({
+                where: { id: body.id },
+                data: {
+                    signNowMonthlyAmount: body.signNowMonthlyPlanAmount,
+                    signNowYearlyAmount: body.signNowYearlyPlanAmount
+                }
+            });
+            return { message: "Sign Now Plan Updated" }
+        } catch (error) {
+            console.log(error)
+            throw new InternalServerErrorException({
+                error: "An unexpected error occured."
+            });
         }
     }
 
