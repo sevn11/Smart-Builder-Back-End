@@ -202,8 +202,13 @@ export class GoogleService {
             // Format the date to yyyy-mm-dd
             let endObj = new Date(job.endDate);
             const isoEnd = endObj.toISOString();
-            const formattedEndDate = isoEnd.split("T")[0];
-
+            let formattedEndDate = isoEnd.split("T")[0];
+            // in case if the start and end date is not same, add one day to sync end date to google calendar.
+            if (formattedStartDate != formattedEndDate) {
+                endObj.setDate(endObj.getDate() + 1);
+                const newIsoEnd = endObj.toISOString();
+                formattedEndDate = newIsoEnd.split("T")[0];
+            }
             let requestBody: RequestBody = {
                 summary: job.customer.name ?? "",
                 description: job.description ?? "",
@@ -292,7 +297,13 @@ export class GoogleService {
             // Format the date to yyyy-mm-dd
             let endObj = new Date(schedule.endDate);
             const isoEnd = endObj.toISOString();
-            const formattedEndDate = isoEnd.split("T")[0];
+            let formattedEndDate = isoEnd.split("T")[0];
+            // in case if the start and end date is not same, add one day to sync end date to google calendar.
+            if (formattedStartDate != formattedEndDate) {
+                endObj.setDate(endObj.getDate() + 1);
+                const newIsoEnd = endObj.toISOString();
+                formattedEndDate = newIsoEnd.split("T")[0];
+            }
 
             let requestBody: RequestBody = {
                 summary: `${schedule.contractor.phase.name} - ${schedule.contractor.name} (${schedule.job.customer.name})`,
