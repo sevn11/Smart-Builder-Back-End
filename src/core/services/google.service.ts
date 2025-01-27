@@ -12,10 +12,10 @@ interface RequestBody {
     summary: string,
     description: string,
     start: {
-        dateTime: string;
+        date: string;
     };
     end: {
-        dateTime: string;
+        date: string;
     };
     colorId?: string;
 }
@@ -194,14 +194,29 @@ export class GoogleService {
 
             this.setCredentials(user.googleAccessToken);
 
-            let requestBody:RequestBody = {
+            // Format the date to yyyy-mm-dd
+            let startObj = new Date(job.startDate);
+            const isoDate = startObj.toISOString();
+            const formattedStartDate = isoDate.split("T")[0];
+
+            // Format the date to yyyy-mm-dd
+            let endObj = new Date(job.endDate);
+            const isoEnd = endObj.toISOString();
+            let formattedEndDate = isoEnd.split("T")[0];
+            // in case if the start and end date is not same, add one day to sync end date to google calendar.
+            if (formattedStartDate != formattedEndDate) {
+                endObj.setDate(endObj.getDate() + 1);
+                const newIsoEnd = endObj.toISOString();
+                formattedEndDate = newIsoEnd.split("T")[0];
+            }
+            let requestBody: RequestBody = {
                 summary: job.customer.name ?? "",
                 description: job.description ?? "",
                 start: {
-                    'dateTime': job.startDate
+                    'date': formattedStartDate,
                 },
                 end: {
-                    'dateTime': job.endDate
+                    'date': formattedEndDate,
                 }
             }
 
@@ -274,14 +289,30 @@ export class GoogleService {
 
             this.setCredentials(user.googleAccessToken);
 
-            let requestBody:RequestBody = {
+            // Format the date to yyyy-mm-dd
+            let startObj = new Date(schedule.startDate);
+            const isoDate = startObj.toISOString();
+            const formattedStartDate = isoDate.split("T")[0];
+
+            // Format the date to yyyy-mm-dd
+            let endObj = new Date(schedule.endDate);
+            const isoEnd = endObj.toISOString();
+            let formattedEndDate = isoEnd.split("T")[0];
+            // in case if the start and end date is not same, add one day to sync end date to google calendar.
+            if (formattedStartDate != formattedEndDate) {
+                endObj.setDate(endObj.getDate() + 1);
+                const newIsoEnd = endObj.toISOString();
+                formattedEndDate = newIsoEnd.split("T")[0];
+            }
+
+            let requestBody: RequestBody = {
                 summary: `${schedule.contractor.phase.name} - ${schedule.contractor.name} (${schedule.job.customer.name})`,
                 description: schedule.job.description.name ?? "",
                 start: {
-                    'dateTime': schedule.startDate
+                    'date': formattedStartDate,
                 },
                 end: {
-                    'dateTime': schedule.endDate
+                    'date': formattedEndDate
                 }
             }
 
@@ -313,7 +344,7 @@ export class GoogleService {
 
     // Fn to create new calendar
     async createCalendar(user: User) {
-        try {  
+        try {
             // Set the credentials using the user's Google access token
             this.setCredentials(user.googleAccessToken);
 
