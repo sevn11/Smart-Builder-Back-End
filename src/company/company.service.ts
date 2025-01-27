@@ -616,21 +616,40 @@ export class CompanyService {
                 let builder = await this.databaseService.user.findUniqueOrThrow({
                     where: {
                         id: user.id,
-                        userType: UserTypes.BUILDER,
+                        OR: [
+                            { userType: UserTypes.BUILDER },
+                            { userType: UserTypes.ADMIN },
+                        ],
                         isDeleted: false,
                         isActive: true,
                     }
                 })
+                let data = await this.databaseService.seoSettings.findMany();
+                let seoSettings = data[0];
                 if (body.signNowPlanStatus) {
+                    let signNowPlanAmount = 0;
+                    company.planType == BuilderPlanTypes.MONTHLY
+                        ? signNowPlanAmount = seoSettings.signNowMonthlyAmount.toNumber()
+                        : signNowPlanAmount = seoSettings.signNowYearlyAmount.toNumber()
                     // Check plan already exist and active
                     if (company.signNowSubscriptionId) {
                         let planInfo = await this.stripeService.getSignNowPlanStatus(company.signNowSubscriptionId);
                         if (planInfo.status) {
                             return; // Active subscription already exist
                         }
-                        await this.stripeService.createBuilderSignNowSubscriptionAfterSignup(company, builder);
+                        await this.stripeService.createBuilderSignNowSubscriptionAfterSignup(company, builder.stripeCustomerId, signNowPlanAmount);
                     } else {
-                        await this.stripeService.createBuilderSignNowSubscriptionAfterSignup(company, builder);
+                        let res = await this.stripeService.createBuilderSignNowSubscription(company, builder.stripeCustomerId, signNowPlanAmount);
+                        // Update new subscription info in database
+                        if (res.status) {
+                            await this.databaseService.company.update({
+                                where: { id: companyId},
+                                data: {
+                                    signNowStripeProductId: res.productId,
+                                    signNowSubscriptionId: res.subscriptionId
+                                }
+                            })
+                        }
                     }
                 } 
                 else {
@@ -639,13 +658,7 @@ export class CompanyService {
                         let planInfo = await this.stripeService.getSignNowPlanStatus(company.signNowSubscriptionId);
                         if (planInfo.status) {
                             // Cancel subscription
-                            let result = await this.stripeService.removeSubscription(company.signNowSubscriptionId);
-                            if (result) {
-                                await this.databaseService.company.update({
-                                    where: { id: company.id },
-                                    data: { signNowSubscriptionId: null, signNowStripeProductId: null }
-                                })
-                            }
+                            await this.stripeService.removeSubscription(company.signNowSubscriptionId);
                         } 
                     }
                 }
@@ -800,6 +813,7 @@ export class CompanyService {
             if (company && company.signNowSubscriptionId) {
                 try {
                     await this.stripeService.removeSubscription(company.signNowSubscriptionId);
+                    // To be removed later
                     await this.databaseService.company.update({
                         where: { id: user.companyId, isDeleted: false },
                         data: {

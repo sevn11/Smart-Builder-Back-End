@@ -47,6 +47,7 @@ export class AuthService {
                 let response = await this.stripeService.createBuilderSubscription(body, planAmount);
                 if(response.status) {
                     let signNowSubscriptionResponse = null;
+                    let signNowSubStatus = false;
                     // Create a SignNow subscription if the builder chooses a plan
                     if (body.signNowPlanType && Object.values(BuilderPlanTypes).includes(body.signNowPlanType)) {
                         let signNowPlanAmount = 0;
@@ -54,7 +55,10 @@ export class AuthService {
                             ? signNowPlanAmount = seoSettings.signNowMonthlyAmount.toNumber()
                             : signNowPlanAmount = seoSettings.signNowYearlyAmount.toNumber()
     
-                        signNowSubscriptionResponse = await this.stripeService.createBuilderSignNowSubscriptionOnSignup(body, response.stripeCustomerId, signNowPlanAmount);
+                        signNowSubscriptionResponse = await this.stripeService.createBuilderSignNowSubscription(body, response.stripeCustomerId, signNowPlanAmount);
+                        if (signNowSubscriptionResponse.status) {
+                            signNowSubStatus = true
+                        }
                     }
                     const hash = await argon.hash(body.password);
                     const user = await this.databaseService.user.create({
@@ -110,7 +114,7 @@ export class AuthService {
                     });
                     const payload = { sub: user.id, email: user.email, companyId: user.company.id };
                     const access_token = await this.jwtService.signAsync(payload);
-                    return { status: true, user, access_token };
+                    return { status: true, user, access_token, signNowSubStatus };
                 }
                 else {
                     return response;
