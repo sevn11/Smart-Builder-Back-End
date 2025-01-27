@@ -315,13 +315,13 @@ export class StripeService {
     }
 
     // Function to create new subscription for sign now
-    async createBuilderSignNowSubscriptionOnSignup(body: SignUpDTO, stripeCustomerId: string, planAmount: number) {
+    async createBuilderSignNowSubscription(body: any, stripeCustomerId: string, planAmount: number) {
         try {
             const signNowPlanType = body.signNowPlanType == BuilderPlanTypes.MONTHLY ? 'month' : 'year';
     
             // Create new product in stripe
             const product = await this.StripeClient.products.create({
-                name: `${body.companyName}-SignNow`
+                name: `${body.companyName || body.name}-SignNow`
             });
     
             // Create a price for the product
@@ -355,16 +355,18 @@ export class StripeService {
         }
         catch (error) {
             console.log(error);
-            throw new InternalServerErrorException({
+            return {
+                status: false,
                 message: "Failed to create signnow subscription"
-            });
+            }
         }
     }
 
     // Function to get sign now subscription status
     async getSignNowPlanStatus (subscriptionId: string) {
         let subInfo = await this.StripeClient.subscriptions.retrieve(subscriptionId);
-        if(subInfo.status == "active" || subInfo.status == "trialing" ) {
+        const currentDate = Math.floor(Date.now() / 1000);
+        if(subInfo.current_period_end > currentDate) {
             return { status: true };
         } else {
             return { status: false };
@@ -372,17 +374,13 @@ export class StripeService {
     }
 
     // Function re create sign-now subscription
-    async createBuilderSignNowSubscriptionAfterSignup(company: any, builder: any) {
+    async createBuilderSignNowSubscriptionAfterSignup(company: any, stripeCustomerId: string, signNowPlanAmount: number) {
         try {
-            let customer = await this.StripeClient.customers.retrieve(builder.stripeCustomerId);
-            let builderSubscription = await this.StripeClient.subscriptions.retrieve(builder.subscriptionId);
+            let existingSignNowSubscription = company.signNowSubscriptionId
+                ? await this.StripeClient.subscriptions.retrieve(company.signNowSubscriptionId)
+                : null;
+            
             const planType = company.planType == BuilderPlanTypes.MONTHLY ? 'month' : 'year';
-            let data = await this.databaseService.seoSettings.findMany();
-            let seoSettings = data[0];
-            let signNowPlanAmount = 0;
-            company.planType == BuilderPlanTypes.MONTHLY
-                ? signNowPlanAmount = seoSettings.signNowMonthlyAmount.toNumber()
-                : signNowPlanAmount = seoSettings.signNowYearlyAmount.toNumber()
             
             // Create new product in stripe
             const product = await this.StripeClient.products.create({
@@ -397,30 +395,35 @@ export class StripeService {
                 product: product.id,
             });
 
-            // Create a subscription for sign now
-            let subscription: Stripe.Subscription;
-            const now = Math.floor(Date.now() / 1000);
-            const trialEndDateObj = new Date(builderSubscription.trial_end * 1000);
-            const firstOfNextMonthAfterTrial = new Date(trialEndDateObj.getFullYear(), trialEndDateObj.getMonth() + 1, 1);
-            const firstOfNextMonthAfterTrialTimestamp = Math.floor(firstOfNextMonthAfterTrial.getTime() / 1000);
-            if (builderSubscription.trial_end > now) {
-                // Adding sign-now subscription within builder's trial period
-                subscription = await this.StripeClient.subscriptions.create({
-                    customer: customer.id,
-                    items: [{ price: price.id }],
-                    trial_end: builderSubscription.trial_end,
-                    billing_cycle_anchor: firstOfNextMonthAfterTrialTimestamp,
-                    proration_behavior: 'create_prorations',
-                });
+            let prorationBehavious: Stripe.SubscriptionCreateParams.ProrationBehavior;
+            let billingCycleAnchor: number;
+            let trialEnd: number;
+            if (existingSignNowSubscription.trial_end) {
+                // Previous subscription was canceled on trial period
+                const trialEndDateObj = new Date(existingSignNowSubscription.trial_end * 1000);
+                const firstOfNextMonthAfterTrial = new Date(trialEndDateObj.getFullYear(), trialEndDateObj.getMonth() + 1, 1);
+                billingCycleAnchor = Math.floor(firstOfNextMonthAfterTrial.getTime() / 1000);
+                trialEnd = existingSignNowSubscription.trial_end;
+                prorationBehavious = 'create_prorations';
             } else {
-                // Adding sign-now subscription after builder's trial ended
-                subscription = await this.StripeClient.subscriptions.create({
-                    customer: customer.id,
-                    items: [{ price: price.id }],
-                    billing_cycle_anchor: builderSubscription.current_period_end,
-                    proration_behavior: 'create_prorations'
-                });
+                // Previous subscription was canceled while plan was active
+                billingCycleAnchor = existingSignNowSubscription.current_period_end;
+                prorationBehavious = 'none';
             }
+
+            const subscriptionPayload: Stripe.SubscriptionCreateParams = {
+                customer: stripeCustomerId,
+                items: [{ price: price.id }],
+                billing_cycle_anchor: billingCycleAnchor,
+                proration_behavior: prorationBehavious,
+            };
+    
+            if (trialEnd) {
+                subscriptionPayload.trial_end = trialEnd;
+            }
+
+            // Create the new SignNow subscription
+            const subscription = await this.StripeClient.subscriptions.create(subscriptionPayload);
 
             // Update info inside company table
             await this.databaseService.company.update({
