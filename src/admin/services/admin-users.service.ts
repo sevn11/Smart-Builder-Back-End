@@ -93,7 +93,7 @@ export class AdminUsersService {
                     let signNowPlanStatus = false;
             
                     if (builder.company.signNowSubscriptionId) {
-                        const res = await this.stripeService.getSignNowPlanStatus(builder.company.signNowSubscriptionId);
+                        const res = await this.stripeService.isSignNowCancelled(builder.company.signNowSubscriptionId);
                         signNowPlanStatus = res.status;
                     }
             

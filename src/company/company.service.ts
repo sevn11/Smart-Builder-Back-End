@@ -453,7 +453,7 @@ export class CompanyService {
                 });
                 let company: any = {...companyData};
                 if (companyData.signNowSubscriptionId) {
-                    let res = await this.stripeService.getSignNowPlanStatus(companyData.signNowSubscriptionId);
+                    let res = await this.stripeService.isSignNowCancelled(companyData.signNowSubscriptionId);
                     company.signNowPlanStatus = res.status;
                 } else {
                     company.signNowPlanStatus = false;
@@ -633,7 +633,7 @@ export class CompanyService {
                         : signNowPlanAmount = seoSettings.signNowYearlyAmount.toNumber()
                     // Check plan already exist and active
                     if (company.signNowSubscriptionId) {
-                        let planInfo = await this.stripeService.getSignNowPlanStatus(company.signNowSubscriptionId);
+                        let planInfo = await this.stripeService.isSignNowCancelled(company.signNowSubscriptionId);
                         if (planInfo.status) {
                             return; // Active subscription already exist
                         }
@@ -655,7 +655,7 @@ export class CompanyService {
                 else {
                     // Check plan already exist and active
                     if (company.signNowSubscriptionId) {
-                        let planInfo = await this.stripeService.getSignNowPlanStatus(company.signNowSubscriptionId);
+                        let planInfo = await this.stripeService.isSignNowCancelled(company.signNowSubscriptionId);
                         if (planInfo.status) {
                             // Cancel subscription
                             await this.stripeService.removeSubscription(company.signNowSubscriptionId);
@@ -851,12 +851,24 @@ export class CompanyService {
         }
     }
 
-    async getSignNowPlanPriceInfo(user:User, companyId: number) {
+    async getSignNowPlanInfo(user:User, companyId: number) {
         try {
+            let company = await this.databaseService.company.findUniqueOrThrow({
+                where: { id: companyId, isDeleted: false }
+            });
             let data = await this.databaseService.seoSettings.findMany();
             let seoSettings = data[0];
+            let isSignNowCancelled = false;
+            if (company.signNowSubscriptionId) {
+                let res = await this.stripeService.isSignNowCancelled(company.signNowSubscriptionId);
+                if (res.status) {
+                    isSignNowCancelled = false;
+                } else {
+                    isSignNowCancelled = true;
+                }
+            }
             const { signNowMonthlyAmount, signNowYearlyAmount } = seoSettings;
-            return { signNowPlanPriceInfo: { signNowMonthlyAmount, signNowYearlyAmount } }
+            return { signNowPlanPriceInfo: { signNowMonthlyAmount, signNowYearlyAmount }, isSignNowCancelled }
         } catch (error) {
             console.log(error);
         }

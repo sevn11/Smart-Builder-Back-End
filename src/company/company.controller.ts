@@ -111,6 +111,6 @@ export class CompanyController {
     @HttpCode(HttpStatus.OK)
     @Get(':id/sign-now-plan-info')
     getSignNowPlanInfo(@GetUser() user: User, @Param('id', ParseIntPipe) companyId: number) {
-        return this.companyService.getSignNowPlanPriceInfo(user, companyId);
+        return this.companyService.getSignNowPlanInfo(user, companyId);
     }
 }
