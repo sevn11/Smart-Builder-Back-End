@@ -373,6 +373,15 @@ export class StripeService {
         }
     }
 
+    async isSignNowCancelled (subscriptionId: string) {
+        let subInfo = await this.StripeClient.subscriptions.retrieve(subscriptionId);
+        if(subInfo.status != 'canceled') {
+            return { status: true };
+        } else {
+            return { status: false };
+        }
+    }
+
     // Function re create sign-now subscription
     async createBuilderSignNowSubscriptionAfterSignup(company: any, stripeCustomerId: string, signNowPlanAmount: number) {
         try {
