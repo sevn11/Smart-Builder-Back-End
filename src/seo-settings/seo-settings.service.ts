@@ -14,7 +14,10 @@ export class SeoSettingsService {
             let builderPlanInfo = {
                 id: seoSettings.id,
                 yearlyPlanAmount: seoSettings.yearlyPlanAmount,
-                monthlyPlanAmount: seoSettings.monthlyPlanAmount
+                monthlyPlanAmount: seoSettings.monthlyPlanAmount,
+                employeeFee: seoSettings.additionalEmployeeFee,
+                signNowMonthlyPlanAmount: seoSettings.signNowMonthlyAmount,
+                signNowYearlyPlanAmount: seoSettings.signNowYearlyAmount,
             }
             return { builderPlanInfo };
         } catch (error) {

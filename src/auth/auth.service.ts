@@ -46,6 +46,20 @@ export class AuthService {
                 // Create new customer and add card details inside stripe
                 let response = await this.stripeService.createBuilderSubscription(body, planAmount);
                 if(response.status) {
+                    let signNowSubscriptionResponse = null;
+                    let signNowSubStatus = false;
+                    // Create a SignNow subscription if the builder chooses a plan
+                    if (body.signNowPlanType && Object.values(BuilderPlanTypes).includes(body.signNowPlanType)) {
+                        let signNowPlanAmount = 0;
+                        body.signNowPlanType == BuilderPlanTypes.MONTHLY
+                            ? signNowPlanAmount = seoSettings.signNowMonthlyAmount.toNumber()
+                            : signNowPlanAmount = seoSettings.signNowYearlyAmount.toNumber()
+    
+                        signNowSubscriptionResponse = await this.stripeService.createBuilderSignNowSubscription(body, response.stripeCustomerId, signNowPlanAmount);
+                        if (signNowSubscriptionResponse.status) {
+                            signNowSubStatus = true
+                        }
+                    }
                     const hash = await argon.hash(body.password);
                     const user = await this.databaseService.user.create({
                         data: {
@@ -66,7 +80,9 @@ export class AuthService {
                                     phoneNumber: body.phoneNumber,
                                     planType: body.planType,
                                     planAmount,
-                                    extraFee: seoSettings.additionalEmployeeFee
+                                    extraFee: seoSettings.additionalEmployeeFee,
+                                    signNowSubscriptionId: signNowSubscriptionResponse?.subscriptionId || null,
+                                    signNowStripeProductId: signNowSubscriptionResponse?.productId || null,
                                 }
                             },
                             PermissionSet: {
@@ -98,7 +114,7 @@ export class AuthService {
                     });
                     const payload = { sub: user.id, email: user.email, companyId: user.company.id };
                     const access_token = await this.jwtService.signAsync(payload);
-                    return { status: true, user, access_token };
+                    return { status: true, user, access_token, signNowSubStatus };
                 }
                 else {
                     return response;
