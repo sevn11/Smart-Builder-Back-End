@@ -378,7 +378,10 @@ export class AdminUsersService {
                     where: {
                         isActive: true,
                         isDeleted: false,
-                        userType: UserTypes.BUILDER
+                        OR: [
+                            { userType: UserTypes.BUILDER },
+                            { userType: UserTypes.ADMIN }
+                        ]
                     },
                     include: { company: true }
                 });
