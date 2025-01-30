@@ -73,15 +73,11 @@ export class AdminEmployeeService {
             });
 
             // Update the isDeleted field for the specific employee
-            await this.databaseService.user.update({
+            await this.databaseService.user.delete({
                 where: {
                     id: employeeId
-                },
-                data: {
-                    isActive: false,
-                    isDeleted: true
                 }
-            });
+            })
 
             return { message: ResponseMessages.BUILDER_REMOVED };
 
