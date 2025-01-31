@@ -34,7 +34,8 @@ export class JobScheduleService {
                     data: {
                         companyId,
                         jobId,
-                        ...body
+                        ...body,
+                        isScheduledOnWeekend: true
                     }
                 });
                 return { message: ResponseMessages.SUCCESSFUL }
@@ -87,7 +88,8 @@ export class JobScheduleService {
                     data: {
                         companyId,
                         jobId,
-                        ...body
+                        ...body,
+                        isScheduledOnWeekend: true
                     }
                 });
 
