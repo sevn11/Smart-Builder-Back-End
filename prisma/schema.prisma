@@ -105,7 +105,7 @@ model Company {
   ClientCategory         ClientCategory[]
   ClientTemplate         ClientTemplate[]
   clientQuestionAnswer   ClientQuestionAnswer[]
-
+  JobScheduleLink        JobScheduleLink[]
   @@map("companies")
 }
 
@@ -234,6 +234,8 @@ model Job {
   ClientCategory         ClientCategory[]
   ClientTemplateQuestion ClientTemplateQuestion[]
   ClientQuestionAnswer   ClientQuestionAnswer[]
+
+  jobScheduleLinks     JobScheduleLink[] @relation
   @@map("jobs")
 }
 
@@ -408,6 +410,10 @@ model JobSchedule {
   isDeleted         Boolean?           @default(false) @map("is_deleted")
   isScheduledOnWeekend Boolean?        @default(false) @map("is_scheduled_on_weekend")
   duration          Int?               @default(0) @map("duration")
+
+  sourceLinks    JobScheduleLink[] @relation("SourceRelation")
+  targetLinks    JobScheduleLink[] @relation("TargetRelation")
+
   @@map("job_schedules")
 }
 
@@ -741,4 +747,36 @@ model CustomizedContent {
 
   @@map("customized_contents")
   @@unique([companyId, pageType])  
+}
+
+enum TypeEnum {
+  FINISH_TO_START @map("0")
+  START_TO_START  @map("1")
+  FINISH_TO_FINISH @map("2")
+  START_TO_FINISH @map("3")
+}
+
+model JobScheduleLink {
+  id  Int @id @default(autoincrement())
+  
+  companyId         Int           @map("company_id")
+  company           Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  jobId             Int?          @map("job_id")
+  job               Job?          @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  sourceId          Int           @map("source_id")
+  source            JobSchedule   @relation("SourceRelation", fields: [sourceId], references: [id], onDelete: Cascade)
+
+  targetId          Int           @map("target_id")
+  target            JobSchedule   @relation("TargetRelation", fields: [targetId], references: [id], onDelete: Cascade)
+  
+  type              TypeEnum
+
+  isDeleted         Boolean?     @default(false) @map("is_deleted")
+
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  @@map("job_schedule_link")
 }
