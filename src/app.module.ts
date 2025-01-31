@@ -36,6 +36,7 @@ import { ClientTemplateModule } from './client-template/client-template.module';
 import { SeoSettingsModule } from './seo-settings/seo-settings.module';
 import { CustomizedContentModule } from './customized-content/customized-content.module';
 import { SignNowModule } from './sign-now/sign-now.module';
+import { GanttModule } from './gantt/gantt.module';
 @Module({
   imports: [
     ServeStaticModule.forRoot({
@@ -76,6 +77,7 @@ import { SignNowModule } from './sign-now/sign-now.module';
     SeoSettingsModule,
     CustomizedContentModule,
     SignNowModule,
+    GanttModule,
   ],
 })
 export class AppModule { }
