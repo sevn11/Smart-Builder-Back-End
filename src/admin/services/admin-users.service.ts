@@ -226,27 +226,17 @@ export class AdminUsersService {
                         isDeleted: true
                     }
                 }),
-                this.databaseService.user.update({
+                this.databaseService.user.delete({
                     where: {
                         id: builderId,
                         isDeleted: false
-                    },
-                    data: {
-                        isActive: false,
-                        isDeleted: true,
-                        subscriptionId: null,
-                        productId: null
-                    },
+                    }
                 }),
-                this.databaseService.user.updateMany({
+                this.databaseService.user.deleteMany({
                     where: {
                         companyId: builder.companyId,
                         isDeleted: false
-                    },
-                    data: {
-                        isActive: false,
-                        isDeleted: true
-                    },
+                    }
                 }),
                 this.databaseService.customer.updateMany({
                     where: {
