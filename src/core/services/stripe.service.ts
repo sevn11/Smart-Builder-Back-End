@@ -167,22 +167,30 @@ export class StripeService {
     // Function to remove subscription if employee is deleted
     async removeSubscription(subscriptionId: string) {
         try {
-            await this.StripeClient.subscriptions.cancel(subscriptionId);
-            return true;
+            let subscription = await this.StripeClient.subscriptions.retrieve(subscriptionId);
+            if(subscription) {
+                await this.StripeClient.subscriptions.cancel(subscriptionId);
+                return true;
+            }
+            return false;
         } catch (error) {
             console.log(error)
-            throw new InternalServerErrorException();
+            return false;
         }
     }
 
     // Function to remove a customer from stripe
     async deleteStripeCustomer(customerId: string) {
         try {
-            await this.StripeClient.customers.del(customerId);
-            return true;
+            let customer = await this.StripeClient.customers.retrieve(customerId);
+            if(customer) {
+                await this.StripeClient.customers.del(customerId);
+                return true;
+            }
+            return false;
         } catch (error) {
-            console.log(error)
-            throw new InternalServerErrorException();
+            console.log(error);
+            return false;
         }
     }
 
