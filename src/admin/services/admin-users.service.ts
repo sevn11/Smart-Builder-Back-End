@@ -196,18 +196,24 @@ export class AdminUsersService {
                 }
             });
             // Delete builder's and employees subscription from stripe
-            await this.stripeService.removeSubscription(builder.subscriptionId);
+            if(builder.subscriptionId) {
+                await this.stripeService.removeSubscription(builder.subscriptionId);
+            }
             if (employees.length > 0) {
                 for (const employee of employees) {
-                    await this.stripeService.removeSubscription(employee.subscriptionId);
-                    await this.databaseService.user.update({
-                        where: { id: employee.id },
-                        data: { subscriptionId: null, productId: null }
-                    });
+                    if(employee.subscriptionId) {
+                        await this.stripeService.removeSubscription(employee.subscriptionId);
+                        await this.databaseService.user.update({
+                            where: { id: employee.id },
+                            data: { subscriptionId: null, productId: null }
+                        });
+                    }
                 }
             }
             // Delete customer from stripe
-            await this.stripeService.deleteStripeCustomer(builder.stripeCustomerId);
+            if(builder.stripeCustomerId) {
+                await this.stripeService.deleteStripeCustomer(builder.stripeCustomerId);
+            }
 
             await this.databaseService.$transaction([
                 this.databaseService.company.update({
