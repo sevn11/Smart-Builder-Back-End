@@ -270,7 +270,6 @@ export class ContractorService {
                 const categoryCondition: any = {
                     companyId,
                     isDeleted: false,
-                    linkToQuestionnaire: true,
                     phaseIds: {
                         has: phaseId
                     }
@@ -282,15 +281,13 @@ export class ContractorService {
                         where: { id: templateId }
                     })
                 }
-                const [categoryDetails, clientCategoryDetails] = await Promise.all([
-                    await this.databaseService.category.findMany({
+                const categoryDetails = await this.databaseService.category.findMany({
                         where: categoryCondition,
                         orderBy: { questionnaireOrder: 'asc' },
                         include: {
                             questions: {
                                 where: {
                                     isDeleted: false,
-                                    linkToQuestionnaire: true,
                                     phaseIds: {
                                         has: phaseId
                                     }
@@ -298,47 +295,13 @@ export class ContractorService {
                                 orderBy: { questionOrder: 'asc' },
                             }
                         }
-                    }),
-                    await this.databaseService.clientCategory.findMany({
-                        where: {
-                            companyId,
-                            isDeleted: false,
-                            jobId: {
-                                in: contractorJobIds
-                            },
-                            phaseIds: {
-                                has: phaseId
-                            }
-                        },
-                        orderBy: { questionnaireOrder: 'asc' },
-                        include: {
-                            ClientTemplateQuestion: {
-                                where: {
-                                    isDeleted: false,
-                                    phaseIds: {
-                                        has: phaseId
-                                    }
-                                },
-                                orderBy: { questionOrder: 'asc' },
-                            }
-                        }
-                    }),
-                ]);
+                })
                 
                 let formattedDetails = [
                     ...categoryDetails.map(category => ({
                         category: category.id,
                         categoryName: category.name,
                         questions: category.questions.map(question => ({
-                            questionId: question.id,
-                            questionText: question.question,
-                            questionType: question.questionType
-                        }))
-                    })),
-                    ...clientCategoryDetails.map(clientCategory => ({
-                        category: clientCategory.id,
-                        categoryName: clientCategory.name,
-                        questions: clientCategory.ClientTemplateQuestion.map(question => ({
                             questionId: question.id,
                             questionText: question.question,
                             questionType: question.questionType
