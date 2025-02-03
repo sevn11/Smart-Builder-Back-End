@@ -270,6 +270,7 @@ export class ContractorService {
                 const categoryCondition: any = {
                     companyId,
                     isDeleted: false,
+                    linkToQuestionnaire: true,
                     phaseIds: {
                         has: phaseId
                     }
@@ -289,6 +290,7 @@ export class ContractorService {
                             questions: {
                                 where: {
                                     isDeleted: false,
+                                    linkToQuestionnaire: true,
                                     phaseIds: {
                                         has: phaseId
                                     }
