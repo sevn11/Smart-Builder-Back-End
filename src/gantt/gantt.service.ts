@@ -97,7 +97,7 @@ export class GanttService {
             job?.JobSchedule.map(async (schedule: any, index: number) => {
                 return {
                     id: index + 2,
-                    text: `${schedule.contractor.phase.name} - ${schedule.contractor.name}`,
+                    text: `${schedule.contractor.phase.name}`,
                     type: 'task',
                     progress: 0,
                     open: true,

@@ -318,10 +318,10 @@ export class GoogleService {
 
             // Insert or Update schedule to google calendar
             let res = null;
-            if(eventId) {
+            if(schedule.eventId) {
                 res = await this.calendar.events.update({
                     calendarId: user.calendarId,
-                    eventId: eventId,
+                    eventId: schedule.eventId,
                     requestBody
                 });    
             } 
