@@ -241,7 +241,7 @@ export class JobContractorService {
                             }
                         });
                         // Get template attached to project
-                        const clientTemplateInfo = await this.databaseService.clientTemplate.findFirst({
+                        const clientTemplateInfo = await this.databaseService.clientTemplate.findFirstOrThrow({
                             where: {
                                 companyId,
                                 jobId: jobId,
@@ -259,7 +259,7 @@ export class JobContractorService {
                                     phaseIds: {
                                         has: contractor.phaseId
                                     },
-                                    clientTemplateId: clientTemplateInfo.id
+                                    clientTemplateId: clientTemplateInfo.id,
                                 },
                                 orderBy: { questionnaireOrder: 'asc' },
                                 include: {
@@ -268,7 +268,7 @@ export class JobContractorService {
                                             isDeleted: false,
                                             phaseIds: {
                                                 has: contractor.phaseId
-                                            }
+                                            },
                                         },
                                         orderBy: { questionOrder: 'asc' },
                                         include: {
