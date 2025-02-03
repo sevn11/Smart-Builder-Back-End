@@ -454,9 +454,7 @@ export class StripeService {
             return { status: true, message: "Subscription added" };
         } catch (error) {
             console.log(error);
-            throw new InternalServerErrorException({
-                message: "Failed to create signnow subscription"
-            });
+            return { status: false, message: "Failed to add signnow subscription" };
         }
     }
 
