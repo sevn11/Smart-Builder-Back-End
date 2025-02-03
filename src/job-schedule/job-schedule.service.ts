@@ -30,7 +30,7 @@ export class JobScheduleService {
                 body.startDate = `${body.startDate}Z`;
                 body.endDate = `${body.endDate}Z`;
 
-                await this.databaseService.jobSchedule.create({
+                const jobSchedule = await this.databaseService.jobSchedule.create({
                     data: {
                         companyId,
                         jobId,
@@ -38,6 +38,10 @@ export class JobScheduleService {
                         isScheduledOnWeekend: true
                     }
                 });
+                // add the schedule to google calendar.
+                if (jobSchedule) {
+                    await this.addJobScheduleInGoogleCalendar(user, jobSchedule.id)
+                }
                 return { message: ResponseMessages.SUCCESSFUL }
             }
         } catch (error) {
@@ -313,6 +317,44 @@ export class JobScheduleService {
                 }
             }
             throw new InternalServerErrorException();
+        }
+    }
+
+    // Function to reflect the change in job schdule in google calendar event also
+    async addJobScheduleInGoogleCalendar(user: User, scheduleId: number) {
+        let schedule = await this.databaseService.jobSchedule.findFirst({
+            where: { id: scheduleId, isDeleted: false },
+            include: {
+                contractor: {
+                    include: {
+                        phase: true
+                    }
+                },
+                job: {
+                    include: {
+                        customer: {
+                            select: {
+                                name: true
+                            }
+                        },
+                        description: {
+                            select: {
+                                name: true
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // reflect the change in google calendar (if already synced)
+        const response = await this.googleService.syncJobSchedule(user.id, schedule);
+
+        if (response.status && response.eventId) {
+            await this.databaseService.jobSchedule.update({
+                where: { id: schedule.id },
+                data: { eventId: response.eventId }
+            })
         }
     }
 }
