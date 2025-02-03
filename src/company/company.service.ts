@@ -626,6 +626,7 @@ export class CompanyService {
                 })
                 let data = await this.databaseService.seoSettings.findMany();
                 let seoSettings = data[0];
+                let signNowResponse = { status: null, message: "" };
                 if (body.signNowPlanStatus) {
                     let signNowPlanAmount = 0;
                     company.planType == BuilderPlanTypes.MONTHLY
@@ -637,7 +638,14 @@ export class CompanyService {
                         if (planInfo.status) {
                             return; // Active subscription already exist
                         }
-                        await this.stripeService.createBuilderSignNowSubscriptionAfterSignup(company, builder.stripeCustomerId, signNowPlanAmount);
+                        let createSubscriptionResult = await this.stripeService.createBuilderSignNowSubscriptionAfterSignup(company, builder.stripeCustomerId, signNowPlanAmount);
+                        if (createSubscriptionResult.status) {
+                            signNowResponse.status = true;
+                            signNowResponse.message = "Sign now subscription added.";
+                        } else {
+                            signNowResponse.status = false;
+                            signNowResponse.message = "Failed to add sign now subscription.";
+                        }
                     } else {
                         let res = await this.stripeService.createBuilderSignNowSubscription(company, builder.stripeCustomerId, signNowPlanAmount);
                         // Update new subscription info in database
@@ -649,6 +657,12 @@ export class CompanyService {
                                     signNowSubscriptionId: res.subscriptionId
                                 }
                             })
+                            signNowResponse.status = true;
+                            signNowResponse.message = "Sign now subscription added.";
+                        }
+                        else {
+                            signNowResponse.status = false;
+                            signNowResponse.message = "Failed to add sign now subscription.";
                         }
                     }
                 } 
@@ -658,13 +672,20 @@ export class CompanyService {
                         let planInfo = await this.stripeService.isSignNowCancelled(company.signNowSubscriptionId);
                         if (planInfo.status) {
                             // Cancel subscription
-                            await this.stripeService.removeSubscription(company.signNowSubscriptionId);
+                            let status = await this.stripeService.removeSubscription(company.signNowSubscriptionId);
+                            if(status) {
+                                signNowResponse.status = true;
+                                signNowResponse.message = "Sign Now subscription cancelled.";
+                            } else {
+                                signNowResponse.status = false;
+                                signNowResponse.message = "Failed to cancel sign now subscription.";
+                            }
                         } 
                     }
                 }
 
 
-                return { company, isPlanChanged: sentPlanUpdateMessage }
+                return { company, isPlanChanged: sentPlanUpdateMessage, signNowResponse }
             } else {
                 throw new ForbiddenException("Action Not Allowed");
             }
@@ -866,6 +887,9 @@ export class CompanyService {
                 } else {
                     isSignNowCancelled = true;
                 }
+            }
+            else {
+                isSignNowCancelled = true;
             }
             const { signNowMonthlyAmount, signNowYearlyAmount } = seoSettings;
             return { signNowPlanPriceInfo: { signNowMonthlyAmount, signNowYearlyAmount }, isSignNowCancelled }
