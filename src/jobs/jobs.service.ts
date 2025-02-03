@@ -540,7 +540,7 @@ export class JobsService {
 
                             return {
                                 id: schedule.id,
-                                title: `${schedule.contractor.phase.name} - ${schedule.contractor.name} (${item.customer.name})`,
+                                title: `${schedule.contractor.phase.name} (${item.customer.name})`,
                                 start: schedule.startDate,
                                 end: schedule.endDate,
                                 customerId: item.customer?.id,
@@ -747,7 +747,7 @@ export class JobsService {
                         return {
                             id: uniqueId,
                             scheduleId: schedule.id,
-                            title: `${schedule.contractor.phase.name} - ${schedule.contractor.name}`,
+                            title: `${schedule.contractor.phase.name}`,
                             start: schedule.startDate,
                             end: schedule.endDate,
                             customerId: job.customer?.id,

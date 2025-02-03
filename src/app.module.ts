@@ -35,6 +35,7 @@ import { TemplateModule } from './template/template.module';
 import { ClientTemplateModule } from './client-template/client-template.module';
 import { CustomizedContentModule } from './customized-content/customized-content.module';
 import { SignNowModule } from './sign-now/sign-now.module';
+import { GanttModule } from './gantt/gantt.module';
 @Module({
   imports: [
     ServeStaticModule.forRoot({
@@ -74,6 +75,7 @@ import { SignNowModule } from './sign-now/sign-now.module';
     ClientTemplateModule,
     CustomizedContentModule,
     SignNowModule,
+    GanttModule,
   ],
 })
 export class AppModule { }
