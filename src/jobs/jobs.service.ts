@@ -1016,6 +1016,7 @@ export class JobsService {
                             contractPrice: x.contractPrice,
                             order: x.order,
                             invoiceId: currentInvoiceId,
+                            isLootCost: x.isLotCost
                         }
                     })
                 }));
