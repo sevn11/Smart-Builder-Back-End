@@ -260,7 +260,6 @@ export class JobContractorService {
                                         has: contractor.phaseId
                                     },
                                     clientTemplateId: clientTemplateInfo.id,
-                                    linkToQuestionnaire: true,
                                 },
                                 orderBy: { questionnaireOrder: 'asc' },
                                 include: {
@@ -270,7 +269,6 @@ export class JobContractorService {
                                             phaseIds: {
                                                 has: contractor.phaseId
                                             },
-                                            linkToQuestionnaire: true
                                         },
                                         orderBy: { questionOrder: 'asc' },
                                         include: {
