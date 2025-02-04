@@ -296,18 +296,43 @@ export class ContractorService {
                             }
                         }
                 })
-                
-                let formattedDetails = [
-                    ...categoryDetails.map(category => ({
+                // Sorting the data based on template type
+                let linkToQuestionnaireItems = [];
+                let linkToInitialSelectionItems = [];
+                let linkToPaintSelectionItems = [];
+
+                // Loop through each category to filter questions based on the priority
+                categoryDetails.forEach(category => {
+                    category.questions.forEach(question => {
+                        if (question.linkToQuestionnaire) {
+                            linkToQuestionnaireItems.push({ ...question, category });
+                        } else if (question.linkToInitalSelection) {
+                            linkToInitialSelectionItems.push({ ...question, category });
+                        } else if (question.linkToPaintSelection) {
+                            linkToPaintSelectionItems.push({ ...question, category });
+                        }
+                    });
+                });
+
+                const allItems = [
+                    ...linkToQuestionnaireItems,
+                    ...linkToInitialSelectionItems,
+                    ...linkToPaintSelectionItems
+                ];
+
+                let formattedDetails = categoryDetails.map(category => {
+                    const categoryQuestions = allItems.filter(item => item.category.id === category.id);
+                    
+                    return {
                         category: category.id,
                         categoryName: category.name,
-                        questions: category.questions.map(question => ({
+                        questions: categoryQuestions.map(question => ({
                             questionId: question.id,
                             questionText: question.question,
                             questionType: question.questionType
                         }))
-                    }))
-                ];
+                    };
+                });
 
                 // Prepare the contractor response
                 const contractorResponse = {
