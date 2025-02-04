@@ -561,42 +561,23 @@ export class JobProjectEstimatorService {
                         jobProjectEstimatorHeader: {
                             companyId: companyId
                         },
-                        invoiceId: { not: null }
+                        isDeleted: false,
                     }
                 });
 
-
-                // Start with 1100 if no previous invoices exist
-                let newJobFirstInvoiceId = (previousHighestInvoice._max.invoiceId ?? 1099) + 1;
+                // Assign new invoice ID based on previous highest invoice
+                let newInvoiceId = previousHighestInvoice._max.invoiceId === null
+                    ? 1100
+                    : previousHighestInvoice._max.invoiceId + 1;
 
                 // Insert invoice ID for change orders
                 if (projectEstimator.item === 'Change Order') {
-                    let existingInvoices = await this.databaseService.jobProjectEstimator.findMany({
-                        where: {
-                            jobProjectEstimatorHeaderId: accountingHeader.id,
-                            item: 'Change Order',
-                            id: { not: projectEstimator.id },
-                            invoiceId: { not: null },
-                        },
-                        orderBy: {
-                            invoiceId: 'desc',
-                        },
+
+                    await this.databaseService.jobProjectEstimator.update({
+                        where: { id: projectEstimator.id },
+                        data: { invoiceId: newInvoiceId },
                     });
 
-                    if (existingInvoices.length === 0) {
-                        // Assign the first invoice ID for this company
-                        await this.databaseService.jobProjectEstimator.update({
-                            where: { id: projectEstimator.id },
-                            data: { invoiceId: newJobFirstInvoiceId },
-                        });
-                    } else {
-                        // Assign the next invoice ID by incrementing the latest one in this company
-                        let latestInvoiceId = existingInvoices[0].invoiceId;
-                        await this.databaseService.jobProjectEstimator.update({
-                            where: { id: projectEstimator.id },
-                            data: { invoiceId: latestInvoiceId + 1 },
-                        });
-                    }
                 }
 
 
