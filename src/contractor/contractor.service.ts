@@ -297,47 +297,42 @@ export class ContractorService {
                         }
                 })
                 // Sorting the data based on template type
-                const sortedCategoryDetails = categoryDetails.map(category => {
-                    const sortedQuestions = category.questions.sort((a, b) => {
-                        // Convert booleans to numbers for comparison
-                        const aLinkToQuestionnaire = a.linkToQuestionnaire ? 1 : 0;
-                        const bLinkToQuestionnaire = b.linkToQuestionnaire ? 1 : 0;
-                
-                        const aLinkToInitialSelection = a.linkToInitalSelection ? 1 : 0;
-                        const bLinkToInitialSelection = b.linkToInitalSelection ? 1 : 0;
-                
-                        const aLinkToPainSelection = a.linkToPaintSelection ? 1 : 0;
-                        const bLinkToPainSelection = b.linkToPaintSelection ? 1 : 0;
-                
-                        // linkToQuestionnaire first
-                        if (aLinkToQuestionnaire !== bLinkToQuestionnaire) {
-                            return bLinkToQuestionnaire - aLinkToQuestionnaire;
+                let linkToQuestionnaireItems = [];
+                let linkToInitialSelectionItems = [];
+                let linkToPaintSelectionItems = [];
+
+                // Loop through each category to filter questions based on the priority
+                categoryDetails.forEach(category => {
+                    category.questions.forEach(question => {
+                        if (question.linkToQuestionnaire) {
+                            linkToQuestionnaireItems.push({ ...question, category });
+                        } else if (question.linkToInitalSelection) {
+                            linkToInitialSelectionItems.push({ ...question, category });
+                        } else if (question.linkToPaintSelection) {
+                            linkToPaintSelectionItems.push({ ...question, category });
                         }
-                        // linkToInitialSelection second
-                        if (aLinkToInitialSelection !== bLinkToInitialSelection) {
-                            return bLinkToInitialSelection - aLinkToInitialSelection;
-                        }
-                        // linkToPainSelection last
-                        return bLinkToPainSelection - aLinkToPainSelection;
                     });
-                
-                    return {
-                        ...category,
-                        questions: sortedQuestions,
-                    };
                 });
-                
-                let formattedDetails = [
-                    ...sortedCategoryDetails.map(category => ({
+
+                const allItems = [
+                    ...linkToQuestionnaireItems,
+                    ...linkToInitialSelectionItems,
+                    ...linkToPaintSelectionItems
+                ];
+
+                let formattedDetails = categoryDetails.map(category => {
+                    const categoryQuestions = allItems.filter(item => item.category.id === category.id);
+                    
+                    return {
                         category: category.id,
                         categoryName: category.name,
-                        questions: category.questions.map(question => ({
+                        questions: categoryQuestions.map(question => ({
                             questionId: question.id,
                             questionText: question.question,
                             questionType: question.questionType
                         }))
-                    }))
-                ];
+                    };
+                });
 
                 // Prepare the contractor response
                 const contractorResponse = {
