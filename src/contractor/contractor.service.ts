@@ -296,9 +296,39 @@ export class ContractorService {
                             }
                         }
                 })
+                // Sorting the data based on template type
+                const sortedCategoryDetails = categoryDetails.map(category => {
+                    const sortedQuestions = category.questions.sort((a, b) => {
+                        // Convert booleans to numbers for comparison
+                        const aLinkToQuestionnaire = a.linkToQuestionnaire ? 1 : 0;
+                        const bLinkToQuestionnaire = b.linkToQuestionnaire ? 1 : 0;
+                
+                        const aLinkToInitialSelection = a.linkToInitalSelection ? 1 : 0;
+                        const bLinkToInitialSelection = b.linkToInitalSelection ? 1 : 0;
+                
+                        const aLinkToPainSelection = a.linkToPaintSelection ? 1 : 0;
+                        const bLinkToPainSelection = b.linkToPaintSelection ? 1 : 0;
+                
+                        // linkToQuestionnaire first
+                        if (aLinkToQuestionnaire !== bLinkToQuestionnaire) {
+                            return bLinkToQuestionnaire - aLinkToQuestionnaire;
+                        }
+                        // linkToInitialSelection second
+                        if (aLinkToInitialSelection !== bLinkToInitialSelection) {
+                            return bLinkToInitialSelection - aLinkToInitialSelection;
+                        }
+                        // linkToPainSelection last
+                        return bLinkToPainSelection - aLinkToPainSelection;
+                    });
+                
+                    return {
+                        ...category,
+                        questions: sortedQuestions,
+                    };
+                });
                 
                 let formattedDetails = [
-                    ...categoryDetails.map(category => ({
+                    ...sortedCategoryDetails.map(category => ({
                         category: category.id,
                         categoryName: category.name,
                         questions: category.questions.map(question => ({
