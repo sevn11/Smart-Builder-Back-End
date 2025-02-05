@@ -551,45 +551,35 @@ export class JobProjectEstimatorService {
                         order
                     }
                 });
-                // insert invoice id for change orders
+
+                // Find the highest invoice ID for this company
+                let previousHighestInvoice = await this.databaseService.jobProjectEstimator.aggregate({
+                    _max: {
+                        invoiceId: true
+                    },
+                    where: {
+                        jobProjectEstimatorHeader: {
+                            companyId: companyId
+                        },
+                        isDeleted: false,
+                    }
+                });
+
+                // Assign new invoice ID based on previous highest invoice
+                let newInvoiceId = previousHighestInvoice._max.invoiceId === null
+                    ? 1100
+                    : previousHighestInvoice._max.invoiceId + 1;
+
+                // Insert invoice ID for change orders
                 if (projectEstimator.item === 'Change Order') {
-                    // check for existing invoice ids
-                    let items = await this.databaseService.jobProjectEstimator.findMany({
-                        where: {
-                            jobProjectEstimatorHeaderId: accountingHeader.id,
-                            item: 'Change Order',
-                            id: { not: projectEstimator.id },
-                            invoiceId: { not: null },
-                        },
-                        orderBy: {
-                            invoiceId: 'desc',
-                        },
+
+                    await this.databaseService.jobProjectEstimator.update({
+                        where: { id: projectEstimator.id },
+                        data: { invoiceId: newInvoiceId },
                     });
 
-                    if (items.length == 0) {
-                        await this.databaseService.jobProjectEstimator.update({
-                            where: {
-                                id: projectEstimator.id,
-                            },
-                            data: {
-                                invoiceId: 1100,
-                            },
-                        })
-                    }
-                    else {
-                        let highestInvoiceId = items[0].invoiceId;
-                        if (highestInvoiceId) {
-                            await this.databaseService.jobProjectEstimator.update({
-                                where: {
-                                    id: projectEstimator.id,
-                                },
-                                data: {
-                                    invoiceId: highestInvoiceId + 1,
-                                },
-                            });
-                        }
-                    }
                 }
+
 
                 return { projectEstimator }
             } else {
