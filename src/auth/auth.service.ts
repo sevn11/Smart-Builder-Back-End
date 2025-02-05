@@ -166,6 +166,11 @@ export class AuthService {
                 delete user.hash;
                 const payload = { sub: user.id, email: user.email, companyId: user.company.id };
                 const access_token = await this.jwtService.signAsync(payload);
+                // save token to users table
+                await this.databaseService.user.update({
+                    where: { id: user.id },
+                    data: { activeAuthToken: access_token }
+                });
                 return { user, access_token };
             } else {
                 throw new NotFoundException(ResponseMessages.INVALID_CREDENTIALS);
