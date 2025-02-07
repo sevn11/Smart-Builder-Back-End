@@ -65,24 +65,26 @@ export class StripeService {
             const trialEndDateObj = new Date(builderSubscription.trial_end * 1000);
             const firstOfNextMonthAfterTrial = new Date(trialEndDateObj.getFullYear(), trialEndDateObj.getMonth() + 1, 1);
             const firstOfNextMonthAfterTrialTimestamp = Math.floor(firstOfNextMonthAfterTrial.getTime() / 1000);
+            const subscriptionPayload: Stripe.SubscriptionCreateParams = {
+                customer: customer.id,
+                items: [{ price: price.id }],
+                proration_behavior: 'create_prorations',
+            };
             if (builderSubscription.trial_end > now) {
                 // Adding employee subscription within builder's trial period
-                subscription = await this.StripeClient.subscriptions.create({
-                    customer: customer.id,
-                    items: [{ price: price.id }],
-                    trial_end: builderSubscription.trial_end,
-                    billing_cycle_anchor: firstOfNextMonthAfterTrialTimestamp,
-                    proration_behavior: 'create_prorations',
-                });
+                subscriptionPayload.trial_end = builderSubscription.trial_end;
+                subscriptionPayload.billing_cycle_anchor = firstOfNextMonthAfterTrialTimestamp;
             } else {
                 // Adding employee subscription after builder's trial ended
-                subscription = await this.StripeClient.subscriptions.create({
-                    customer: customer.id,
-                    items: [{ price: price.id }],
-                    billing_cycle_anchor: builderSubscription.current_period_end,
-                    proration_behavior: 'create_prorations'
-                });
+                subscriptionPayload.billing_cycle_anchor = builderSubscription.current_period_end
             }
+
+            let coupon: string;
+            if(builder.isDemoUser) {
+                coupon = await this.createCoupon();
+                subscriptionPayload.coupon = coupon;
+            }
+            subscription = await this.StripeClient.subscriptions.create(subscriptionPayload);
 
             return { status: true, subscriptionId: subscription.id, productId: product.id, message: "Subscription added" };
         } catch (error) {
@@ -323,7 +325,7 @@ export class StripeService {
     }
 
     // Function to create new subscription for sign now
-    async createBuilderSignNowSubscription(body: any, stripeCustomerId: string, planAmount: number) {
+    async createBuilderSignNowSubscription(body: any, stripeCustomerId: string, planAmount: number, isDemoUser?: boolean) {
         try {
             const signNowPlanType = body.signNowPlanType == BuilderPlanTypes.MONTHLY ? 'month' : 'year';
     
@@ -344,15 +346,22 @@ export class StripeService {
             const firstOfNextMonthAfterTrial = new Date(trialEndDateObj.getFullYear(), trialEndDateObj.getMonth() + 1, 1);
             const firstOfNextMonthAfterTrialTimestamp = Math.floor(firstOfNextMonthAfterTrial.getTime() / 1000);
     
-            // Create a subscription for sign-now
-            const subscription = await this.StripeClient.subscriptions.create({
+            const subscriptionPayload: Stripe.SubscriptionCreateParams = {
                 customer: stripeCustomerId,
                 items: [{ price: price.id }],
-                default_payment_method: body.paymentMethodId,
                 trial_end: trialEndDate,
                 billing_cycle_anchor: firstOfNextMonthAfterTrialTimestamp,
                 proration_behavior: 'create_prorations',
-            });
+            };
+
+            // Apply coupon for demo builders
+            let coupon: string;
+            if(isDemoUser) {
+                coupon = await this.createCoupon();
+                subscriptionPayload.coupon = coupon;
+            }
+            // Create a subscription for sign-now
+            const subscription = await this.StripeClient.subscriptions.create(subscriptionPayload);
             return {
                 status: true,
                 stripeCustomerId: stripeCustomerId,
@@ -391,12 +400,15 @@ export class StripeService {
     }
 
     // Function re create sign-now subscription
-    async createBuilderSignNowSubscriptionAfterSignup(company: any, stripeCustomerId: string, signNowPlanAmount: number) {
+    async createBuilderSignNowSubscriptionAfterSignup(company: any, builder: any, signNowPlanAmount: number) {
         try {
             let existingSignNowSubscription = company.signNowSubscriptionId
                 ? await this.StripeClient.subscriptions.retrieve(company.signNowSubscriptionId)
                 : null;
             
+            if(!existingSignNowSubscription) {
+                return { status: false, message: "Failed to add signnow subscription" };
+            }
             const planType = company.planType == BuilderPlanTypes.MONTHLY ? 'month' : 'year';
             
             // Create new product in stripe
@@ -429,7 +441,7 @@ export class StripeService {
             }
 
             const subscriptionPayload: Stripe.SubscriptionCreateParams = {
-                customer: stripeCustomerId,
+                customer: builder.stripeCustomerId,
                 items: [{ price: price.id }],
                 billing_cycle_anchor: billingCycleAnchor,
                 proration_behavior: prorationBehavious,
@@ -437,6 +449,13 @@ export class StripeService {
     
             if (trialEnd) {
                 subscriptionPayload.trial_end = trialEnd;
+            }
+
+            // Apply coupon for demo builders
+            let coupon: string;
+            if(builder.isDemoUser) {
+                coupon = await this.createCoupon();
+                subscriptionPayload.coupon = coupon;
             }
 
             // Create the new SignNow subscription
