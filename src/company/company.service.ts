@@ -638,7 +638,7 @@ export class CompanyService {
                         if (planInfo.status) {
                             return; // Active subscription already exist
                         }
-                        let createSubscriptionResult = await this.stripeService.createBuilderSignNowSubscriptionAfterSignup(company, builder.stripeCustomerId, signNowPlanAmount);
+                        let createSubscriptionResult = await this.stripeService.createBuilderSignNowSubscriptionAfterSignup(company, builder, signNowPlanAmount);
                         if (createSubscriptionResult.status) {
                             signNowResponse.status = true;
                             signNowResponse.message = "Sign now subscription added.";
@@ -647,7 +647,7 @@ export class CompanyService {
                             signNowResponse.message = "Failed to add sign now subscription.";
                         }
                     } else {
-                        let res = await this.stripeService.createBuilderSignNowSubscription(company, builder.stripeCustomerId, signNowPlanAmount);
+                        let res = await this.stripeService.createBuilderSignNowSubscription(company, builder.stripeCustomerId, signNowPlanAmount, builder.isDemoUser);
                         // Update new subscription info in database
                         if (res.status) {
                             await this.databaseService.company.update({
