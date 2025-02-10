@@ -259,7 +259,7 @@ export class JobScheduleService {
                 body.end_date = `${body.end_date}Z`;
                 body.isScheduledOnWeekend = body.weekendschedule
 
-                await this.databaseService.jobSchedule.create({
+                const jobSchedule = await this.databaseService.jobSchedule.create({
                     data: {
                         companyId,
                         jobId,
@@ -267,10 +267,11 @@ export class JobScheduleService {
                         startDate: body.start_date,
                         endDate: body.end_date,
                         isScheduledOnWeekend: body.isScheduledOnWeekend,
-                        duration: body.duration
+                        duration: body.duration,
+                        isCritical: body.iscritical
                     }
                 });
-                return { message: ResponseMessages.SUCCESSFUL }
+                return { message: ResponseMessages.SUCCESSFUL, data: jobSchedule }
             }
         } catch (error) {
             console.log(error)
@@ -290,24 +291,25 @@ export class JobScheduleService {
                     where: { id: companyId, isDeleted: false }
                 });
 
-                const jobSchedule = await this.databaseService.jobSchedule.findFirstOrThrow({
+                let jobSchedule = await this.databaseService.jobSchedule.findFirstOrThrow({
                     where: { id: id, isDeleted: false, }
                 })
                 body.contractorId = body.contractor ? parseInt(body.contractor) : jobSchedule.contractorId;
                 body.start_date = `${body.start_date}Z`;
                 body.end_date = `${body.end_date}Z`;
 
-                await this.databaseService.jobSchedule.update({
+                jobSchedule = await this.databaseService.jobSchedule.update({
                     where: { id: id },
                     data: {
                         contractorId: body.contractorId,
                         startDate: body.start_date,
                         endDate: body.end_date,
                         duration: body.duration,
-                        isScheduledOnWeekend: body.weekendschedule
+                        isScheduledOnWeekend: body.weekendschedule,
+                        isCritical: body.iscritical
                     }
                 })
-                return { message: ResponseMessages.SUCCESSFUL }
+                return { message: ResponseMessages.SUCCESSFUL, data: jobSchedule }
             }
         } catch (error) {
             console.log(error)

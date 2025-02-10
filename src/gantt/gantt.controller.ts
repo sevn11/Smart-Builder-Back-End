@@ -46,4 +46,12 @@ export class GanttController {
     ) {
         return this.ganttService.deleteLink(user, companyId, jobId, linkId);
     }
+
+    @Get('/global-data')
+    async getGlobalCalendarData(
+        @GetUser() user: User,
+        @Param('companyId', ParseIntPipe) companyId: number,
+    ) {
+        return this.ganttService.getGlobalCalendarData(user, companyId);
+    }
 }

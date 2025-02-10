@@ -411,7 +411,7 @@ model JobSchedule {
   isDeleted         Boolean?           @default(false) @map("is_deleted")
   isScheduledOnWeekend Boolean?        @default(false) @map("is_scheduled_on_weekend")
   duration          Int?               @default(0) @map("duration")
-
+  isCritical        Boolean?           @default(false) @map("is_critical")
   sourceLinks    JobScheduleLink[] @relation("SourceRelation")
   targetLinks    JobScheduleLink[] @relation("TargetRelation")
 
