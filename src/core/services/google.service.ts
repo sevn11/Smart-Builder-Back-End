@@ -116,9 +116,11 @@ export class GoogleService {
             if(userCompany && user.googleAccessToken && user.calendarId) {
                 // Remove calendar from google calendar
                 this.setCredentials(user.googleAccessToken);
-                await this.calendar.calendars.delete({
-                    calendarId: user.calendarId
-                });
+                if(this.checkCalendarExist(user)) {
+                    await this.calendar.calendars.delete({
+                        calendarId: user.calendarId
+                    });
+                }
                 // Set synced events to null for each jobs under the company
                 let jobsAndEvents = await this.databaseService.job.findMany({
                     where: {
@@ -171,7 +173,8 @@ export class GoogleService {
                 where: { id: user.id },
                 data: {
                     googleAccessToken: null,
-                    googleRefreshToken: null
+                    googleRefreshToken: null,
+                    calendarId: null,
                 }
             });
             return ResponseMessages.SUCCESSFUL;
