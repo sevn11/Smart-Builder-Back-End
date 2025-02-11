@@ -116,7 +116,7 @@ export class GoogleService {
             if(userCompany && user.googleAccessToken && user.calendarId) {
                 // Remove calendar from google calendar
                 this.setCredentials(user.googleAccessToken);
-                if(this.checkCalendarExist(user)) {
+                if(await this.checkCalendarExist(user)) {
                     await this.calendar.calendars.delete({
                         calendarId: user.calendarId
                     });
