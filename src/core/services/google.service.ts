@@ -110,6 +110,63 @@ export class GoogleService {
 
     async disconnectAuthenticatedUser(user: User) {
         try {
+            let userCompany = await this.databaseService.company.findFirst({
+                where: { id: user.companyId }
+            });
+            if(userCompany && user.googleAccessToken && user.calendarId) {
+                // Remove calendar from google calendar
+                this.setCredentials(user.googleAccessToken);
+                await this.calendar.calendars.delete({
+                    calendarId: user.calendarId
+                });
+                // Set synced events to null for each jobs under the company
+                let jobsAndEvents = await this.databaseService.job.findMany({
+                    where: {
+                        isDeleted: false,
+                        companyId: user.companyId
+                    },
+                    include: {
+                        JobSchedule: true
+                    }
+                });
+                if (jobsAndEvents.length > 0) {
+                    const jobsToUpdate = [];
+                    const schedulesToUpdate = [];
+                
+                    jobsAndEvents.forEach(job => {
+                        if (job.eventId) {
+                            jobsToUpdate.push({
+                                id: job.id,
+                                data: { eventId: null }
+                            });
+                        }
+                
+                        job.JobSchedule.forEach(schedule => {
+                            if (schedule.eventId) {
+                                schedulesToUpdate.push({
+                                    id: schedule.id,
+                                    data: { eventId: null }
+                                });
+                            }
+                        });
+                    });
+                
+                    if (jobsToUpdate.length > 0) {
+                        await this.databaseService.job.updateMany({
+                            where: { id: { in: jobsToUpdate.map(job => job.id) } },
+                            data: jobsToUpdate.map(job => job.data)
+                        });
+                    }
+                
+                    if (schedulesToUpdate.length > 0) {
+                        await this.databaseService.jobSchedule.updateMany({
+                            where: { id: { in: schedulesToUpdate.map(schedule => schedule.id) } },
+                            data: schedulesToUpdate.map(schedule => schedule.data)
+                        });
+                    }
+                }
+            }
+            // Remove auth token from user table
             await this.databaseService.user.update({
                 where: { id: user.id },
                 data: {
