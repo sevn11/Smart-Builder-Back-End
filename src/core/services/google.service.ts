@@ -355,7 +355,7 @@ export class GoogleService {
             }
 
             let requestBody: RequestBody = {
-                summary: `${schedule.contractor.phase.name} - ${schedule.contractor.name} (${schedule.job.customer.name})`,
+                summary: `${schedule.contractor.phase.name} (${schedule.job.customer.name})`,
                 description: schedule.job.description.name ?? "",
                 start: {
                     'date': formattedStartDate,
