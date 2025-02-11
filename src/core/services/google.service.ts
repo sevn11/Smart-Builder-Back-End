@@ -110,17 +110,66 @@ export class GoogleService {
 
     async disconnectAuthenticatedUser(user: User) {
         try {
+            let userCompany = await this.databaseService.company.findFirst({
+                where: { id: user.companyId }
+            });
+            if(userCompany && user.googleAccessToken && user.calendarId) {
+                // Remove calendar from google calendar
+                this.setCredentials(user.googleAccessToken);
+                if(await this.checkCalendarExist(user)) {
+                    await this.calendar.calendars.delete({
+                        calendarId: user.calendarId
+                    });
+                }
+                // Set synced events to null for each jobs under the company
+                let jobsAndEvents = await this.databaseService.job.findMany({
+                    where: {
+                        isDeleted: false,
+                        companyId: user.companyId
+                    },
+                    include: {
+                        JobSchedule: true
+                    }
+                });
+                if (jobsAndEvents.length > 0) {
+                    for(let job of jobsAndEvents) {
+                        if (job.eventId) {
+                            await this.databaseService.job.update({
+                                where: { id: job.id },
+                                data: { eventId: null }
+                            });
+                        }
+
+                        if(job.JobSchedule.length > 0) {
+                            for(let schedule of job.JobSchedule) {
+                                if (schedule.eventId) {
+                                    await this.databaseService.jobSchedule.update({
+                                        where: { id: schedule.id },
+                                        data: { eventId: null }
+                                    });
+                                }
+                            };
+                        }
+                    };
+                
+                }
+            }
+            // Remove auth token from user table
             await this.databaseService.user.update({
                 where: { id: user.id },
                 data: {
                     googleAccessToken: null,
-                    googleRefreshToken: null
+                    googleRefreshToken: null,
+                    calendarId: null,
                 }
             });
             return ResponseMessages.SUCCESSFUL;
         } catch (error) {
             console.log(error)
-            throw new InternalServerErrorException();
+            throw new InternalServerErrorException({
+                error: "An unexpected error occured.",
+                errorDetails: error
+            })
         }
     }
 
