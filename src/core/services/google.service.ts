@@ -180,7 +180,10 @@ export class GoogleService {
             return ResponseMessages.SUCCESSFUL;
         } catch (error) {
             console.log(error)
-            throw new InternalServerErrorException();
+            throw new InternalServerErrorException({
+                error: "An unexpected error occured.",
+                errorDetails: error
+            })
         }
     }
 
