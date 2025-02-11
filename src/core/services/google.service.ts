@@ -132,40 +132,26 @@ export class GoogleService {
                     }
                 });
                 if (jobsAndEvents.length > 0) {
-                    const jobsToUpdate = [];
-                    const schedulesToUpdate = [];
-                
-                    jobsAndEvents.forEach(job => {
+                    for(let job of jobsAndEvents) {
                         if (job.eventId) {
-                            jobsToUpdate.push({
-                                id: job.id,
+                            await this.databaseService.job.update({
+                                where: { id: job.id },
                                 data: { eventId: null }
                             });
                         }
+
+                        if(job.JobSchedule.length > 0) {
+                            for(let schedule of job.JobSchedule) {
+                                if (schedule.eventId) {
+                                    await this.databaseService.jobSchedule.update({
+                                        where: { id: schedule.id },
+                                        data: { eventId: null }
+                                    });
+                                }
+                            };
+                        }
+                    };
                 
-                        job.JobSchedule.forEach(schedule => {
-                            if (schedule.eventId) {
-                                schedulesToUpdate.push({
-                                    id: schedule.id,
-                                    data: { eventId: null }
-                                });
-                            }
-                        });
-                    });
-                
-                    if (jobsToUpdate.length > 0) {
-                        await this.databaseService.job.updateMany({
-                            where: { id: { in: jobsToUpdate.map(job => job.id) } },
-                            data: jobsToUpdate.map(job => job.data)
-                        });
-                    }
-                
-                    if (schedulesToUpdate.length > 0) {
-                        await this.databaseService.jobSchedule.updateMany({
-                            where: { id: { in: schedulesToUpdate.map(schedule => schedule.id) } },
-                            data: schedulesToUpdate.map(schedule => schedule.data)
-                        });
-                    }
                 }
             }
             // Remove auth token from user table
