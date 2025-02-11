@@ -108,7 +108,8 @@ export class GanttService {
                     isScheduledOnWeekend: schedule.isScheduledOnWeekend,
                     contractorId: schedule.contractorId,
                     parent: job.id,
-                    duration: schedule.duration
+                    duration: schedule.duration,
+                    iscritical: schedule.isCritical
                 }
             })
         )
@@ -242,6 +243,74 @@ export class GanttService {
             } else {
                 throw new ForbiddenException("Action Not Allowed");
             }
+        } catch (error) {
+            console.log(error);
+            // Database Exceptions
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code == PrismaErrorCodes.UNIQUE_CONSTRAINT_ERROR)
+                    throw new BadRequestException(ResponseMessages.UNIQUE_EMAIL_ERROR);
+                else {
+                    console.log(error.code);
+                }
+            } else if (error instanceof ForbiddenException) {
+                throw error;
+            } else {
+                throw new InternalServerErrorException();
+            }
+        }
+    }
+
+    async getGlobalCalendarData(user: User, companyId: number) {
+        try {
+            // Check if User is Admin or Builder of the Company
+            if (user.userType === UserTypes.ADMIN || user.userType === UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) {
+                if (user.userType === UserTypes.BUILDER && user.companyId !== companyId) {
+                    throw new ForbiddenException("Action Not Allowed");
+                }
+
+                let company = await this.databaseService.company.findUnique({
+                    where: { id: companyId, isDeleted: false, }
+                });
+
+                if (!company) {
+                    throw new ForbiddenException("Action Not Allowed")
+                }
+
+                let jobs = await this.databaseService.job.findMany({
+                    where: { companyId, isDeleted: false, isClosed: false, },
+                    omit: { isDeleted: true },
+                    include: {
+                        JobSchedule: {
+                            where: { isDeleted: false },
+                            include: {
+                                contractor: { include: { phase: true } }
+                            },
+                            orderBy: { startDate: 'asc' }
+                        },
+                        customer: {
+                            omit: { isDeleted: true },
+                        },
+                        description: {
+                            select: { id: true, name: true }
+                        }
+                    }
+                });
+
+                const openJobs = await Promise.all(
+                    jobs.map(async (job) => { return await this.prepareTasks(job); })
+                )
+                const allEvents = openJobs.flat();
+                const openLinks = await Promise.all(
+                    jobs.map(async (job) => { return await this.prepareLinks(job) })
+                );
+
+                const allLinks = openLinks.flat();
+                return { openJobs: allEvents, links: allLinks };
+
+            } else {
+                throw new ForbiddenException("Action Not Allowed");
+            }
+
         } catch (error) {
             console.log(error);
             // Database Exceptions
