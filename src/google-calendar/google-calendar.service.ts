@@ -231,42 +231,42 @@ export class GoogleCalendarService {
                     }
                 });
 
-                const synced = [];
-                const skipped = [];
+                const syncedJobs = [];
+                const skippedJobs = [];
                 
                 if(company.jobs.length > 0 ) {
                     for (let job of company.jobs) {
-                        if(job.startDate && job.endDate) {
-                            let response = await this.googleService.syncToCalendar(user.id, job);
-                            if(response.status) {
-                                let jobSchedules = await this.databaseService.jobSchedule.findMany({
-                                    where: {
-                                        companyId,
-                                        jobId: job.id,
-                                        isDeleted: false,
-                                    },
+                        let jobSchedules = await this.databaseService.jobSchedule.findMany({
+                            where: {
+                                companyId,
+                                jobId: job.id,
+                                isDeleted: false,
+                            },
+                            include: {
+                                contractor: {
                                     include: {
-                                        contractor: {
-                                            include: {
-                                                phase: true
+                                        phase: true
+                                    }
+                                },
+                                job: {
+                                    include: {
+                                        customer: {
+                                            select: {
+                                                name: true
                                             }
                                         },
-                                        job: {
-                                            include: {
-                                                customer: {
-                                                    select: {
-                                                        name: true
-                                                    }
-                                                },
-                                                description: {
-                                                    select: {
-                                                        name: true
-                                                    }
-                                                }
+                                        description: {
+                                            select: {
+                                                name: true
                                             }
                                         }
                                     }
-                                });
+                                }
+                            }
+                        });
+                        if(job.startDate && job.endDate) {
+                            let response = await this.googleService.syncToCalendar(user.id, job);
+                            if(response.status) {
                                 if(jobSchedules.length > 0) {
                                     for(const jobSchedule of jobSchedules) {
                                         let response = await this.googleService.syncJobSchedule(user.id,  jobSchedule);
@@ -278,40 +278,13 @@ export class GoogleCalendarService {
                                         }
                                     }
                                 }
-                                synced.push(job);
+                                syncedJobs.push(job);
                             } else {
-                                skipped.push(job);
+                                skippedJobs.push(job);
                             }
                         }
                         else {
-                            let jobSchedules = await this.databaseService.jobSchedule.findMany({
-                                where: {
-                                    companyId,
-                                    jobId: job.id,
-                                    isDeleted: false,
-                                },
-                                include: {
-                                    contractor: {
-                                        include: {
-                                            phase: true
-                                        }
-                                    },
-                                    job: {
-                                        include: {
-                                            customer: {
-                                                select: {
-                                                    name: true
-                                                }
-                                            },
-                                            description: {
-                                                select: {
-                                                    name: true
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            });
+
                             let notSynced = 0;
                             let synced = 0;
                             if(jobSchedules.length > 0) {
@@ -328,12 +301,12 @@ export class GoogleCalendarService {
                                     }
                                 }
                             }
-                            if(synced == jobSchedules.length) {
-                                return { status: true, message: "Syncing success"}
-                            } else if(synced == 0) {
-                                return { status: false, message: "Syncing failed"}
+                            if (synced == jobSchedules.length) {
+                                syncedJobs.push(job);
+                            } else if (synced > 0) {
+                                skippedJobs.push(job);
                             } else {
-                                return { status: true, message: "Some events are synced"}
+                                skippedJobs.push(job);
                             }
                         }
                     }
@@ -341,11 +314,11 @@ export class GoogleCalendarService {
                     return { status: false, message: "No projects found"};
                 }
 
-                if(synced.length == 0) {
-                    return { status: false, message: "Projects not inserted to google calendar"};
+                if(syncedJobs.length > 0) {
+                    return { status: true, message: "Syncing success"};
                 }
                 else {
-                    return { status: true, message: "Projects synced with google calendar"};
+                    return { status: false, message: "Syncing failed"};
                 }
                 
             } else {
