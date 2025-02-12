@@ -322,19 +322,7 @@ export class GoogleService {
                     where: { id: user.id },
                 });
             }
-            // Check already sycned or not
-            if(eventId || schedule.eventId) {
-                // Check authentication status
-                await this.checkAuthStatus(user);
-                let updatedUser = await this.databaseService.user.findFirst({
-                    where:{ id: user.id }
-                });
-                this.setCredentials(updatedUser.googleAccessToken);
-                let event = await this.getEventFromGoogleCalendar(updatedUser, schedule);
-                if(!event) {
-                    return { status: false };
-                }
-            }
+
 
             this.setCredentials(user.googleAccessToken);
 
@@ -368,11 +356,23 @@ export class GoogleService {
             // Insert or Update schedule to google calendar
             let res = null;
             if(schedule.eventId) {
-                res = await this.calendar.events.update({
-                    calendarId: user.calendarId,
-                    eventId: schedule.eventId,
-                    requestBody
-                });    
+                let updatedUser = await this.databaseService.user.findFirst({
+                    where:{ id: user.id }
+                });
+                let event = await this.getEventFromGoogleCalendar(updatedUser, schedule);
+                if(event) {
+                    res = await this.calendar.events.update({
+                        calendarId: user.calendarId,
+                        eventId: schedule.eventId,
+                        requestBody
+                    });    
+                }
+                else {
+                    res = await this.calendar.events.insert({
+                        calendarId: user.calendarId,
+                        requestBody
+                    });
+                }
             } 
             else {
                 res = await this.calendar.events.insert({
