@@ -19,7 +19,7 @@ export class GoogleCalendarService {
     async checkAuthStatus(user: User, companyId: number) {
         try {
             // Check if User is Admin of the Company.
-            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) {
                 if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
@@ -62,8 +62,8 @@ export class GoogleCalendarService {
     async syncJobToGoogle(user: User, companyId: number, jobId: number) {
         try {
             // Check if User is Admin of the Company.
-            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
-                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) {
+                if ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
 
@@ -78,38 +78,37 @@ export class GoogleCalendarService {
                         }
                     }
                 });
-                if(job.startDate && job.endDate) {
-                    let response = await this.googleService.syncToCalendar(user.id, job);
-                    if(response.status) {
-                        let jobSchedules = await this.databaseService.jobSchedule.findMany({
-                            where: {
-                                companyId,
-                                jobId,
-                                isDeleted: false
-                            },
+                let jobSchedules = await this.databaseService.jobSchedule.findMany({
+                    where: {
+                        companyId,
+                        jobId,
+                        isDeleted: false
+                    },
+                    include: {
+                        contractor: {
                             include: {
-                                contractor: {
-                                    include: {
-                                        phase: true
+                                phase: true
+                            }
+                        },
+                        job: {
+                            include: {
+                                customer: {
+                                    select: {
+                                        name: true
                                     }
                                 },
-                                job: {
-                                    include: {
-                                        customer: {
-                                            select: {
-                                                name: true
-                                            }
-                                        },
-                                        description: {
-                                            select: {
-                                                name: true
-                                            }
-                                        }
+                                description: {
+                                    select: {
+                                        name: true
                                     }
                                 }
                             }
-                        });
-
+                        }
+                    }
+                });
+                if(job.startDate && job.endDate) {
+                    let response = await this.googleService.syncToCalendar(user.id, job);
+                    if(response.status) {
                         if(jobSchedules.length > 0) {
                             for(const jobSchedule of jobSchedules) {
                                 let response = await this.googleService.syncJobSchedule(user.id,  jobSchedule);
@@ -126,34 +125,6 @@ export class GoogleCalendarService {
                         throw new InternalServerErrorException(); 
                     }
                 } else {
-                    let jobSchedules = await this.databaseService.jobSchedule.findMany({
-                        where: {
-                            companyId,
-                            jobId,
-                            isDeleted: false
-                        },
-                        include: {
-                            contractor: {
-                                include: {
-                                    phase: true
-                                }
-                            },
-                            job: {
-                                include: {
-                                    customer: {
-                                        select: {
-                                            name: true
-                                        }
-                                    },
-                                    description: {
-                                        select: {
-                                            name: true
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    });
                     let notSynced = 0;
                     let synced = 0;
                     if(jobSchedules.length > 0) {
@@ -204,7 +175,7 @@ export class GoogleCalendarService {
     async syncAllJobsToGoogle(user: User, companyId: number) {
         try {
             // Check if User is Admin of the Company.
-            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) {
                 if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
