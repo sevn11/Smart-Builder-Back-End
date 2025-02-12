@@ -18,7 +18,7 @@ export class JobScheduleService {
         jobId: number,
         body: JobScheduleDTO) {
         try {
-            if (user.userType == UserTypes.ADMIN || (user.userType == UserTypes.BUILDER && user.companyId === companyId)) {
+            if (user.userType == UserTypes.ADMIN || ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId === companyId)) {
                 await this.databaseService.company.findFirstOrThrow({
                     where: {
                         id: companyId,
@@ -63,7 +63,7 @@ export class JobScheduleService {
         body: JobScheduleDTO
     ) {
         try {
-            if (user.userType == UserTypes.ADMIN || (user.userType == UserTypes.BUILDER && user.companyId === companyId)) {
+            if (user.userType == UserTypes.ADMIN || ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId === companyId)) {
                 await this.databaseService.company.findFirstOrThrow({
                     where: {
                         id: companyId,
@@ -118,7 +118,7 @@ export class JobScheduleService {
         jobId: number,
         body: BulkUpdateJobScheduleDTO[]) {
         try {
-            if (user.userType == UserTypes.ADMIN || (user.userType == UserTypes.BUILDER && user.companyId === companyId)) {
+            if (user.userType == UserTypes.ADMIN || ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId === companyId)) {
                 await this.databaseService.company.findFirstOrThrow({
                     where: {
                         id: companyId,
@@ -166,7 +166,7 @@ export class JobScheduleService {
         scheduleId: number
     ) {
         try {
-            if (user.userType == UserTypes.ADMIN || (user.userType == UserTypes.BUILDER && user.companyId === companyId)) {
+            if (user.userType == UserTypes.ADMIN || ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId === companyId)) {
                 await this.databaseService.company.findFirstOrThrow({
                     where: {
                         id: companyId,
@@ -247,7 +247,7 @@ export class JobScheduleService {
 
     async createGanttTask(user: User, jobId: number, companyId: number, body: any) {
         try {
-            if (user.userType == UserTypes.ADMIN || (user.userType == UserTypes.BUILDER && user.companyId === companyId)) {
+            if (user.userType == UserTypes.ADMIN || ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId === companyId)) {
                 await this.databaseService.company.findFirstOrThrow({
                     where: {
                         id: companyId,
@@ -286,7 +286,7 @@ export class JobScheduleService {
 
     async updateGanttTask(user: User, jobId: number, companyId: number, id: number, body: any) {
         try {
-            if (user.userType == UserTypes.ADMIN || (user.userType == UserTypes.BUILDER && user.companyId === companyId)) {
+            if (user.userType == UserTypes.ADMIN || ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId === companyId)) {
                 await this.databaseService.company.findFirstOrThrow({
                     where: { id: companyId, isDeleted: false }
                 });

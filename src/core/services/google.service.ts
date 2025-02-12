@@ -44,8 +44,8 @@ export class GoogleService {
     async handleGoogleAuthentication(user: User, companyId: number, body: any) {
         try {
             // Check if User is Admin of the Company.
-            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
-                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId || !user) {
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) {
+                if ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId !== companyId || !user) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
 
