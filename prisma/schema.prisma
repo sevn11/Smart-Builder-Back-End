@@ -46,6 +46,7 @@ model User {
 
   PaymentLog      PaymentLog[]
   EmployeeDetails EmployeeDetails?
+  GoogleEventId   GoogleEventId[]
   
   @@map("users")
 }
@@ -107,6 +108,7 @@ model Company {
   ClientTemplate         ClientTemplate[]
   clientQuestionAnswer   ClientQuestionAnswer[]
   JobScheduleLink        JobScheduleLink[]
+  GoogleEventId          GoogleEventId[]
   @@map("companies")
 }
 
@@ -237,6 +239,8 @@ model Job {
   ClientQuestionAnswer   ClientQuestionAnswer[]
 
   jobScheduleLinks     JobScheduleLink[] @relation
+
+  GoogleEventId        GoogleEventId[]
   @@map("jobs")
 }
 
@@ -414,7 +418,7 @@ model JobSchedule {
   isCritical        Boolean?           @default(false) @map("is_critical")
   sourceLinks    JobScheduleLink[] @relation("SourceRelation")
   targetLinks    JobScheduleLink[] @relation("TargetRelation")
-
+  googleEventId     GoogleEventId[]
   @@map("job_schedules")
 }
 
@@ -780,4 +784,28 @@ model JobScheduleLink {
   updatedAt         DateTime     @updatedAt
 
   @@map("job_schedule_link")
+}
+
+model GoogleEventId {
+  id        Int @id   @default(autoincrement())
+  eventId   String?   @map("event_id")
+
+  companyId Int     @map("company_id")
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  jobId     Int?    @map("job_id")
+  job       Job?    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  jobScheduleId Int? @map("job_schedule_id")
+  jobSchedule JobSchedule? @relation(fields: [jobScheduleId], references: [id], onDelete: Cascade)
+  
+  userId    Int     @map("user_id")
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  isDeleted Boolean?  @default(false) @map("is_deleted")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("google_event_id")
 }

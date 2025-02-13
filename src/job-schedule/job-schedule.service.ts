@@ -188,14 +188,35 @@ export class JobScheduleService {
                     }
                 });
 
+                const syncExist = await this.databaseService.googleEventId.findFirst({
+                    where: {
+                        userId: user.id,
+                        companyId: companyId,
+                        jobId: jobId,
+                        jobScheduleId: schedule.id,
+                        isDeleted: false,
+                    },
+                    orderBy: { id: 'desc' },
+                    take: 1,
+                });
                 // Delete the job schedule from google calendar also
-                if (schedule.eventId) {
-                    let event = await this.googleService.getEventFromGoogleCalendar(user, schedule);
+                if (syncExist && syncExist?.eventId) {
+                    let event = await this.googleService.getEventFromGoogleCalendar(user, syncExist);
                     if (event) {
-                        await this.googleService.deleteCalendarEvent(user, schedule.eventId)
+                        await this.googleService.deleteCalendarEvent(user, syncExist.eventId);
+                        await this.databaseService.googleEventId.update({
+                            where: { id: syncExist.id },
+                            data: { isDeleted: true }
+                        })
                     }
                 }
 
+                const job = await this.databaseService.job.findUnique({
+                    where: { id: jobId }
+                });
+
+                // Delete Other user's schedule.
+                await this.googleService.removeScheduleFromOthers(user.id, companyId, schedule, job);
                 return { message: ResponseMessages.SUCCESSFUL }
             }
         } catch (error) {
@@ -236,13 +257,27 @@ export class JobScheduleService {
             }
         });
 
+        let syncExist = await this.databaseService.googleEventId.findFirst({
+            where: {
+                companyId: user.companyId,
+                userId: user.id,
+                jobId: schedule.job.id,
+                jobScheduleId: schedule.id,
+                isDeleted: false,
+            },
+            orderBy: { id: 'desc' },
+            take: 1
+        });
+
         // reflect the change in google calendar (if already synced)
-        if (schedule.eventId) {
-            let event = await this.googleService.getEventFromGoogleCalendar(user, schedule);
+        if (syncExist.eventId) {
+            let event = await this.googleService.getEventFromGoogleCalendar(user, syncExist);
             if (event) {
-                await this.googleService.syncJobSchedule(user.id, schedule, schedule.eventId);
+                await this.googleService.syncJobSchedule(user.id, schedule, syncExist.eventId, syncExist);
             }
         }
+
+        await this.googleService.upsertJobScheduleEventIdForOthers(user.id, user.companyId, schedule, schedule.job)
     }
 
     async createGanttTask(user: User, jobId: number, companyId: number, body: any) {
@@ -353,10 +388,18 @@ export class JobScheduleService {
         const response = await this.googleService.syncJobSchedule(user.id, schedule);
 
         if (response.status && response.eventId) {
-            await this.databaseService.jobSchedule.update({
-                where: { id: schedule.id },
-                data: { eventId: response.eventId }
+            await this.databaseService.googleEventId.create({
+                data: {
+                    userId: user.id,
+                    companyId: user.companyId,
+                    jobId: schedule.job.id,
+                    jobScheduleId: schedule.id,
+                    eventId: response.eventId
+                }
             })
         }
+
+        // Upsert for other users.
+        await this.googleService.upsertJobScheduleEventIdForOthers(user.id, user.companyId, schedule, schedule.job)
     }
 }

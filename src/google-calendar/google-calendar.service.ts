@@ -37,7 +37,7 @@ export class GoogleCalendarService {
                     }
                     return { isAuthentcaited: false }
                 }
-                
+
             } else {
                 throw new ForbiddenException("Action Not Allowed");
             }
@@ -106,51 +106,113 @@ export class GoogleCalendarService {
                         }
                     }
                 });
-                if(job.startDate && job.endDate) {
-                    let response = await this.googleService.syncToCalendar(user.id, job);
-                    if(response.status) {
-                        if(jobSchedules.length > 0) {
-                            for(const jobSchedule of jobSchedules) {
-                                let response = await this.googleService.syncJobSchedule(user.id,  jobSchedule);
-                                if(response.status && response.eventId) {
-                                    await this.databaseService.jobSchedule.update({
-                                        where: { id: jobSchedule.id },
-                                        data: { eventId: response.eventId }
-                                    })
+                const jobSyncExist = await this.databaseService.googleEventId.findFirst({
+                    where: {
+                        userId: user.id,
+                        jobId: job.id,
+                        companyId: user.companyId,
+                        isDeleted: false,
+                        jobScheduleId: null
+                    },
+                    orderBy: { id: 'desc' },
+                    take: 1
+                });
+
+                if (job.startDate && job.endDate) {
+                    let response = await this.googleService.syncToCalendar(user.id, job, jobSyncExist?.eventId);
+                    if (response.status) {
+                        //await this.googleService.upsertJobEventIdForOthers(job, companyId, user);
+                        if (jobSchedules.length > 0) {
+                            for (const jobSchedule of jobSchedules) {
+                                const syncExist = await this.databaseService.googleEventId.findFirst({
+                                    where: {
+                                        companyId: companyId,
+                                        userId: user.id,
+                                        jobId: jobId,
+                                        jobScheduleId: jobSchedule.id,
+                                        isDeleted: false,
+                                    },
+                                    orderBy: { id: 'desc' },
+                                    take: 1
+                                });
+
+                                let response = await this.googleService.syncJobSchedule(user.id, jobSchedule, syncExist?.eventId, syncExist);
+                                if (response.status && response.eventId) {
+
+                                    if (syncExist) {
+                                        await this.databaseService.googleEventId.update({
+                                            where: { id: syncExist.id, isDeleted: false },
+                                            data: { eventId: response.eventId }
+                                        })
+                                    } else {
+                                        await this.databaseService.googleEventId.create({
+                                            data: {
+                                                eventId: response.eventId,
+                                                userId: user.id,
+                                                jobId: job.id,
+                                                jobScheduleId: jobSchedule.id,
+                                                companyId: user.companyId
+                                            }
+                                        })
+                                    }
                                 }
+                                await this.googleService.upsertJobScheduleEventIdForOthers(user.id, companyId, jobSchedule, job)
                             }
                         }
                         return { status: response.status, message: response.message }
                     } else {
-                        throw new InternalServerErrorException(); 
+                        throw new InternalServerErrorException();
                     }
                 } else {
                     let notSynced = 0;
                     let synced = 0;
                     if(jobSchedules.length > 0) {
                         for(const jobSchedule of jobSchedules) {
-                            let response = await this.googleService.syncJobSchedule(user.id,  jobSchedule);
-                            if(response.status && response.eventId) {
+                            const syncExist = await this.databaseService.googleEventId.findFirst({
+                                where: {
+                                    companyId: companyId,
+                                    userId: user.id,
+                                    jobId: job.id,
+                                    jobScheduleId: jobSchedule.id,
+                                    isDeleted: false,
+                                },
+                                orderBy: { id: 'desc' },
+                                take: 1
+                            });
+
+                            let response = await this.googleService.syncJobSchedule(user.id, jobSchedule, syncExist?.eventId, syncExist);
+                            if (response.status && response.eventId) {
                                 synced += 1;
-                                await this.databaseService.jobSchedule.update({
-                                    where: { id: jobSchedule.id },
-                                    data: { eventId: response.eventId }
-                                })
+                                if (!syncExist) {
+                                    await this.databaseService.googleEventId.create({
+                                        data: {
+                                            eventId: response.eventId,
+                                            userId: user.id,
+                                            jobId: job.id,
+                                            jobScheduleId: jobSchedule.id,
+                                            companyId: user.companyId
+                                        }
+                                    });
+                                } else {
+                                    await this.databaseService.googleEventId.update({
+                                        where: { id: syncExist.id, isDeleted: false },
+                                        data: { eventId: response.eventId }
+                                    })
+                                }
                             } else {
                                 notSynced += 1;
                             }
+                            await this.googleService.upsertJobScheduleEventIdForOthers(user.id, companyId, jobSchedule, job)
                         }
                     }
-                    if(synced == jobSchedules.length) {
-                        return { status: true, message: "Syncing success"}
-                    } else if(synced == 0) {
-                        return { status: false, message: "Syncing failed"}
+                    if (synced == jobSchedules.length) {
+                        return { status: true, message: "Syncing success" }
+                    } else if (synced == 0) {
+                        return { status: false, message: "Syncing failed" }
                     } else {
-                        return { status: true, message: "Some events are synced"}
+                        return { status: true, message: "Some events are synced" }
                     }
                 }
-
-                
             } else {
                 throw new ForbiddenException("Action Not Allowed");
             }
@@ -204,8 +266,8 @@ export class GoogleCalendarService {
 
                 const syncedJobs = [];
                 const skippedJobs = [];
-                
-                if(company.jobs.length > 0 ) {
+
+                if(company.jobs.length > 0) {
                     for (let job of company.jobs) {
                         let jobSchedules = await this.databaseService.jobSchedule.findMany({
                             where: {
@@ -235,18 +297,54 @@ export class GoogleCalendarService {
                                 }
                             }
                         });
-                        if(job.startDate && job.endDate) {
-                            let response = await this.googleService.syncToCalendar(user.id, job);
-                            if(response.status) {
-                                if(jobSchedules.length > 0) {
-                                    for(const jobSchedule of jobSchedules) {
-                                        let response = await this.googleService.syncJobSchedule(user.id,  jobSchedule);
-                                        if(response.status && response.eventId) {
-                                            await this.databaseService.jobSchedule.update({
-                                                where: { id: jobSchedule.id },
-                                                data: { eventId: response.eventId }
-                                            })
+
+                        const jobSyncExist = await this.databaseService.googleEventId.findFirst({
+                            where: {
+                                userId: user.id,
+                                jobId: job.id,
+                                companyId: user.companyId,
+                                jobScheduleId: null
+                            },
+                            orderBy: { id: 'desc' },
+                            take: 1
+                        })
+
+                        if (job.startDate && job.endDate) {
+                            let response = await this.googleService.syncToCalendar(user.id, job, jobSyncExist?.eventId);
+                            if (response.status) {
+                                if (jobSchedules.length > 0) {
+                                    for (const jobSchedule of jobSchedules) {
+                                        const syncExist = await this.databaseService.googleEventId.findFirst({
+                                            where: {
+                                                companyId: companyId,
+                                                userId: user.id,
+                                                jobId: job.id,
+                                                jobScheduleId: jobSchedule.id,
+                                                isDeleted: false,
+                                            },
+                                            orderBy: { id: 'desc' },
+                                            take: 1
+                                        });
+                                        let response = await this.googleService.syncJobSchedule(user.id, jobSchedule, syncExist?.eventId, syncExist);
+                                        if (response.status && response.eventId) {
+                                            if (syncExist) {
+                                                await this.databaseService.googleEventId.update({
+                                                    where: { id: syncExist.id, isDeleted: false },
+                                                    data: { eventId: response.eventId }
+                                                })
+                                            } else {
+                                                await this.databaseService.googleEventId.create({
+                                                    data: {
+                                                        eventId: response.eventId,
+                                                        userId: user.id,
+                                                        jobId: job.id,
+                                                        jobScheduleId: jobSchedule.id,
+                                                        companyId: user.companyId
+                                                    }
+                                                })
+                                            }
                                         }
+                                        await this.googleService.upsertJobScheduleEventIdForOthers(user.id, companyId, jobSchedule, job)
                                     }
                                 }
                                 syncedJobs.push(job);
@@ -258,18 +356,43 @@ export class GoogleCalendarService {
 
                             let notSynced = 0;
                             let synced = 0;
-                            if(jobSchedules.length > 0) {
-                                for(const jobSchedule of jobSchedules) {
-                                    let response = await this.googleService.syncJobSchedule(user.id,  jobSchedule);
-                                    if(response.status && response.eventId) {
+                            if (jobSchedules.length > 0) {
+                                for (const jobSchedule of jobSchedules) {
+                                    const syncExist = await this.databaseService.googleEventId.findFirst({
+                                        where: {
+                                            companyId: companyId,
+                                            userId: user.id,
+                                            jobId: job.id,
+                                            jobScheduleId: jobSchedule.id,
+                                            isDeleted: false,
+                                        },
+                                        orderBy: { id: 'desc' },
+                                        take: 1,
+                                    });
+
+                                    let response = await this.googleService.syncJobSchedule(user.id, jobSchedule, syncExist?.eventId, syncExist);
+                                    if (response.status && response.eventId) {
                                         synced += 1;
-                                        await this.databaseService.jobSchedule.update({
-                                            where: { id: jobSchedule.id },
-                                            data: { eventId: response.eventId }
-                                        })
+                                        if (!syncExist) {
+                                            await this.databaseService.googleEventId.create({
+                                                data: {
+                                                    eventId: response.eventId,
+                                                    userId: user.id,
+                                                    jobId: job.id,
+                                                    jobScheduleId: jobSchedule.id,
+                                                    companyId: user.companyId
+                                                }
+                                            });
+                                        } else {
+                                            await this.databaseService.googleEventId.update({
+                                                where: { id: syncExist.id, isDeleted: false, },
+                                                data: { eventId: response.eventId }
+                                            })
+                                        }
                                     } else {
                                         notSynced += 1;
                                     }
+                                    await this.googleService.upsertJobScheduleEventIdForOthers(user.id, companyId, jobSchedule, job)
                                 }
                             }
                             if (synced == jobSchedules.length) {
@@ -282,14 +405,14 @@ export class GoogleCalendarService {
                         }
                     }
                 } else {
-                    return { status: false, message: "No projects found"};
+                    return { status: false, message: "No projects found" };
                 }
 
                 if(syncedJobs.length > 0) {
-                    return { status: true, message: "Syncing success"};
+                    return { status: true, message: "Syncing success" };
                 }
                 else {
-                    return { status: false, message: "Syncing failed"};
+                    return { status: false, message: "Syncing failed" };
                 }
                 
             } else {

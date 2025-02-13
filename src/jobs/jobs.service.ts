@@ -420,12 +420,44 @@ export class JobsService {
                     }
                 });
 
+                // Check Job sync exist.
+                const jobSyncExist = await this.databaseService.googleEventId.findFirst({
+                    where: {
+                        userId: user.id,
+                        companyId: companyId,
+                        jobId: job.id,
+                        jobScheduleId: null,
+                        isDeleted: false,
+                    },
+                    orderBy: { id: 'desc' },
+                    take: 1,
+                })
                 // Delete the job / project from google calendar also
-                if (job.eventId) {
-                    let event = await this.googleService.getEventFromGoogleCalendar(user, job);
+                if (jobSyncExist && jobSyncExist.eventId) {
+                    let event = await this.googleService.getEventFromGoogleCalendar(user, jobSyncExist);
                     if (event) {
-                        await this.googleService.deleteCalendarEvent(user, job.eventId)
+                        await this.googleService.deleteCalendarEvent(user, jobSyncExist.eventId)
+                        await this.databaseService.googleEventId.update({
+                            where: { id: jobSyncExist.id },
+                            data: { isDeleted: true }
+                        })
                     }
+                }
+                await this.googleService.removeJobFromOthers(user.id, companyId, job);
+
+                const schedules = await this.databaseService.jobSchedule.findMany({
+                    where: {
+                        jobId: job.id,
+                        isDeleted: false,
+                    }
+                });
+
+
+
+                if (schedules.length > 0) {
+                    schedules.map(async (schedule) => {
+                        await this.googleService.removeScheduleFromOthers(user.id, companyId, schedule, job);
+                    });
                 }
 
                 await this.databaseService.job.update({
@@ -512,8 +544,28 @@ export class JobsService {
                 const openJobs = await Promise.all(
                     jobs.map(async (item) => {
                         let isSynced = false;
-                        if (item.eventId) {
-                            let event = await this.googleService.getEventFromGoogleCalendar(user, item);
+
+                        const jobSyncExist = await this.databaseService.googleEventId.findFirst({
+                            where: {
+                                companyId: companyId,
+                                userId: user.id,
+                                jobId: item.id,
+                                jobScheduleId: null,
+                                isDeleted: false,
+                            },
+                            orderBy: { id: 'desc' },
+                            take: 1
+                        })
+                        console.log({
+                            companyId: companyId,
+                            userId: user.id,
+                            jobId: item.id,
+                            jobScheduleId: null,
+                            isDeleted: false,
+                        })
+
+                        if (jobSyncExist && jobSyncExist.eventId) {
+                            let event = await this.googleService.getEventFromGoogleCalendar(user, jobSyncExist);
                             if (event) {
                                 isSynced = true;
                             }
@@ -531,8 +583,19 @@ export class JobsService {
 
                         const scheduleEvents = await Promise.all(item.JobSchedule.map(async (schedule) => {
                             let isScheduleSynced = false;
-                            if (schedule.eventId) {
-                                const event = await this.googleService.getEventFromGoogleCalendar(user, schedule);
+                            const scheduleSyncExist = await this.databaseService.googleEventId.findFirst({
+                                where: {
+                                    companyId: user.companyId,
+                                    userId: user.id,
+                                    jobId: item.id,
+                                    jobScheduleId: schedule.id,
+                                    isDeleted: false,
+                                },
+                                orderBy: { id: 'desc' },
+                                take: 1,
+                            })
+                            if (scheduleSyncExist && scheduleSyncExist?.eventId) {
+                                const event = await this.googleService.getEventFromGoogleCalendar(user, scheduleSyncExist);
                                 if (event) {
                                     isScheduleSynced = true;
                                 }
@@ -648,11 +711,25 @@ export class JobsService {
             }
         });
 
+        const syncExist = await this.databaseService.googleEventId.findFirst({
+            where: {
+                userId: user.id,
+                companyId: user.companyId,
+                jobId: jobId,
+                isDeleted: false,
+                jobScheduleId: null
+            },
+            orderBy: { id: 'desc' },
+            take: 1
+        });
+
         // reflect the change in google calendar (if already synced)
-        if (latestJob.eventId) {
-            let event = await this.googleService.getEventFromGoogleCalendar(user, latestJob);
+        if (syncExist && syncExist?.eventId) {
+            let event = await this.googleService.getEventFromGoogleCalendar(user, syncExist);
             if (event) {
-                await this.googleService.syncToCalendar(user.id, latestJob, latestJob.eventId);
+                await this.googleService.syncToCalendar(user.id, latestJob, syncExist.eventId);
+                // Update other users calendar also.
+                await this.googleService.upsertJobEventIdForOthers(latestJob, user.companyId, user);
             }
         }
     }
@@ -714,8 +791,20 @@ export class JobsService {
                 }
 
                 let isSynced = false;
-                if (job.eventId) {
-                    let event = await this.googleService.getEventFromGoogleCalendar(user, job);
+
+                const jobSyncExist = await this.databaseService.googleEventId.findFirst({
+                    where: {
+                        companyId,
+                        userId: user.id,
+                        jobId: jobId,
+                        jobScheduleId: null,
+                        isDeleted: false,
+                    },
+                    orderBy: { id: 'desc' },
+                    take: 1
+                })
+                if (jobSyncExist && jobSyncExist?.eventId) {
+                    let event = await this.googleService.getEventFromGoogleCalendar(user, jobSyncExist);
                     if (event) {
                         isSynced = true;
                     }
@@ -737,8 +826,19 @@ export class JobsService {
                 const schedulesWithSyncStatus = await Promise.all(
                     job.JobSchedule.map(async (schedule, index) => {
                         let isScheduleSynced = false;
-                        if (schedule.eventId) {
-                            let event = await this.googleService.getEventFromGoogleCalendar(user, schedule);
+                        const syncExist = await this.databaseService.googleEventId.findFirst({
+                            where: {
+                                companyId,
+                                userId: user.id,
+                                jobId: jobId,
+                                jobScheduleId: schedule.id,
+                                isDeleted: false,
+                            },
+                            orderBy: { id: 'desc' },
+                            take: 1
+                        });
+                        if (syncExist && syncExist?.eventId) {
+                            let event = await this.googleService.getEventFromGoogleCalendar(user, syncExist);
                             if (event) {
                                 isScheduleSynced = true;
                             }
