@@ -420,6 +420,17 @@ export class JobContractorService {
         let logoBase64 = `data:${mimeType};base64,${base64Image}`;
 
         let htmlContent = `
+            <head>
+                <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
+                <style>
+                    body {
+                        font-family: 'Roboto', sans-serif;
+                    }
+                    h2, h4 {
+                        font-family: 'Roboto', sans-serif;
+                    }
+                </style>
+            </head>
             <div style="display: flex; justify-content: center; align-items: center;">
                 <div style="width: 900px; padding: 20px;">
                     <div style="margin-bottom: 10px;">
