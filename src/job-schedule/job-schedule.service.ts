@@ -270,7 +270,7 @@ export class JobScheduleService {
         });
 
         // reflect the change in google calendar (if already synced)
-        if (syncExist.eventId) {
+        if (syncExist && syncExist.eventId) {
             let event = await this.googleService.getEventFromGoogleCalendar(user, syncExist);
             if (event) {
                 await this.googleService.syncJobSchedule(user.id, schedule, syncExist.eventId, syncExist);

@@ -556,13 +556,6 @@ export class JobsService {
                             orderBy: { id: 'desc' },
                             take: 1
                         })
-                        console.log({
-                            companyId: companyId,
-                            userId: user.id,
-                            jobId: item.id,
-                            jobScheduleId: null,
-                            isDeleted: false,
-                        })
 
                         if (jobSyncExist && jobSyncExist.eventId) {
                             let event = await this.googleService.getEventFromGoogleCalendar(user, jobSyncExist);
