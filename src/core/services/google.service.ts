@@ -372,6 +372,11 @@ export class GoogleService {
                     'date': formattedEndDate
                 }
             }
+            // Only add colorId if it is valid
+            const colorId = colorMaps[schedule.job.calendarColor];
+            if (colorId) {
+                requestBody.colorId = colorId;
+            }
 
             // Insert or Update schedule to google calendar
             let res = null;
