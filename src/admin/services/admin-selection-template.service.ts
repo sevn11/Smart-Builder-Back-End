@@ -659,7 +659,6 @@ export class AdminSelectionTemplateService {
             // Define category and question query clauses
             const categoryWhereClause = {
                 isDeleted: false,
-                isCompanyCategory: true,
                 masterQuestionnaireTemplateId: templateId,
                 [templateType === TemplateType.SELECTION_INITIAL ? 'linkToInitalSelection' : 'linkToPaintSelection']: true,
             };
@@ -720,6 +719,7 @@ export class AdminSelectionTemplateService {
 
             return { template: data, message: ResponseMessages.CATEGORY_ORDER_UPDATED, }
         } catch (error) {
+            console.log(error)
             // Database Exceptions
             if (error instanceof PrismaClientKnownRequestError) {
                 if (error.code == PrismaErrorCodes.NOT_FOUND)
