@@ -431,6 +431,8 @@ model ContractorPhase {
 
   contractors       Contractor[]
   categories        Category[]
+  masterTemplateCategories        MasterTemplateCategory[]
+  masterTemplateQuestion        MasterTemplateQuestion[]
   templateQuestion  TemplateQuestion[]
   clientCategory    ClientCategory[]
   createdAt DateTime @default(now()) @map("created_at")
@@ -808,4 +810,130 @@ model GoogleEventId {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("google_event_id")
+}
+
+model MasterProjectEstimatorTemplate {
+  id                                Int      @id @default(autoincrement())
+  templateName                      String
+  profitCalculationType             ProfitCalculationType?  @default(MARGIN) @map("profilt_calculation_type")
+  masterQuestionnaireTemplates      MasterQuestionnaireTemplate[]  
+  MasterProjectEstimatorTemplateHeader    MasterProjectEstimatorTemplateHeader[]
+
+  isDeleted                         Boolean?                     @default(false) @map("is_deleted")
+  createdAt                         DateTime @default(now()) @map("created_at")
+  updatedAt                         DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("master_project_estimator_template")
+}
+
+model MasterProjectEstimatorTemplateHeader {
+  id                 Int                          @id @default(autoincrement())
+  mpetId             Int                          @map("master_project_estimator_template_id")
+  pet                MasterProjectEstimatorTemplate?    @relation(fields: [mpetId],references: [id], onDelete: Cascade)
+  name               String
+  headerOrder        Int?                         @default(0) @map("header_order")
+
+  MasterProjectEstimatorTemplateData              MasterProjectEstimatorTemplateData[]
+
+  isDeleted          Boolean?                     @default(false) @map("is_deleted")
+  createdAt          DateTime @default(now())     @map("created_at")
+  updatedAt          DateTime @updatedAt          @map("updated_at")
+
+  @@map("master_project_estimator_template_header")
+}
+
+
+model MasterProjectEstimatorTemplateData {
+  id                Int                @id @default(autoincrement())
+  item              String
+  description       String
+  costType          String?            @map("cost_type")
+  quantity          Int
+  unitCost          Decimal            @map("unit_cost") @db.Decimal(10, 2) @default(0.00)
+  actualCost        Decimal            @map("actual_cost") @db.Decimal(10, 2) @default(0.00)
+  grossProfit       Decimal            @map("gross_profit") @db.Decimal(10, 2) @default(0.00)
+  contractPrice     Decimal            @map("contract_price") @db.Decimal(10, 2) @default(0.00)
+  isLotCost         Boolean?           @default(false) @map("is_lot_cost")
+  isCourtesyCredit  Boolean?           @default(false) @map("is_courtesy_credit")
+  order             Int?               @default(0) @map("order")
+  mpetHeaderId       Int?               @map("master_project_estimator_template_header_id")
+
+  petHeader         MasterProjectEstimatorTemplateHeader? @relation(fields: [mpetHeaderId], references: [id], onDelete: Cascade)
+
+  isDeleted         Boolean?           @default(false) @map("is_deleted")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("master_project_estimator_template_data")
+}
+
+model MasterQuestionnaireTemplate {
+  id                Int                @id @default(autoincrement())
+  name              String
+  templateType      String             @default("Questionnaire")
+
+  masterTemplateQuestions              MasterTemplateQuestion[]
+  masterTemplateCategories             MasterTemplateCategory[]
+
+  masterProjectEstimatorTemplateId   Int?      @map("m_pet_id")
+  masterProjectEstimatorTemplate     MasterProjectEstimatorTemplate? @relation(fields: [masterProjectEstimatorTemplateId], references: [id], onDelete: Cascade)
+
+  isDeleted         Boolean            @default(false) @map("is_deleted")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("master_questionnaire_template")
+}
+
+
+model MasterTemplateCategory {
+  id                      Int                    @id @default(autoincrement())
+  name                    String
+  linkToPhase             Boolean                @default(false) @map("link_to_phase")
+  phaseId                 Int?                   @map("phase_id")
+  phase                   ContractorPhase?       @relation(fields: [phaseId], references: [id])
+  linkToInitalSelection   Boolean                @default(false) @map("link_to_initial_selection")
+  linkToPaintSelection    Boolean                @default(false) @map("link_to_paint_selection")
+  linkToQuestionnaire     Boolean                @default(true) @map("link_to_questionnaire")
+  questionnaireOrder      Int                    @map("questionnaire_order")
+  initialOrder            Int                    @default(0) @map("initial_order")
+  paintOrder              Int                    @default(0) @map("paint_order")
+  masterQuestionnaireTemplateId Int?             @map("master_questionnaire_template_id")
+  masterQuestionnaireTemplate   MasterQuestionnaireTemplate? @relation(fields: [masterQuestionnaireTemplateId], references: [id], onDelete: Cascade)
+  masterQuestions               MasterTemplateQuestion[]
+
+  phaseIds                Int[] @default([])
+
+  isDeleted               Boolean                @default(false) @map("is_deleted")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("master_template_categories")
+}
+
+model MasterTemplateQuestion {
+  id                    Int     @id @default(autoincrement())
+  linkToPhase           Boolean @default(false) @map("link_to_phase")
+  linkToInitalSelection Boolean @default(false) @map("link_to_initial_selection")
+  linkToPaintSelection  Boolean @default(false) @map("link_to_paint_selection")
+  linkToQuestionnaire   Boolean @default(true) @map("link_to_questionnaire")
+  question              String
+  questionType          String
+  multipleOptions       Json?
+  masterQuestionnaireTemplateId Int?                   @map("master_questionnaire_template_id")
+  masterQuestionnaireTemplate   MasterQuestionnaireTemplate? @relation(fields: [masterQuestionnaireTemplateId], references: [id], onDelete: Cascade)
+  masterTemplateCategoryId              Int?                   @map("master_t_category_id")
+  masterTemplateCategory                MasterTemplateCategory?              @relation(fields: [masterTemplateCategoryId], references: [id], onDelete: Cascade)
+  phaseId                 Int?                   @map("phase_id")
+  phase                   ContractorPhase?       @relation(fields: [phaseId], references: [id])
+  questionOrder           Int   @default(0) @map("question_order") // order of question in questionnaire template
+  initialQuestionOrder    Int   @default(0) @map("initial_question_order") // order of question in initial template.
+  paintQuestionOrder      Int   @default(0) @map("paint_question_order")  // order of question in paint selection template.
+  phaseIds                Int[] @default([])
+  
+  isDeleted             Boolean @default(false) @map("is_deleted")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("master_template_question")
 }
