@@ -700,6 +700,35 @@ export class JobsService {
                         id: true,
                         name: true
                     }
+                },
+                JobSchedule: {
+                    orderBy: {
+                        startDate: 'asc'
+                    },
+                    where: {
+                        isDeleted: false
+                    },
+                    include: {
+                        contractor: {
+                            include: {
+                                phase: true
+                            }
+                        },
+                        job: {
+                            include: {
+                                customer: {
+                                    select: {
+                                        name: true
+                                    }
+                                },
+                                description: {
+                                    select: {
+                                        name: true
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         });
@@ -724,6 +753,30 @@ export class JobsService {
                 // Update other users calendar also.
                 await this.googleService.upsertJobEventIdForOthers(latestJob, user.companyId, user);
             }
+        }
+
+        if (latestJob.JobSchedule.length == 0) return;
+        for (let schedule of latestJob.JobSchedule) {
+            const syncExists = await this.databaseService.googleEventId.findFirst({
+                where: {
+                    userId: user.id,
+                    companyId: user.companyId,
+                    jobId: jobId,
+                    isDeleted: false,
+                    jobScheduleId: schedule.id
+                },
+                orderBy: { id: 'desc' },
+                take: 1
+            });
+
+            if (syncExists && syncExists?.eventId) {
+                let event = await this.googleService.getEventFromGoogleCalendar(user, syncExists);
+                if (event) {
+                    await this.googleService.syncJobSchedule(user.id, schedule, syncExists.eventId, syncExists);
+                }
+            }
+            // Update other users calendar also.
+            await this.googleService.upsertJobScheduleEventIdForOthers(user.id, user.companyId, schedule, latestJob)
         }
     }
 
