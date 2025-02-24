@@ -400,16 +400,12 @@ export class AuthService {
                     data: {
                         name: mCategory.name,
                         isDeleted: mCategory.isDeleted,
-                        linkToPhase: mCategory.linkToPhase,
                         questionnaireTemplateId: builderTemplateId,
                         phaseId: mCategory.phaseId,
-                        linkToInitalSelection: mCategory.linkToInitalSelection,
-                        linkToPaintSelection: mCategory.linkToPaintSelection,
                         linkToQuestionnaire: mCategory.linkToQuestionnaire,
                         isCompanyCategory: true,
                         companyId: user.company.id, 
                         questionnaireOrder: mCategory.questionnaireOrder,
-                        phaseIds: mCategory.phaseIds, 
                         initialOrder: mCategory.initialOrder,
                         paintOrder: mCategory.paintOrder 
                     }
@@ -434,9 +430,6 @@ export class AuthService {
             await tx.templateQuestion.create({
                 data: {
                     isDeleted: mQuestion.isDeleted,
-                    linkToPhase: mQuestion.linkToPhase,
-                    linkToInitalSelection: mQuestion.linkToInitalSelection,
-                    linkToPaintSelection: mQuestion.linkToPaintSelection,
                     linkToQuestionnaire: mQuestion.linkToQuestionnaire,
                     question: mQuestion.question,
                     questionType: mQuestion.questionType,
@@ -445,7 +438,6 @@ export class AuthService {
                     questionnaireTemplateId: builderTemplateId,
                     categoryId,
                     questionOrder: mQuestion.questionOrder,
-                    phaseIds: mQuestion.phaseIds,
                     initialQuestionOrder: mQuestion.initialQuestionOrder,
                     paintQuestionOrder: mQuestion.paintQuestionOrder,
                 }
