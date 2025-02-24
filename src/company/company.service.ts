@@ -129,6 +129,8 @@ export class CompanyService {
                                 selection: body.PermissionSet.selection,
                                 proposal: body.PermissionSet.proposal,
                                 contractorAndFiles: body.PermissionSet.contractorAndFiles,
+                                settings: body.PermissionSet.settings,
+                                ytdReport: body.PermissionSet.ytdReport,
                                 viewOnly: body.PermissionSet.viewOnly
                             }
                         }
@@ -305,6 +307,8 @@ export class CompanyService {
                                     selection: body.PermissionSet.selection,
                                     proposal: body.PermissionSet.proposal,
                                     contractorAndFiles: body.PermissionSet.contractorAndFiles,
+                                    settings: body.PermissionSet.settings,
+                                    ytdReport: body.PermissionSet.ytdReport,
                                     viewOnly: body.PermissionSet.viewOnly
                                 }
                             },
