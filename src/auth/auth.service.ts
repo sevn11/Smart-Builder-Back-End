@@ -3,12 +3,13 @@ import { JwtService } from '@nestjs/jwt';
 import { DatabaseService } from 'src/database/database.service';
 import { SignUpDTO, SignInDTO, ForgotPasswordDTO, PasswordResetDTO, SetPasswordDTO } from './validators';
 import * as argon from 'argon2';
-import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
+import { DefaultArgs, PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { PrismaErrorCodes, HelperFunctions, ResponseMessages, UserTypes } from 'src/core/utils';
 import { SendgridService } from 'src/core/services';
 import { ConfigService } from '@nestjs/config';
 import { StripeService } from 'src/core/services/stripe.service';
 import { BuilderPlanTypes } from 'src/core/utils/builder-plan-types';
+import { Prisma, PrismaClient, User } from '@prisma/client';
 
 
 @Injectable()
@@ -114,6 +115,12 @@ export class AuthService {
                     });
                     const payload = { sub: user.id, email: user.email, companyId: user.company.id };
                     const access_token = await this.jwtService.signAsync(payload);
+
+                    // Copy master templates to builder
+                    if (user.companyId) {
+                        await this.prepareBuilderTemplateData(user);
+                    }
+
                     return { status: true, user, access_token, signNowSubStatus };
                 }
                 else {
@@ -323,4 +330,181 @@ export class AuthService {
         }
 
     }
+
+    // Copying all master templates to new builder
+    private async prepareBuilderTemplateData (user: any) {
+        // Get all master templates
+        let masterTemplates = await this.databaseService.masterQuestionnaireTemplate.findMany({
+            where: { isDeleted: false }
+        });
+
+        if (masterTemplates.length == 0) return;
+
+        for (const mTemplate of masterTemplates) {
+            // Copy template info to builder templates table
+            const builderProjectEstimatorTemplate = await this.databaseService.projectEstimatorTemplate.create({
+                data: {
+                    templateName: mTemplate.name,
+                    companyId: user.company.id
+                }
+            });
+            const builderTemplate = await this.databaseService.questionnaireTemplate.create({
+                data: {
+                    name: mTemplate.name,
+                    companyId: user.company.id,
+                    isCompanyTemplate: true,
+                    templateType: mTemplate.templateType,
+                    projectEstimatorTemplateId: builderProjectEstimatorTemplate.id
+                }
+            });
+
+            // Handle questionnaire template and selection template
+            if (mTemplate.id && builderTemplate.id) {
+                await this.handleBuilderQuestionnaireTemplate(mTemplate.id, builderTemplate.id, user);
+            }
+
+            // Handle project estimator template
+            if (
+                mTemplate.masterProjectEstimatorTemplateId && 
+                builderTemplate.id && 
+                builderProjectEstimatorTemplate.id
+            ) {
+                await this.handleBuilderEstimatorTemplate(mTemplate.id, builderProjectEstimatorTemplate.id, user);
+            }
+
+        }
+    }
+
+    // Copy questionnaire template and selection template to builder from admin
+    private async handleBuilderQuestionnaireTemplate (mTemplateId: number, builderTemplateId: number, user: any) {
+        const mQuestionnaireTemplate = await this.databaseService.masterQuestionnaireTemplate.findUnique({
+            where: { id: mTemplateId, isDeleted: false },
+            include: {
+                masterTemplateCategories: {
+                    where: { masterQuestionnaireTemplateId: mTemplateId, isDeleted: false },
+                    orderBy: { id: "asc" },
+                    include: { masterQuestions: { where: { isDeleted: false}, orderBy: { id: "asc" } } }
+                }
+            }
+        });
+        // in case if not categories.
+        if (!mQuestionnaireTemplate || mQuestionnaireTemplate.masterTemplateCategories.length === 0) return;
+
+        // Categories
+        const mCategories = mQuestionnaireTemplate.masterTemplateCategories;
+
+        await this.databaseService.$transaction(async (tx) => {
+            await Promise.all(mCategories.map(async (mCategory) => {
+                // Create builder categories
+                const category = await tx.category.create({
+                    data: {
+                        name: mCategory.name,
+                        isDeleted: mCategory.isDeleted,
+                        questionnaireTemplateId: builderTemplateId,
+                        phaseId: mCategory.phaseId,
+                        linkToQuestionnaire: mCategory.linkToQuestionnaire,
+                        isCompanyCategory: true,
+                        companyId: user.company.id, 
+                        questionnaireOrder: mCategory.questionnaireOrder,
+                        initialOrder: mCategory.initialOrder,
+                        paintOrder: mCategory.paintOrder 
+                    }
+                });
+
+                // Category questions.
+                const mQuestions = mCategory.masterQuestions;
+                // Create questions.
+                await this.createBuilderTemplateQuestions(tx, mQuestions, category.id, builderTemplateId);
+            }));
+        });
+    }
+
+    private async createBuilderTemplateQuestions (
+        tx: Omit<PrismaClient<Prisma.PrismaClientOptions, never, DefaultArgs>, 
+        "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">,
+        mQuestions: any[],
+        categoryId: number,
+        builderTemplateId: number
+    ) {
+        await Promise.all(mQuestions.map(async (mQuestion) => {
+            await tx.templateQuestion.create({
+                data: {
+                    isDeleted: mQuestion.isDeleted,
+                    linkToQuestionnaire: mQuestion.linkToQuestionnaire,
+                    question: mQuestion.question,
+                    questionType: mQuestion.questionType,
+                    multipleOptions: mQuestion.multipleOptions,
+                    phaseId: mQuestion.phaseId,
+                    questionnaireTemplateId: builderTemplateId,
+                    categoryId,
+                    questionOrder: mQuestion.questionOrder,
+                    initialQuestionOrder: mQuestion.initialQuestionOrder,
+                    paintQuestionOrder: mQuestion.paintQuestionOrder,
+                }
+            })
+        }))
+    }   
+
+
+    // Copy project estimator template to builder from admin
+    private async handleBuilderEstimatorTemplate (mTemplateId: number, builderProjectEstimatorTemplateId: number, user: any) {
+        const template = await this.databaseService.masterProjectEstimatorTemplate.findUnique({
+            where: { id: mTemplateId, isDeleted: false },
+            include: {
+                MasterProjectEstimatorTemplateHeader: {
+                    where: { isDeleted: false, mpetId: mTemplateId },
+                    orderBy: { headerOrder: 'asc' },
+                    include: {
+                        MasterProjectEstimatorTemplateData: {
+                            where: { isDeleted: false, },
+                            orderBy: { order: 'asc' }
+                        }
+                    }
+                }
+            }
+        });
+
+        if (!template || template.MasterProjectEstimatorTemplateHeader.length === 0) return;
+
+        const estimatorData = template.MasterProjectEstimatorTemplateHeader;
+
+        await this.databaseService.$transaction(async (tx) => {
+            await Promise.all(estimatorData.map(async (header) => {
+                await tx.projectEstimatorTemplate.update({
+                    where: { id: builderProjectEstimatorTemplateId },
+                    data: { profitCalculationType: template.profitCalculationType }
+                })
+                let projectHeader = await tx.projectEstimatorTemplateHeader.create({
+                    data: {
+                        petId: builderProjectEstimatorTemplateId,
+                        companyId: user.company.id,
+                        name: header.name,
+                        headerOrder: header.headerOrder
+                    }
+                });
+
+                let estData = header.MasterProjectEstimatorTemplateData;
+
+                await Promise.all(estData.map(async (x) => {
+                    await tx.projectEstimatorTemplateData.create({
+                        data: {
+                            item: x.item,
+                            description: x.description,
+                            costType: x.costType,
+                            quantity: x.quantity,
+                            unitCost: x.unitCost,
+                            actualCost: x.actualCost,
+                            grossProfit: x.grossProfit,
+                            contractPrice: x.contractPrice,
+                            petHeaderId: projectHeader.id,
+                            order: x.order,
+                            isLotCost: x.isLotCost,
+                            isCourtesyCredit: x.isCourtesyCredit
+                        }
+                    })
+                }));
+            }))
+        })
+    }
+
 }
