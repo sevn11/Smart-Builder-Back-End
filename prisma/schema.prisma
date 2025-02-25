@@ -513,6 +513,7 @@ model PaymentSchedule {
   id                 Int        @id @default(autoincrement())
   paymentDate        DateTime   @map("payment_date")
   amount             Decimal    @db.Decimal(10, 2) @default(0.00)
+  addtFundDisbursed  Decimal    @db.Decimal(10, 2) @default(0.00)
   companyId          Int?       @map("company_id")
   company            Company?   @relation(fields: [companyId], references: [id], onDelete: Cascade)
   jobId              Int?       @map("job_id")
