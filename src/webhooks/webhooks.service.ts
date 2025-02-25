@@ -11,6 +11,8 @@ export class WebhooksService {
     }
 
     async updateLogoUrl(companyId: number, body: UpdateCompanyLogoDTO) {
+        // Checking webhook
+        return { message: ResponseMessages.SUCCESSFUL }
         try {
             let company = await this.databaseService.company.findUniqueOrThrow({
                 where: {
