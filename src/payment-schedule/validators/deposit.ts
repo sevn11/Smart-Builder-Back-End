@@ -9,4 +9,8 @@ export class PaymentScheduleDepositDTO {
     @IsNumber()
     @IsOptional()
     amount: number
+
+    @IsNumber()
+    @IsOptional()
+    addtFundDisbursed: number
 }
