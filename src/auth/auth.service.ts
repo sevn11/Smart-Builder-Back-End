@@ -78,6 +78,7 @@ export class AuthService {
                                 create: {
                                     name: body.companyName,
                                     address: body.address,
+                                    zipcode: body.zipcode,
                                     phoneNumber: body.phoneNumber,
                                     planType: body.planType,
                                     planAmount,
