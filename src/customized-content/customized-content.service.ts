@@ -16,7 +16,7 @@ export class CustomizedContentService {
         try {
             // Check if User is Admin of the Company.
             if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) {
-                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
+                if ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
                 const proposalContent = await this.databaseService.customizedContent.findFirst({
@@ -59,7 +59,7 @@ export class CustomizedContentService {
         try {
             // Check if User is Admin of the Company.
             if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) {
-                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
+                if ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
                 const result = await this.databaseService.customizedContent.findUnique({
@@ -96,8 +96,8 @@ export class CustomizedContentService {
     async saveCustomContents(user: User, companyId: number, body: CustomizedContentDTO) {
         try {
             // Check if User is Admin of the Company.
-            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
-                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) {
+                if ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
                 await this.databaseService.customizedContent.upsert({
