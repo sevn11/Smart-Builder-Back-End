@@ -26,7 +26,7 @@ export class QuestionnaireCategoryService {
       // Check if User is Admin of the Company.
       if (
         user.userType == UserTypes.ADMIN ||
-        (user.userType == UserTypes.BUILDER && user.companyId === companyId)
+        ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId === companyId)
       ) {
         let company = await this.databaseService.company.findUnique({
           where: {
@@ -124,7 +124,7 @@ export class QuestionnaireCategoryService {
       // Check if User is Admin of the Company.
       if (
         user.userType == UserTypes.ADMIN ||
-        (user.userType == UserTypes.BUILDER && user.companyId === companyId)
+        ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId === companyId)
       ) {
         let company = await this.databaseService.company.findUnique({
           where: {
@@ -193,7 +193,7 @@ export class QuestionnaireCategoryService {
       // Check if User is Admin of the Company.
       if (
         user.userType == UserTypes.ADMIN ||
-        (user.userType == UserTypes.BUILDER && user.companyId === companyId)
+        ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId === companyId)
       ) {
         let company = await this.databaseService.company.findUnique({
           where: {
@@ -326,7 +326,7 @@ export class QuestionnaireCategoryService {
       // Check if User is Admin of the Company.
       if (
         user.userType == UserTypes.ADMIN ||
-        (user.userType == UserTypes.BUILDER && user.companyId === companyId)
+        ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId === companyId)
       ) {
         let company = await this.databaseService.company.findUnique({
           where: { id: companyId, isDeleted: false },
@@ -461,7 +461,7 @@ export class QuestionnaireCategoryService {
 
       if (
         user.userType == UserTypes.ADMIN ||
-        (user.userType == UserTypes.BUILDER && user.companyId === companyId)
+        ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId === companyId)
       ) {
         let company = await this.databaseService.company.findUnique({
           where: {

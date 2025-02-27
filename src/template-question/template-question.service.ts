@@ -15,8 +15,8 @@ export class TemplateQuestionService {
 
     async createQuestion(user: User, companyId: number, templateId: number, categoryId: number, body: CreateUpdateQuestionDTO) {
         try {
-            // Check if User is Admin of the Company.
-            if (user.userType == UserTypes.ADMIN || (user.userType == UserTypes.BUILDER && user.companyId === companyId)) {
+            // Check user permission
+            if (user.userType == UserTypes.ADMIN || ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId === companyId)) {
                 let company = await this.databaseService.company.findUnique({
                     where: { id: companyId, isDeleted: false }
                 });
@@ -140,7 +140,7 @@ export class TemplateQuestionService {
 
             // Check if User is Admin of the Company.
 
-            if (user.userType == UserTypes.ADMIN || (user.userType == UserTypes.BUILDER && user.companyId === companyId)) {
+            if (user.userType == UserTypes.ADMIN || ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId === companyId)) {
                 let company = await this.databaseService.company.findUnique({
                     where: {
                         id: companyId,
@@ -182,7 +182,7 @@ export class TemplateQuestionService {
     async getQuestionDetail(user: User, companyId: number, templateId: number, categoryId: number, questionId: number) {
         try {
             // Check if User is Admin of the Company.
-            if (user.userType == UserTypes.ADMIN || (user.userType == UserTypes.BUILDER && user.companyId === companyId)) {
+            if (user.userType == UserTypes.ADMIN || ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId === companyId)) {
                 let company = await this.databaseService.company.findUnique({
                     where: {
                         id: companyId,
@@ -224,7 +224,7 @@ export class TemplateQuestionService {
         try {
 
             // Check if User is Admin of the Company.
-            if (user.userType == UserTypes.ADMIN || (user.userType == UserTypes.BUILDER && user.companyId === companyId)) {
+            if (user.userType == UserTypes.ADMIN || ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId === companyId)) {
                 let company = await this.databaseService.company.findUnique({
                     where: {
                         id: companyId,
@@ -397,7 +397,7 @@ export class TemplateQuestionService {
     async deleteQuestion(user: User, companyId: number, templateId: number, categoryId: number, questionId: number) {
         try {
             // Check if User is Admin of the Company.
-            if (user.userType === UserTypes.ADMIN || (user.userType === UserTypes.BUILDER && user.companyId === companyId)) {
+            if (user.userType === UserTypes.ADMIN || ((user.userType === UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId === companyId)) {
                 // Verify the company exists and is not deleted
                 const company = await this.databaseService.company.findUnique({
                     where: {
@@ -529,8 +529,8 @@ export class TemplateQuestionService {
         try {
 
             // Check if User is Admin of the Company.
-            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
-                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) {
+                if ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
 
