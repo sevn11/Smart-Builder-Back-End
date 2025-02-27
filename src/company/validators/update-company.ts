@@ -13,6 +13,10 @@ export class UpdateCompanyDTO {
     @IsOptional()
     address?: string
 
+    @IsString()
+    @IsOptional()
+    zipcode?: string
+
 
     @IsString()
     @IsOptional()

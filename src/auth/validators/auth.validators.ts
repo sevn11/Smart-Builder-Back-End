@@ -26,6 +26,10 @@ export class SignUpDTO {
 
   @IsString()
   @IsNotEmpty()
+  zipcode?: string
+
+  @IsString()
+  @IsNotEmpty()
   phoneNumber?: string
 
   @IsString()
