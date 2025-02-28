@@ -962,8 +962,8 @@ export class SelectionTemplateService {
     async createTemplateName(user: User, companyId: number, type: string, body: TemplateNameDTO) {
         try {
             // Check if User is Admin of the Company.
-            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER || user.userType !== UserTypes.EMPLOYEE) {
-                if ((user.userType == UserTypes.BUILDER || user.userType !== UserTypes.EMPLOYEE) && user.companyId !== companyId) {
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) {
+                if ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
 
@@ -1014,8 +1014,8 @@ export class SelectionTemplateService {
     async deleteTemplate(user: User, companyId: number, templateId: number, type: string) {
         try {
             // Check if User is Admin of the Company.
-            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER || user.userType !== UserTypes.EMPLOYEE) {
-                if ((user.userType == UserTypes.BUILDER || user.userType !== UserTypes.EMPLOYEE) && user.companyId !== companyId) {
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) {
+                if ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
 
@@ -1140,8 +1140,8 @@ export class SelectionTemplateService {
     // import template
     async importTemplate(user: User, companyId: number, file: Express.Multer.File, body: { templateId: string }, type: string) {
         try {
-            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER || user.userType !== UserTypes.EMPLOYEE) {
-                if ((user.userType == UserTypes.BUILDER || user.userType !== UserTypes.EMPLOYEE) && user.companyId !== companyId) {
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) {
+                if ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
 
