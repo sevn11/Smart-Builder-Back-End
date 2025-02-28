@@ -783,8 +783,10 @@ export class SelectionTemplateService {
     async updateTemplateName(user: User, type: string, companyId: number, templateId: number, body: TemplateNameDTO) {
         try {
             // Check if User is Admin of the Company.
-            if (user.userType == UserTypes.ADMIN || ((user.userType == UserTypes.BUILDER || user.userType !== UserTypes.EMPLOYEE)&& user.companyId === companyId)) {
-
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) {
+                if ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId !== companyId) {
+                    throw new ForbiddenException("Action Not Allowed");
+                }
                 // Determine template type
                 const templateType = {
                     'initial-selection': TemplateType.SELECTION_INITIAL,
