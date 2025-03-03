@@ -5,7 +5,7 @@ export class JobProjectEstimatorDTO {
 
     @IsOptional()
     @IsNumber()
-    id:number;
+    id: number;
 
     @IsNumber()
     @IsNotEmpty()

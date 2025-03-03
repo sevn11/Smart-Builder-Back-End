@@ -7,6 +7,7 @@ import { JobStatus, PrismaErrorCodes, ResponseMessages, UserTypes } from 'src/co
 import { UpdateJobStatusCalendarColorTemplateDto } from './validators/update-jobstatus-calendarcolor-template';
 import { UpdateJobDTO } from './validators/update-job';
 import { GoogleService } from 'src/core/services/google.service';
+import { ProfitCalculationType } from 'src/core/utils/company';
 
 @Injectable()
 export class JobsService {
@@ -245,7 +246,7 @@ export class JobsService {
         try {
             if (
                 user.userType == UserTypes.ADMIN ||
-                (user.userType == UserTypes.BUILDER && user.companyId === companyId) || 
+                (user.userType == UserTypes.BUILDER && user.companyId === companyId) ||
                 user.userType == UserTypes.EMPLOYEE
             ) {
                 let company = await this.databaseService.company.findUnique({
@@ -419,12 +420,44 @@ export class JobsService {
                     }
                 });
 
+                // Check Job sync exist.
+                const jobSyncExist = await this.databaseService.googleEventId.findFirst({
+                    where: {
+                        userId: user.id,
+                        companyId: companyId,
+                        jobId: job.id,
+                        jobScheduleId: null,
+                        isDeleted: false,
+                    },
+                    orderBy: { id: 'desc' },
+                    take: 1,
+                })
                 // Delete the job / project from google calendar also
-                if (job.eventId) {
-                    let event = await this.googleService.getEventFromGoogleCalendar(user, job);
+                if (jobSyncExist && jobSyncExist.eventId) {
+                    let event = await this.googleService.getEventFromGoogleCalendar(user, jobSyncExist);
                     if (event) {
-                        await this.googleService.deleteCalendarEvent(user, job.eventId)
+                        await this.googleService.deleteCalendarEvent(user, jobSyncExist.eventId)
+                        await this.databaseService.googleEventId.update({
+                            where: { id: jobSyncExist.id },
+                            data: { isDeleted: true }
+                        })
                     }
+                }
+                await this.googleService.removeJobFromOthers(user.id, companyId, job);
+
+                const schedules = await this.databaseService.jobSchedule.findMany({
+                    where: {
+                        jobId: job.id,
+                        isDeleted: false,
+                    }
+                });
+
+
+
+                if (schedules.length > 0) {
+                    schedules.map(async (schedule) => {
+                        await this.googleService.removeScheduleFromOthers(user.id, companyId, schedule, job);
+                    });
                 }
 
                 await this.databaseService.job.update({
@@ -511,8 +544,21 @@ export class JobsService {
                 const openJobs = await Promise.all(
                     jobs.map(async (item) => {
                         let isSynced = false;
-                        if (item.eventId) {
-                            let event = await this.googleService.getEventFromGoogleCalendar(user, item);
+
+                        const jobSyncExist = await this.databaseService.googleEventId.findFirst({
+                            where: {
+                                companyId: companyId,
+                                userId: user.id,
+                                jobId: item.id,
+                                jobScheduleId: null,
+                                isDeleted: false,
+                            },
+                            orderBy: { id: 'desc' },
+                            take: 1
+                        })
+
+                        if (jobSyncExist && jobSyncExist.eventId) {
+                            let event = await this.googleService.getEventFromGoogleCalendar(user, jobSyncExist);
                             if (event) {
                                 isSynced = true;
                             }
@@ -530,8 +576,19 @@ export class JobsService {
 
                         const scheduleEvents = await Promise.all(item.JobSchedule.map(async (schedule) => {
                             let isScheduleSynced = false;
-                            if (schedule.eventId) {
-                                const event = await this.googleService.getEventFromGoogleCalendar(user, schedule);
+                            const scheduleSyncExist = await this.databaseService.googleEventId.findFirst({
+                                where: {
+                                    companyId: user.companyId,
+                                    userId: user.id,
+                                    jobId: item.id,
+                                    jobScheduleId: schedule.id,
+                                    isDeleted: false,
+                                },
+                                orderBy: { id: 'desc' },
+                                take: 1,
+                            })
+                            if (scheduleSyncExist && scheduleSyncExist?.eventId) {
+                                const event = await this.googleService.getEventFromGoogleCalendar(user, scheduleSyncExist);
                                 if (event) {
                                     isScheduleSynced = true;
                                 }
@@ -539,7 +596,7 @@ export class JobsService {
 
                             return {
                                 id: schedule.id,
-                                title: `${schedule.contractor.phase.name} - ${schedule.contractor.name} (${item.customer.name})`,
+                                title: `${schedule.contractor.phase.name} (${item.customer.name})`,
                                 start: schedule.startDate,
                                 end: schedule.endDate,
                                 customerId: item.customer?.id,
@@ -547,6 +604,7 @@ export class JobsService {
                                 color: item.calendarColor,
                                 isSynced: isScheduleSynced,
                                 type: 'schedule',
+                                jobId: jobEvent.id,
                                 isChild: true,
                                 parentId: item.id,
                                 isScheduledOnWeekend: schedule.isScheduledOnWeekend,
@@ -642,16 +700,83 @@ export class JobsService {
                         id: true,
                         name: true
                     }
+                },
+                JobSchedule: {
+                    orderBy: {
+                        startDate: 'asc'
+                    },
+                    where: {
+                        isDeleted: false
+                    },
+                    include: {
+                        contractor: {
+                            include: {
+                                phase: true
+                            }
+                        },
+                        job: {
+                            include: {
+                                customer: {
+                                    select: {
+                                        name: true
+                                    }
+                                },
+                                description: {
+                                    select: {
+                                        name: true
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         });
 
+        const syncExist = await this.databaseService.googleEventId.findFirst({
+            where: {
+                userId: user.id,
+                companyId: user.companyId,
+                jobId: jobId,
+                isDeleted: false,
+                jobScheduleId: null
+            },
+            orderBy: { id: 'desc' },
+            take: 1
+        });
+
         // reflect the change in google calendar (if already synced)
-        if (latestJob.eventId) {
-            let event = await this.googleService.getEventFromGoogleCalendar(user, latestJob);
+        if (syncExist && syncExist?.eventId) {
+            let event = await this.googleService.getEventFromGoogleCalendar(user, syncExist);
             if (event) {
-                await this.googleService.syncToCalendar(user.id, latestJob, latestJob.eventId);
+                await this.googleService.syncToCalendar(user.id, latestJob, syncExist.eventId);
+                // Update other users calendar also.
+                await this.googleService.upsertJobEventIdForOthers(latestJob, user.companyId, user);
             }
+        }
+
+        if (latestJob.JobSchedule.length == 0) return;
+        for (let schedule of latestJob.JobSchedule) {
+            const syncExists = await this.databaseService.googleEventId.findFirst({
+                where: {
+                    userId: user.id,
+                    companyId: user.companyId,
+                    jobId: jobId,
+                    isDeleted: false,
+                    jobScheduleId: schedule.id
+                },
+                orderBy: { id: 'desc' },
+                take: 1
+            });
+
+            if (syncExists && syncExists?.eventId) {
+                let event = await this.googleService.getEventFromGoogleCalendar(user, syncExists);
+                if (event) {
+                    await this.googleService.syncJobSchedule(user.id, schedule, syncExists.eventId, syncExists);
+                }
+            }
+            // Update other users calendar also.
+            await this.googleService.upsertJobScheduleEventIdForOthers(user.id, user.companyId, schedule, latestJob)
         }
     }
 
@@ -712,8 +837,20 @@ export class JobsService {
                 }
 
                 let isSynced = false;
-                if (job.eventId) {
-                    let event = await this.googleService.getEventFromGoogleCalendar(user, job);
+
+                const jobSyncExist = await this.databaseService.googleEventId.findFirst({
+                    where: {
+                        companyId,
+                        userId: user.id,
+                        jobId: jobId,
+                        jobScheduleId: null,
+                        isDeleted: false,
+                    },
+                    orderBy: { id: 'desc' },
+                    take: 1
+                })
+                if (jobSyncExist && jobSyncExist?.eventId) {
+                    let event = await this.googleService.getEventFromGoogleCalendar(user, jobSyncExist);
                     if (event) {
                         isSynced = true;
                     }
@@ -735,8 +872,19 @@ export class JobsService {
                 const schedulesWithSyncStatus = await Promise.all(
                     job.JobSchedule.map(async (schedule, index) => {
                         let isScheduleSynced = false;
-                        if (schedule.eventId) {
-                            let event = await this.googleService.getEventFromGoogleCalendar(user, schedule);
+                        const syncExist = await this.databaseService.googleEventId.findFirst({
+                            where: {
+                                companyId,
+                                userId: user.id,
+                                jobId: jobId,
+                                jobScheduleId: schedule.id,
+                                isDeleted: false,
+                            },
+                            orderBy: { id: 'desc' },
+                            take: 1
+                        });
+                        if (syncExist && syncExist?.eventId) {
+                            let event = await this.googleService.getEventFromGoogleCalendar(user, syncExist);
                             if (event) {
                                 isScheduleSynced = true;
                             }
@@ -745,7 +893,7 @@ export class JobsService {
                         return {
                             id: uniqueId,
                             scheduleId: schedule.id,
-                            title: `${schedule.contractor.phase.name} - ${schedule.contractor.name}`,
+                            title: `${schedule.contractor.phase.name}`,
                             start: schedule.startDate,
                             end: schedule.endDate,
                             customerId: job.customer?.id,
@@ -979,6 +1127,10 @@ export class JobsService {
 
         await this.databaseService.$transaction(async (tx) => {
             await Promise.all(estimatorData.map(async (header) => {
+                await tx.clientTemplate.update({
+                    where: { id: customerTemplateId },
+                    data: { accProfitCalculationType: template.profitCalculationType }
+                })
                 let projectHeader = await tx.jobProjectEstimatorHeader.create({
                     data: {
                         companyId,
@@ -1009,7 +1161,8 @@ export class JobsService {
                             grossProfit: x.grossProfit,
                             contractPrice: x.contractPrice,
                             order: x.order,
-                            invoiceId: currentInvoiceId
+                            invoiceId: currentInvoiceId,
+                            isLootCost: x.isLotCost
                         }
                     })
                 }));

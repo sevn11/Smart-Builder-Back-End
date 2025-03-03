@@ -30,3 +30,16 @@ export class UpdateBuilderPlanInfoDTO {
     @IsOptional()
     notifyUsers: boolean;
 }
+
+export class UpdateBuilderSignNowPlanInfoDTO {
+    @IsNumber()
+    id: number;
+
+    @IsNumber()
+    @IsOptional()
+    signNowMonthlyPlanAmount: number;
+
+    @IsNumber()
+    @IsOptional()
+    signNowYearlyPlanAmount: number;
+}

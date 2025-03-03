@@ -37,6 +37,14 @@ export class PermissionSetDTO {
 
     @IsBoolean()
     @IsNotEmpty()
+    settings: boolean
+
+    @IsBoolean()
+    @IsNotEmpty()
+    ytdReport: boolean
+
+    @IsBoolean()
+    @IsNotEmpty()
     viewOnly: boolean
 
 }

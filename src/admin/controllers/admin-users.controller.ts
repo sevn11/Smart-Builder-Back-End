@@ -2,7 +2,7 @@ import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseIntPip
 import { AdminUsersService } from '../services';
 import { ChangeBuilderAccessDTO, GetBuilderListDTO } from '../validators';
 import { CreateUpdateExtraFeeDTO } from '../validators/create-update-extra-fee';
-import { UpdateBuilderPlanInfoDTO } from '../validators/update-plan-info';
+import { UpdateBuilderPlanInfoDTO, UpdateBuilderSignNowPlanInfoDTO } from '../validators/update-plan-info';
 import { UpdateBuilderPlanAmountDTO } from '../validators/update-builder-plan';
 import { DemoUserDTO } from '../validators/add-demo-user';
 
@@ -48,6 +48,12 @@ export class AdminUsersController {
     @HttpCode(HttpStatus.OK)
     updateBuilderPlanInfo(@Body() body: UpdateBuilderPlanInfoDTO) {
         return this.adminUserService.updateBuilderPlanInfo(body);
+    }
+
+    @Post('builders/update-signnow-plan-info')
+    @HttpCode(HttpStatus.OK)
+    updateBuilderSignNowPlanInfo(@Body() body: UpdateBuilderSignNowPlanInfoDTO) {
+        return this.adminUserService.updateBuilderSignNowPlanInfo(body);
     }
 
     @Post('/plan-amount')

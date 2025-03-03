@@ -1,13 +1,14 @@
-import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { User } from '@prisma/client';
 import * as argon from 'argon2';
 import { DatabaseService } from 'src/database/database.service';
 import { ChangePasswordDTO, UpdateMyProfileDTO } from './validators';
 import { HelperFunctions, ResponseMessages } from 'src/core/utils';
+import { StripeService } from 'src/core/services/stripe.service';
 
 @Injectable()
 export class UserService {
-    constructor(private databaseService: DatabaseService) {
+    constructor(private databaseService: DatabaseService, private stripeService: StripeService) {
 
     }
 
@@ -127,6 +128,40 @@ export class UserService {
                 }
             });
             return { message: ResponseMessages.SUCCESSFUL };
+        } catch (error) {
+            console.log(error);
+            throw new InternalServerErrorException()
+        }
+    }
+
+    async getSignNowPlanStatus(user: User) {
+        try {
+            let userData = await this.databaseService.user.findUnique({
+                where: {
+                    id: user.id,
+                    isDeleted: false,
+                    isActive: true
+                },
+                include: {
+                    company: true
+                }
+            });
+            
+            if (
+                userData &&
+                userData.company &&
+                userData.company.signNowStripeProductId &&
+                userData.company.signNowSubscriptionId
+            ) {
+                let res = await this.stripeService.getSignNowPlanStatus(userData.company.signNowSubscriptionId);
+                if (res.status) {
+                    return { signNowStatus: true };
+                } else {
+                    return { signNowStatus: false };
+                }
+            } else {
+                return { signNowStatus: false };
+            }
         } catch (error) {
             console.log(error);
             throw new InternalServerErrorException()

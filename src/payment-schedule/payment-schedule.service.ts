@@ -10,7 +10,7 @@ import { PaymentScheduleDrawDTO } from './validators/draw';
 export class PaymentScheduleService {
 
     constructor(private databaseService: DatabaseService) {}
-    
+
     // get payment schedules (deposit + draws)
     async getPaymentSchedules(user: User, companyId: number, jobId: number) {
         try {
@@ -42,6 +42,7 @@ export class PaymentScheduleService {
                 const formattedPaymentSchedule = {
                     ...paymentSchedules,
                     amount: Number(paymentSchedules.amount).toFixed(2),
+                    addtFundDisbursed: Number(paymentSchedules.addtFundDisbursed).toFixed(2),
                     draws: paymentSchedules.draws.map(draw => ({
                         ...draw,
                         bankFees: Number(draw.bankFees).toFixed(2)
@@ -101,7 +102,7 @@ export class PaymentScheduleService {
                 });
 
                 return { paymentSchedule }
-                
+
             } else {
                 throw new ForbiddenException("Action Not Allowed");
             }
@@ -171,7 +172,7 @@ export class PaymentScheduleService {
     }
 
     // insert draw
-    async insertDraw(user: User, companyId: number, jobId: number,depoId: number, body: PaymentScheduleDrawDTO) {
+    async insertDraw(user: User, companyId: number, jobId: number, depoId: number, body: PaymentScheduleDrawDTO) {
         try {
             // Check if User is Admin of the Company.
             if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) {
@@ -184,7 +185,7 @@ export class PaymentScheduleService {
                         ...body
                     }
                 });
-                
+
                 return { newDraw }
             } else {
                 throw new ForbiddenException("Action Not Allowed");
@@ -214,7 +215,7 @@ export class PaymentScheduleService {
                 if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
-                
+
                 // check non deleted draw exist or not
                 await this.databaseService.paymentScheduleDraw.findFirstOrThrow({
                     where: {
@@ -265,7 +266,7 @@ export class PaymentScheduleService {
                 if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
-                
+
                 // check draw exisit or not
                 await this.databaseService.paymentScheduleDraw.findFirstOrThrow({
                     where: {
@@ -282,7 +283,7 @@ export class PaymentScheduleService {
                 });
 
                 return { message: ResponseMessages.SUCCESSFUL }
-                
+
             } else {
                 throw new ForbiddenException("Action Not Allowed");
             }

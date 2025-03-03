@@ -1,6 +1,8 @@
 import { BadRequestException, ForbiddenException, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { PrismaErrorCodes, ResponseMessages, TemplateType } from 'src/core/utils';
+import { ProfitCalculationType } from 'src/core/utils/company';
+import { marginCalculation, markupCalculation } from 'src/core/utils/profit-calculation';
 import { DatabaseService } from 'src/database/database.service';
 export interface ImportData {
     _is_project_estimator: string;
@@ -48,6 +50,13 @@ export class ImportTemplateService {
     async processImport(element: GroupedImportData, templateId: number, companyId: number) {
         try {
             const importResponse = await this.databaseService.$transaction(async (tx) => {
+                const company = await tx.company.findUniqueOrThrow({
+                    where: { id: companyId, isDeleted: false }
+                })
+                const updateTemplate = await tx.projectEstimatorTemplate.update({
+                    where: { id: templateId, companyId, isDeleted: false },
+                    data: { profitCalculationType: company.profitCalculationType }
+                })
                 const header = await tx.projectEstimatorTemplateHeader.create({
                     data: {
                         name: element.header,
@@ -61,6 +70,15 @@ export class ImportTemplateService {
                     // Use Promise.all to ensure all async map operations complete before continuing
                     await Promise.all(
                         element.items.map(async (val) => {
+                            const unitCost = parseFloat(String(val.unitcost));
+                            const quantity = parseFloat(String(val.quantity));
+                            const grossProfit = parseFloat(String(val.grossprofit));
+
+                            const contractPrice =
+                                updateTemplate.profitCalculationType === ProfitCalculationType.MARKUP
+                                    ? markupCalculation(quantity * unitCost, grossProfit)
+                                    : marginCalculation(quantity * unitCost, grossProfit);
+
                             await tx.projectEstimatorTemplateData.create({
                                 data: {
                                     item: val.item,
@@ -70,7 +88,7 @@ export class ImportTemplateService {
                                     unitCost: parseFloat(String(val.unitcost)),
                                     actualCost: parseFloat(String(val.actualcost)),
                                     grossProfit: parseFloat(String(val.grossprofit)),
-                                    contractPrice: parseFloat(String(val.contractprice)),
+                                    contractPrice: contractPrice,
                                     isDeleted: false,
                                     petHeaderId: header.id,
                                     order: Number(val.itemorder)

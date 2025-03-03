@@ -24,7 +24,8 @@ export class SelectionTemplateService {
     async getSelectionTemplate(user: User, companyId: number, type: string) {
         try {
             // Check if User is Admin of the Company.
-            if (user.userType !== UserTypes.ADMIN && (user.userType !== UserTypes.BUILDER || user.companyId !== companyId)) {
+            if (user.userType !== UserTypes.ADMIN && 
+                (user.userType !== UserTypes.BUILDER && user.userType !== UserTypes.EMPLOYEE || user.companyId !== companyId)) {
                 throw new ForbiddenException("Action Not Allowed");
             }
             // Map type to template type
@@ -68,7 +69,8 @@ export class SelectionTemplateService {
     async getSelectionTemplateContent(user: User, companyId: number, type: string, templateId: number) {
         try {
             // Validate User Permissions
-            if (user.userType !== UserTypes.ADMIN && (user.userType !== UserTypes.BUILDER || user.companyId !== companyId)) {
+            if (user.userType !== UserTypes.ADMIN && 
+                (user.userType !== UserTypes.BUILDER && user.userType !== UserTypes.EMPLOYEE || user.companyId !== companyId)) {
                 throw new ForbiddenException("Action Not Allowed");
             }
 
@@ -152,7 +154,8 @@ export class SelectionTemplateService {
     async createSelectionTemplateCategory(user: User, type: string, companyId: number, templateId: number, body: CreateCategoryDTO) {
         try {
             // Validate User Permissions
-            if (user.userType !== UserTypes.ADMIN && (user.userType !== UserTypes.BUILDER || user.companyId !== companyId)) {
+            if (user.userType !== UserTypes.ADMIN && 
+                (user.userType !== UserTypes.BUILDER && user.userType !== UserTypes.EMPLOYEE || user.companyId !== companyId)) {
                 throw new ForbiddenException("Action Not Allowed");
             }
 
@@ -230,11 +233,8 @@ export class SelectionTemplateService {
     async updateSelectionCategory(user: User, type: string, companyId: number, templateId: number, categoryId: number, body: CreateCategoryDTO) {
         try {
             // Validate user permissions
-            if (user.userType !== UserTypes.ADMIN && user.userType !== UserTypes.BUILDER) {
-                throw new ForbiddenException("Action Not Allowed");
-            }
-
-            if (user.userType === UserTypes.BUILDER && user.companyId !== companyId) {
+            if (user.userType !== UserTypes.ADMIN && 
+                (user.userType !== UserTypes.BUILDER && user.userType !== UserTypes.EMPLOYEE || user.companyId !== companyId)) {
                 throw new ForbiddenException("Action Not Allowed");
             }
 
@@ -304,10 +304,8 @@ export class SelectionTemplateService {
     async deleteCategory(user: User, type: string, companyId: number, templateId: number, categoryId: number) {
         try {
             // Validate user permissions
-            const isAdminOrBuilder = user.userType === UserTypes.ADMIN || user.userType === UserTypes.BUILDER;
-            const isBuilderAuthorized = user.userType === UserTypes.BUILDER && user.companyId === companyId;
-
-            if (!isAdminOrBuilder || (user.userType === UserTypes.BUILDER && !isBuilderAuthorized)) {
+            if (user.userType !== UserTypes.ADMIN && 
+                (user.userType !== UserTypes.BUILDER && user.userType !== UserTypes.EMPLOYEE || user.companyId !== companyId)) {
                 throw new ForbiddenException("Action Not Allowed");
             }
 
@@ -410,7 +408,8 @@ export class SelectionTemplateService {
     async createLabel(user: User, type: string, companyId: number, templateId: number, categoryId: number, body: QuestionDTO) {
         try {
             // Check if User is Admin of the Company.
-            if (user.userType !== UserTypes.ADMIN && (user.userType !== UserTypes.BUILDER || user.companyId !== companyId)) {
+            if (user.userType !== UserTypes.ADMIN && 
+                (user.userType !== UserTypes.BUILDER && user.userType !== UserTypes.EMPLOYEE || user.companyId !== companyId)) {
                 throw new ForbiddenException("Action Not Allowed");
             }
 
@@ -503,7 +502,8 @@ export class SelectionTemplateService {
     // Update the label
     async updateLabel(user: User, type: string, companyId: number, templateId: number, categoryId: number, labelId: number, body: QuestionDTO) {
         try {
-            if (user.userType !== UserTypes.ADMIN && (user.userType !== UserTypes.BUILDER || user.companyId !== companyId)) {
+            if (user.userType !== UserTypes.ADMIN && 
+                (user.userType !== UserTypes.BUILDER && user.userType !== UserTypes.EMPLOYEE || user.companyId !== companyId)) {
                 throw new ForbiddenException("Action Not Allowed");
             }
 
@@ -590,7 +590,8 @@ export class SelectionTemplateService {
     async deleteLabel(user: User, type: string, companyId: number, templateId: number, categoryId: number, labelId: number) {
         try {
             // Validate user permissions
-            if (user.userType !== UserTypes.ADMIN && (user.userType !== UserTypes.BUILDER || user.companyId !== companyId)) {
+            if (user.userType !== UserTypes.ADMIN && 
+                (user.userType !== UserTypes.BUILDER && user.userType !== UserTypes.EMPLOYEE || user.companyId !== companyId)) {
                 throw new ForbiddenException("Action Not Allowed");
             }
 
@@ -676,7 +677,8 @@ export class SelectionTemplateService {
     async changeCategoryOrder(user: User, companyId: number, type: string, templateId: number, body: CategoryOrderDTO) {
         try {
             // Check if User is Admin of the Company.
-            if (user.userType !== UserTypes.ADMIN && (user.userType !== UserTypes.BUILDER || user.companyId !== companyId)) {
+            if (user.userType !== UserTypes.ADMIN && 
+                (user.userType !== UserTypes.BUILDER && user.userType !== UserTypes.EMPLOYEE || user.companyId !== companyId)) {
                 throw new ForbiddenException("Action Not Allowed");
             }
             let company = await this.databaseService.company.findUnique({
@@ -781,8 +783,10 @@ export class SelectionTemplateService {
     async updateTemplateName(user: User, type: string, companyId: number, templateId: number, body: TemplateNameDTO) {
         try {
             // Check if User is Admin of the Company.
-            if (user.userType == UserTypes.ADMIN || (user.userType == UserTypes.BUILDER && user.companyId === companyId)) {
-
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) {
+                if ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId !== companyId) {
+                    throw new ForbiddenException("Action Not Allowed");
+                }
                 // Determine template type
                 const templateType = {
                     'initial-selection': TemplateType.SELECTION_INITIAL,
@@ -843,7 +847,8 @@ export class SelectionTemplateService {
     async changeQuestionOrder(user: User, companyId: number, type: string, templateId: number, questionId: number, categoryId: number, body: QuestionOrderDTO) {
         try {
             // Check if User is Admin of the Company.
-            if (user.userType !== UserTypes.ADMIN && (user.userType !== UserTypes.BUILDER || user.companyId !== companyId)) {
+            if (user.userType !== UserTypes.ADMIN && 
+                (user.userType !== UserTypes.BUILDER && user.userType !== UserTypes.EMPLOYEE || user.companyId !== companyId)) {
                 throw new ForbiddenException("Action Not Allowed");
             }
 
@@ -957,8 +962,8 @@ export class SelectionTemplateService {
     async createTemplateName(user: User, companyId: number, type: string, body: TemplateNameDTO) {
         try {
             // Check if User is Admin of the Company.
-            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
-                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) {
+                if ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
 
@@ -1009,8 +1014,8 @@ export class SelectionTemplateService {
     async deleteTemplate(user: User, companyId: number, templateId: number, type: string) {
         try {
             // Check if User is Admin of the Company.
-            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
-                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) {
+                if ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
 
@@ -1135,8 +1140,8 @@ export class SelectionTemplateService {
     // import template
     async importTemplate(user: User, companyId: number, file: Express.Multer.File, body: { templateId: string }, type: string) {
         try {
-            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
-                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) {
+                if ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
 

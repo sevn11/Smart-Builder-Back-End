@@ -190,7 +190,7 @@ export class SelectionTemplateController {
         FileInterceptor('file', {
             limits: { fileSize: 30 * 1024 * 1024 }, // Limit file size to 10MB
             fileFilter: (req, file, cb) => {
-                if (file.mimetype !== 'text/csv') {
+                if (file.mimetype !== 'text/csv' && file.mimetype !== 'application/vnd.ms-excel') {
                     return cb(new BadRequestException('Only CSV files are allowed!'), false);
                 }
                 cb(null, true);

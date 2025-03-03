@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, ForbiddenException, Injectable, InternalServerErrorException, Res } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { User } from '@prisma/client';
 import { DatabaseService } from 'src/database/database.service';
 import * as csv from 'csv-parse';
@@ -11,6 +11,8 @@ import { ProjectEstimatorAccountingTemplateDTO } from './validators/add-project-
 import { BulkUpdateProjectEstimatorTemplateDTO } from './validators/pet-bulk-update';
 import { ItemOrderDTO } from './validators/item-order';
 import { ImportTemplateService } from './import-template/import-template.service';
+import { marginCalculation, markupCalculation, ProfitCalculationTypeEnum } from 'src/core/utils/profit-calculation';
+import { ProfitCalculationType } from 'src/core/utils/company';
 
 @Injectable()
 export class ProjectEstimatorTemplateService {
@@ -23,16 +25,20 @@ export class ProjectEstimatorTemplateService {
     async addProjectEstimatorTemplateName(user: User, companyId: number, body: ProjectEstimatorTemplateNameDTO,) {
         try {
             // Check if User is Admin of the Company.
-            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
-                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) {
+                if ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
 
+                const company = await this.databaseService.company.findUniqueOrThrow({
+                    where: { id: companyId, isDeleted: false }
+                });
                 let projectEstimator = await this.databaseService.$transaction(async (tx) => {
                     const projectEstTemplate = await tx.projectEstimatorTemplate.create({
                         data: {
                             templateName: body.name,
-                            companyId: user.companyId
+                            companyId: user.companyId,
+                            profitCalculationType: company.profitCalculationType
                         }
                     });
 
@@ -72,8 +78,8 @@ export class ProjectEstimatorTemplateService {
     async updateProjectEstimatorTemplate(user: User, companyId: number, templateId: number, body: ProjectEstimatorTemplateNameDTO) {
         try {
             // Check if User is Admin of the Company.
-            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
-                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) {
+                if ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
 
@@ -145,8 +151,8 @@ export class ProjectEstimatorTemplateService {
     async deleteProjectEstimatorTemplate(user: User, companyId: number, templateId: number) {
         try {
             // Check if User is Admin of the Company.
-            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
-                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) {
+                if ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
                 let template = await this.databaseService.projectEstimatorTemplate.findUnique({
@@ -264,8 +270,8 @@ export class ProjectEstimatorTemplateService {
     // retrieve the project template names
     async getProjectEstimatorTemplateName(user: User, companyId: number) {
         try {
-            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
-                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) {
+                if ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
 
@@ -298,8 +304,8 @@ export class ProjectEstimatorTemplateService {
     async createHeader(user: User, companyId: number, body: ProjectEstimatorTemplateHeaderDTO) {
         try {
             // Check if User is Admin of the Company.
-            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
-                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) {
+                if ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
                 // check new header is named as 'Change Orders'
@@ -355,8 +361,8 @@ export class ProjectEstimatorTemplateService {
     // fetch the headers of a template
     async getTemplateData(user: User, companyId: number, templateId: number) {
         try {
-            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
-                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) {
+                if ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
 
@@ -421,10 +427,16 @@ export class ProjectEstimatorTemplateService {
     async createTemplateData(user: User, companyId: number, templateId: number, body: ProjectEstimatorTemplateDTO) {
         try {
             // Check if User is Admin of the Company.
-            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
-                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) {
+                if ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
+                const company = await this.databaseService.company.findUniqueOrThrow({
+                    where: {
+                        id: companyId,
+                        isDeleted: false,
+                    }
+                });
                 let maxOrder = await this.databaseService.projectEstimatorTemplateData.aggregate({
                     _max: {
                         order: true
@@ -441,8 +453,7 @@ export class ProjectEstimatorTemplateService {
                 let projectEstimator = await this.databaseService.projectEstimatorTemplateData.create({
                     data: {
                         ...body,
-                        order: order
-
+                        order: order,
                     }
                 });
                 return { projectEstimator }
@@ -470,8 +481,8 @@ export class ProjectEstimatorTemplateService {
     async updateTemplateData(user: User, companyId: number, estimatorId: number, body: ProjectEstimatorTemplateDTO) {
         try {
             // Check if User is Admin of the Company.
-            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
-                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) {
+                if ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
 
@@ -516,8 +527,8 @@ export class ProjectEstimatorTemplateService {
     async deleteHeader(user: User, companyId: number, templateId: number, headerId: number) {
         try {
             // Check if User is Admin of the Company.
-            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
-                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) {
+                if ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
 
@@ -607,8 +618,8 @@ export class ProjectEstimatorTemplateService {
     async deleteProjectEstimator(user: User, companyId: number, templateId: number, estimatorId: number) {
         try {
             // Check if User is Admin of the Company.
-            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
-                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) {
+                if ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
 
@@ -670,8 +681,8 @@ export class ProjectEstimatorTemplateService {
     async createProjectEstimatorAccount(user: User, companyId: number, templateId: number, body: ProjectEstimatorAccountingTemplateDTO) {
         try {
             // Check if User is Admin of the Company.
-            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
-                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) {
+                if ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
 
@@ -681,6 +692,13 @@ export class ProjectEstimatorTemplateService {
                         isDeleted: false,
                     }
                 });
+
+                let company = await this.databaseService.company.findUniqueOrThrow({
+                    where: {
+                        id: companyId,
+                        isDeleted: false,
+                    }
+                })
 
                 // Check if change order header exist or not. If not create one
                 let accountingHeader = await this.databaseService.projectEstimatorTemplateHeader.findFirst({
@@ -754,8 +772,8 @@ export class ProjectEstimatorTemplateService {
     // edit the project estimator template headers
     async editHeader(user: User, companyId: number, templateId: number, headerId: number, body: ProjectEstimatorTemplateHeaderDTO) {
         try {
-            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
-                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) {
+                if ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
 
@@ -898,8 +916,8 @@ export class ProjectEstimatorTemplateService {
     // bulk update data
     async projectEstimatorBulkUpdate(user: User, companyId: number, templateId: number, body: BulkUpdateProjectEstimatorTemplateDTO[]) {
         try {
-            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
-                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) {
+                if ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
 
@@ -962,8 +980,8 @@ export class ProjectEstimatorTemplateService {
     async reorderItem(user: User, templateId: number, companyId: number, body: ItemOrderDTO) {
         try {
 
-            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
-                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) {
+                if ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
 
@@ -1087,8 +1105,8 @@ export class ProjectEstimatorTemplateService {
 
     async importTemplate(user: User, file: Express.Multer.File, body: { templateId: string }, companyId: number) {
         try {
-            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
-                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) {
+                if ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
 
@@ -1150,6 +1168,79 @@ export class ProjectEstimatorTemplateService {
                 throw error;
             }
 
+            throw new InternalServerErrorException();
+        }
+    }
+
+    async updateTemplateProfitCalculationType (user: User, companyId: number, templateId: number, body: { profitCalculationType: ProfitCalculationTypeEnum }) {
+        try {
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) {
+                if ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId !== companyId) {
+                    throw new ForbiddenException("Action Not Allowed");
+                }
+
+                const template = await this.databaseService.projectEstimatorTemplate.findFirstOrThrow({
+                    where: { id: templateId, isDeleted: false }
+                });
+
+                const updatedTemplate = await this.databaseService.projectEstimatorTemplate.update({
+                    where: { id: templateId, isDeleted: false },
+                    data: { profitCalculationType: body.profitCalculationType }
+                });
+
+                if (body.profitCalculationType !== template.profitCalculationType) {
+                    const headers = await this.databaseService.projectEstimatorTemplateHeader.findMany({
+                        where: { petId: template.id, isDeleted: false, companyId },
+                        include: {
+                            ProjectEstimatorTemplateData: {
+                                where: { isDeleted: false }
+                            }
+                        }
+                    });
+                    // Loop through each header
+                    for (const header of headers) {
+                        const dataItems = header.ProjectEstimatorTemplateData;
+
+                        // Loop through each data item
+                        for (const data of dataItems) {
+                            const unitCost = parseFloat(data.unitCost.toString());
+                            const quantity = parseFloat(data.quantity.toString());
+                            const grossProfit = parseFloat(data.grossProfit.toString());
+                            
+                            const contractPrice =
+                                updatedTemplate.profitCalculationType === ProfitCalculationType.MARKUP
+                                    ? markupCalculation(quantity * unitCost, grossProfit)
+                                    : marginCalculation(quantity * unitCost, grossProfit);
+
+                            // Update the data
+                            await this.databaseService.projectEstimatorTemplateData.update({
+                                where: { id: data.id, isDeleted: false },
+                                data: {
+                                    contractPrice,
+                                }
+                            });
+                        }
+                    }
+                }
+
+                return { message: ResponseMessages.SUCCESSFUL }
+               
+            } else {
+                throw new ForbiddenException("Action Not Allowed");
+            }
+
+        } catch (error) {
+            console.log(error);
+            // Database Exceptions
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code == PrismaErrorCodes.NOT_FOUND)
+                    throw new BadRequestException(ResponseMessages.RESOURCE_NOT_FOUND);
+                else {
+                    console.log(error.code);
+                }
+            } else if (error instanceof ForbiddenException || error instanceof ConflictException) {
+                throw error;
+            }
             throw new InternalServerErrorException();
         }
     }

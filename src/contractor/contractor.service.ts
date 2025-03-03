@@ -281,8 +281,7 @@ export class ContractorService {
                         where: { id: templateId }
                     })
                 }
-                const [categoryDetails, clientCategoryDetails] = await Promise.all([
-                    await this.databaseService.category.findMany({
+                const categoryDetails = await this.databaseService.category.findMany({
                         where: categoryCondition,
                         orderBy: { questionnaireOrder: 'asc' },
                         include: {
@@ -296,53 +295,44 @@ export class ContractorService {
                                 orderBy: { questionOrder: 'asc' },
                             }
                         }
-                    }),
-                    await this.databaseService.clientCategory.findMany({
-                        where: {
-                            companyId,
-                            isDeleted: false,
-                            jobId: {
-                                in: contractorJobIds
-                            },
-                            phaseIds: {
-                                has: phaseId
-                            }
-                        },
-                        orderBy: { questionnaireOrder: 'asc' },
-                        include: {
-                            ClientTemplateQuestion: {
-                                where: {
-                                    isDeleted: false,
-                                    phaseIds: {
-                                        has: phaseId
-                                    }
-                                },
-                                orderBy: { questionOrder: 'asc' },
-                            }
+                })
+                // Sorting the data based on template type
+                let linkToQuestionnaireItems = [];
+                let linkToInitialSelectionItems = [];
+                let linkToPaintSelectionItems = [];
+
+                // Loop through each category to filter questions based on the priority
+                categoryDetails.forEach(category => {
+                    category.questions.forEach(question => {
+                        if (question.linkToQuestionnaire) {
+                            linkToQuestionnaireItems.push({ ...question, category });
+                        } else if (question.linkToInitalSelection) {
+                            linkToInitialSelectionItems.push({ ...question, category });
+                        } else if (question.linkToPaintSelection) {
+                            linkToPaintSelectionItems.push({ ...question, category });
                         }
-                    }),
-                ]);
-                
-                let formattedDetails = [
-                    ...categoryDetails.map(category => ({
+                    });
+                });
+
+                const allItems = [
+                    ...linkToQuestionnaireItems,
+                    ...linkToInitialSelectionItems,
+                    ...linkToPaintSelectionItems
+                ];
+
+                let formattedDetails = categoryDetails.map(category => {
+                    const categoryQuestions = allItems.filter(item => item.category.id === category.id);
+                    
+                    return {
                         category: category.id,
                         categoryName: category.name,
-                        questions: category.questions.map(question => ({
+                        questions: categoryQuestions.map(question => ({
                             questionId: question.id,
                             questionText: question.question,
                             questionType: question.questionType
                         }))
-                    })),
-                    ...clientCategoryDetails.map(clientCategory => ({
-                        category: clientCategory.id,
-                        categoryName: clientCategory.name,
-                        questions: clientCategory.ClientTemplateQuestion.map(question => ({
-                            questionId: question.id,
-                            questionText: question.question,
-                            questionType: question.questionType
-                        }))
-                    }))
-                ];
+                    };
+                });
 
                 // Prepare the contractor response
                 const contractorResponse = {

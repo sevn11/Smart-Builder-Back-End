@@ -18,7 +18,7 @@ export class QuestionnaireTemplateService {
         try {
             // Check if User is Admin of the Company.
 
-            if (user.userType == UserTypes.ADMIN || (user.userType == UserTypes.BUILDER && user.companyId === companyId)) {
+            if (user.userType == UserTypes.ADMIN || ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId === companyId)) {
                 let company = await this.databaseService.company.findUnique({
                     where: {
                         id: companyId,
@@ -109,7 +109,7 @@ export class QuestionnaireTemplateService {
 
         try {
             // Check if User is Admin of the Company.
-            if (user.userType == UserTypes.ADMIN || (user.userType == UserTypes.BUILDER && user.companyId === companyId) || user.userType == UserTypes.EMPLOYEE) {
+            if (user.userType == UserTypes.ADMIN || ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId === companyId)) {
                 let company = await this.databaseService.company.findUnique({
                     where: {
                         id: companyId,
@@ -190,7 +190,7 @@ export class QuestionnaireTemplateService {
     async updateQuestionnaireTemplate(user: User, companyId: number, templateId: number, body: CreateUpdateQuestionnaireTemplateDTO) {
         try {
             // Check if User is Admin of the Company.
-            if (user.userType == UserTypes.ADMIN || (user.userType == UserTypes.BUILDER && user.companyId === companyId)) {
+            if (user.userType == UserTypes.ADMIN || ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId === companyId)) {
                 let company = await this.databaseService.company.findUnique({
                     where: {
                         id: companyId,
@@ -291,8 +291,8 @@ export class QuestionnaireTemplateService {
 
     async deleteQuestionnaireTemplate(user: User, companyId: number, templateId: number) {
         try {
-            if (user.userType == UserTypes.BUILDER || user.userType === UserTypes.ADMIN) {
-                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
+            if (user.userType == UserTypes.BUILDER || user.userType === UserTypes.ADMIN || user.userType == UserTypes.EMPLOYEE) {
+                if ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
 
@@ -424,8 +424,8 @@ export class QuestionnaireTemplateService {
     async importTemplate(user: User, file: Express.Multer.File, companyId: number, body: { templateId: string }) {
         try {
             // Check if User is Admin of the Company.
-            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER) {
-                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) {
+                if ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId !== companyId) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
 

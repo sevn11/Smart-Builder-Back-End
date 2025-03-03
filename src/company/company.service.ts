@@ -9,6 +9,8 @@ import { AWSService, SendgridService } from 'src/core/services';
 import { StripeService } from 'src/core/services/stripe.service';
 import { PaymentMethodDTO } from './validators/payment-method';
 import { BuilderPlanTypes } from 'src/core/utils/builder-plan-types';
+import { ProfitCalculationType } from 'src/core/utils/company';
+import { marginCalculation, markupCalculation } from 'src/core/utils/profit-calculation';
 
 @Injectable()
 export class CompanyService {
@@ -127,6 +129,8 @@ export class CompanyService {
                                 selection: body.PermissionSet.selection,
                                 proposal: body.PermissionSet.proposal,
                                 contractorAndFiles: body.PermissionSet.contractorAndFiles,
+                                settings: body.PermissionSet.settings,
+                                ytdReport: body.PermissionSet.ytdReport,
                                 viewOnly: body.PermissionSet.viewOnly
                             }
                         }
@@ -150,9 +154,9 @@ export class CompanyService {
                         }
                     }
                 });
-                if(result.userType == UserTypes.BUILDER && result.stripeCustomerId) {
+                if (result.userType == UserTypes.BUILDER && result.stripeCustomerId) {
                     await this.stripeService.updateCustomerEmail(result);
-                } 
+                }
                 return { message: ResponseMessages.SUCCESSFUL, result }
             } else {
                 throw new ForbiddenException("Action Not Allowed");
@@ -264,7 +268,7 @@ export class CompanyService {
                         email: body.email
                     }
                 });
-                if(existingUser) {
+                if (existingUser) {
                     throw new ForbiddenException("User alredy exist!");
                 }
 
@@ -281,9 +285,9 @@ export class CompanyService {
                         company: true
                     }
                 });
-                let res =  await this.stripeService.createEmployeeSubscription(builder, body);
-                
-                if(res.status) {
+                let res = await this.stripeService.createEmployeeSubscription(builder, body);
+
+                if (res.status) {
                     // After successfull payment insert employee
                     const invitationToken = HelperFunctions.generateRandomString(16);
                     const employee = await this.databaseService.user.create({
@@ -303,6 +307,8 @@ export class CompanyService {
                                     selection: body.PermissionSet.selection,
                                     proposal: body.PermissionSet.proposal,
                                     contractorAndFiles: body.PermissionSet.contractorAndFiles,
+                                    settings: body.PermissionSet.settings,
+                                    ytdReport: body.PermissionSet.ytdReport,
                                     viewOnly: body.PermissionSet.viewOnly
                                 }
                             },
@@ -408,7 +414,7 @@ export class CompanyService {
                     }
                 });
                 // Remove subscription from stripe
-                if(employee.subscriptionId) {
+                if (employee.subscriptionId) {
                     await this.stripeService.removeSubscription(employee.subscriptionId);
                 }
                 await this.databaseService.user.delete({
@@ -442,13 +448,20 @@ export class CompanyService {
     async getCompanyDetails(user: User, companyId: number) {
         try {
             if (user.companyId === companyId || user.userType === UserTypes.ADMIN) {
-                let company = await this.databaseService.company.findUniqueOrThrow({
+                let companyData = await this.databaseService.company.findUniqueOrThrow({
                     where: {
                         id: companyId,
                         isActive: true,
                         isDeleted: false
                     }
                 });
+                let company: any = {...companyData};
+                if (companyData.signNowSubscriptionId) {
+                    let res = await this.stripeService.isSignNowCancelled(companyData.signNowSubscriptionId);
+                    company.signNowPlanStatus = res.status;
+                } else {
+                    company.signNowPlanStatus = false;
+                }
                 return { company }
             } else {
                 throw new ForbiddenException("Action Not Allowed");
@@ -525,21 +538,22 @@ export class CompanyService {
                 if (!company) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
+                const profitCalType = company.profitCalculationType
                 // Check is plan updated or not
                 let sentPlanUpdateMessage = false;
-                if(company.planType !== body.planType) {
+                if (company.planType !== body.planType) {
                     let planAmount = 0;
                     const planType = body.planType == BuilderPlanTypes.MONTHLY ? 'month' : 'year';
 
                     let data = await this.databaseService.seoSettings.findMany();
                     let seoSettings = data[0];
-                    body.planType == BuilderPlanTypes.MONTHLY 
-                        ? planAmount = seoSettings.monthlyPlanAmount.toNumber() 
+                    body.planType == BuilderPlanTypes.MONTHLY
+                        ? planAmount = seoSettings.monthlyPlanAmount.toNumber()
                         : planAmount = seoSettings.yearlyPlanAmount.toNumber()
 
                     let res = await this.stripeService.changeUserSubscriptionType(user, planAmount * 100, planType);
 
-                    if(res.status) {
+                    if (res.status) {
                         // Update company with new price
                         sentPlanUpdateMessage = true;
                         company = await this.databaseService.company.update({
@@ -555,6 +569,15 @@ export class CompanyService {
                                 planAmount
                             }
                         });
+                        // Update sign-now plan
+                        if(company.signNowSubscriptionId) {
+                            let price = 0;
+                            planType == 'month'
+                                ? price = seoSettings.signNowMonthlyAmount.toNumber()
+                                : price = seoSettings.signNowYearlyAmount.toNumber()
+
+                            await this.stripeService.changeSignNowSubscriptionPlanType(company, price * 100, planType);
+                        }
                         // Update plan for each employee under builder
                         let employees = await this.databaseService.user.findMany({
                             where: {
@@ -579,6 +602,7 @@ export class CompanyService {
                         }
                     }
                 }
+                const { signNowPlanStatus, ...updatedBody } = body; // Filtering our sign-now plan status
                 company = await this.databaseService.company.update({
                     where: {
                         id: companyId,
@@ -589,10 +613,83 @@ export class CompanyService {
                         isDeleted: true
                     },
                     data: {
-                        ...body
+                        ...updatedBody
                     }
                 });
-                return { company, isPlanChanged:sentPlanUpdateMessage  }
+                // Check is sign now plan status
+                let builder = await this.databaseService.user.findUniqueOrThrow({
+                    where: {
+                        id: user.id,
+                        OR: [
+                            { userType: UserTypes.BUILDER },
+                            { userType: UserTypes.ADMIN },
+                        ],
+                        isDeleted: false,
+                        isActive: true,
+                    }
+                })
+                let data = await this.databaseService.seoSettings.findMany();
+                let seoSettings = data[0];
+                let signNowResponse = { status: null, message: "" };
+                if (body.signNowPlanStatus) {
+                    let signNowPlanAmount = 0;
+                    company.planType == BuilderPlanTypes.MONTHLY
+                        ? signNowPlanAmount = seoSettings.signNowMonthlyAmount.toNumber()
+                        : signNowPlanAmount = seoSettings.signNowYearlyAmount.toNumber()
+                    // Check plan already exist and active
+                    if (company.signNowSubscriptionId) {
+                        let planInfo = await this.stripeService.isSignNowCancelled(company.signNowSubscriptionId);
+                        if (planInfo.status) {
+                            return; // Active subscription already exist
+                        }
+                        let createSubscriptionResult = await this.stripeService.createBuilderSignNowSubscriptionAfterSignup(company, builder, signNowPlanAmount);
+                        if (createSubscriptionResult.status) {
+                            signNowResponse.status = true;
+                            signNowResponse.message = "Sign now subscription added.";
+                        } else {
+                            signNowResponse.status = false;
+                            signNowResponse.message = "Failed to add sign now subscription.";
+                        }
+                    } else {
+                        let res = await this.stripeService.createBuilderSignNowSubscription(company, builder.stripeCustomerId, signNowPlanAmount, builder.isDemoUser);
+                        // Update new subscription info in database
+                        if (res.status) {
+                            await this.databaseService.company.update({
+                                where: { id: companyId},
+                                data: {
+                                    signNowStripeProductId: res.productId,
+                                    signNowSubscriptionId: res.subscriptionId
+                                }
+                            })
+                            signNowResponse.status = true;
+                            signNowResponse.message = "Sign now subscription added.";
+                        }
+                        else {
+                            signNowResponse.status = false;
+                            signNowResponse.message = "Failed to add sign now subscription.";
+                        }
+                    }
+                } 
+                else {
+                    // Check plan already exist and active
+                    if (company.signNowSubscriptionId) {
+                        let planInfo = await this.stripeService.isSignNowCancelled(company.signNowSubscriptionId);
+                        if (planInfo.status) {
+                            // Cancel subscription
+                            let status = await this.stripeService.removeSubscription(company.signNowSubscriptionId);
+                            if(status) {
+                                signNowResponse.status = true;
+                                signNowResponse.message = "Sign Now subscription cancelled.";
+                            } else {
+                                signNowResponse.status = false;
+                                signNowResponse.message = "Failed to cancel sign now subscription.";
+                            }
+                        } 
+                    }
+                }
+
+
+                return { company, isPlanChanged: sentPlanUpdateMessage, signNowResponse }
             } else {
                 throw new ForbiddenException("Action Not Allowed");
             }
@@ -601,13 +698,15 @@ export class CompanyService {
             if (error instanceof ForbiddenException) {
                 throw error;
             }
-            throw new InternalServerErrorException();
+            throw new InternalServerErrorException({
+                error: "An unexpected error occured."
+            });
         }
     }
 
     // Get default payment method from stripe
     async getDefaultPaymentMethod(user: User, companyId: number) {
-        if(user.stripeCustomerId) {
+        if (user.stripeCustomerId) {
             return this.stripeService.getDefaultPaymentMethod(user.stripeCustomerId);
         }
         else {
@@ -617,7 +716,7 @@ export class CompanyService {
 
     // Set default payment method in stripe
     async setDefaultPaymentMethod(user: User, body: PaymentMethodDTO) {
-        if(user.stripeCustomerId) {
+        if (user.stripeCustomerId) {
             return this.stripeService.setDefaultPaymentMethod(user.stripeCustomerId, body.paymentMethodId);
         }
         throw new InternalServerErrorException();
@@ -635,7 +734,7 @@ export class CompanyService {
                     where: { companyId: companyId, isActive: true },
                     select: { id: true },
                 });
-            
+
                 const usersIds = users.map(users => users.id);
 
                 const transactionLogs = await this.databaseService.paymentLog.findMany({
@@ -677,7 +776,7 @@ export class CompanyService {
                 }
             });
             let res = await this.stripeService.retryFailedPayment(user, paymentLog.paymentId, body.paymentMethodId);
-            if(res.status) {
+            if (res.status) {
                 await this.databaseService.paymentLog.update({
                     where: {
                         id: paymentLogId
@@ -703,7 +802,7 @@ export class CompanyService {
                 }
             });
             let res = await this.stripeService.renewEmployeeSubscription(user, employee, body.paymentMethodId);
-            if(res.status) {
+            if (res.status) {
                 await this.databaseService.user.update({
                     where: { id: employeeId },
                     data: {
@@ -729,8 +828,27 @@ export class CompanyService {
                 }
             });
             // Remove subscription from stripe
-            if(builder.subscriptionId) {
+            if (builder.subscriptionId) {
                 await this.stripeService.removeSubscription(builder.subscriptionId);
+            }
+            // Cancel sign-now subscription
+            let company = await this.databaseService.company.findFirst({
+                where: { id: user.companyId, isDeleted: false }
+            });
+            if (company && company.signNowSubscriptionId) {
+                try {
+                    await this.stripeService.removeSubscription(company.signNowSubscriptionId);
+                    // To be removed later
+                    await this.databaseService.company.update({
+                        where: { id: user.companyId, isDeleted: false },
+                        data: {
+                            signNowStripeProductId: null,
+                            signNowSubscriptionId: null
+                        }
+                    })
+                } catch (error) {
+                    console.log(error)
+                }
             }
             // Cancel employee subscription
             let employees = await this.databaseService.user.findMany({
@@ -743,7 +861,7 @@ export class CompanyService {
             });
             if (employees.length > 0) {
                 for (const employee of employees) {
-                    if(employee.subscriptionId) {
+                    if (employee.subscriptionId) {
                         await this.stripeService.removeSubscription(employee.subscriptionId);
                     }
                 }
@@ -755,6 +873,32 @@ export class CompanyService {
                 error: "An unexpected error occured.",
                 errorDetails: error.message
             })
+        }
+    }
+
+    async getSignNowPlanInfo(user:User, companyId: number) {
+        try {
+            let company = await this.databaseService.company.findUniqueOrThrow({
+                where: { id: companyId, isDeleted: false }
+            });
+            let data = await this.databaseService.seoSettings.findMany();
+            let seoSettings = data[0];
+            let isSignNowCancelled = false;
+            if (company.signNowSubscriptionId) {
+                let res = await this.stripeService.isSignNowCancelled(company.signNowSubscriptionId);
+                if (res.status) {
+                    isSignNowCancelled = false;
+                } else {
+                    isSignNowCancelled = true;
+                }
+            }
+            else {
+                isSignNowCancelled = true;
+            }
+            const { signNowMonthlyAmount, signNowYearlyAmount } = seoSettings;
+            return { signNowPlanPriceInfo: { signNowMonthlyAmount, signNowYearlyAmount }, isSignNowCancelled }
+        } catch (error) {
+            console.log(error);
         }
     }
 }

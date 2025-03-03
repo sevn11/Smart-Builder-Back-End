@@ -11,6 +11,7 @@ import { ProjectEstimatorAccountingTemplateDTO } from './validators/add-project-
 import { BulkUpdateProjectEstimatorTemplateDTO } from './validators/pet-bulk-update'
 import { ItemOrderDTO } from './validators/item-order';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { ProfitCalculationTypeEnum } from 'src/core/utils/profit-calculation';
 
 @UseGuards(JwtGuard)
 @Controller('project-estimator-template')
@@ -179,7 +180,7 @@ export class ProjectEstimatorTemplateController {
         FileInterceptor('file', {
             limits: { fileSize: 30 * 1024 * 1024 }, // Limit file size to 10MB
             fileFilter: (req, file, cb) => {
-                if (file.mimetype !== 'text/csv') {
+                if (file.mimetype !== 'text/csv' && file.mimetype !== 'application/vnd.ms-excel') {
                     return cb(new BadRequestException('Only CSV files are allowed!'), false);
                 }
                 cb(null, true);
@@ -193,5 +194,16 @@ export class ProjectEstimatorTemplateController {
         @Param('companyId', ParseIntPipe) companyId: number,
     ) {
         return this.projectEstimatorTemplateService.importTemplate(user, file, body, companyId);
+    }
+
+    @Patch(':companyId/:templateId/update/profit-calculation-type')
+    @HttpCode(HttpStatus.OK)
+    updateTemplateProfitCalculationType(
+        @GetUser() user: User,
+        @Param('templateId', ParseIntPipe) templateId: number,
+        @Param('companyId', ParseIntPipe) companyId: number,
+        @Body() body: { profitCalculationType: ProfitCalculationTypeEnum }
+    ) {
+        return this.projectEstimatorTemplateService.updateTemplateProfitCalculationType(user, companyId, templateId, body);
     }
 }
