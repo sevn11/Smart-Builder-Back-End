@@ -400,6 +400,148 @@ export class JobContractorService {
         }
     }
 
+    // Function to get details of individual contractor
+    async getJobContractorDetails(user: User, companyId: number, jobId: number, rowId: number) {
+        try {
+            const jobContractor = await this.databaseService.jobContractor.findUniqueOrThrow({
+                where: { id: rowId },
+                include: {
+                    contractor: {
+                        include: {
+                            phase: true
+                        }
+                    },
+                }
+            })
+    
+            let jobDetails = await this.databaseService.job.findFirst({
+                where: { id: jobId, companyId, isDeleted: false },
+                include: {
+                    customer: true,
+                    description: true,
+                    company: true
+                }
+            });
+            // Get template attached to project
+            const clientTemplateInfo = await this.databaseService.clientTemplate.findFirstOrThrow({
+                where: {
+                    companyId,
+                    jobId: jobId,
+                    isDeleted: false,
+                    questionnaireTemplateId: jobDetails.templateId,
+                }
+            })
+            // Fetching all linked info of phase
+            const clientCategoryDetails = await this.databaseService.clientCategory.findMany({
+                where: {
+                    companyId,
+                    isDeleted: false,
+                    jobId,
+                    phaseIds: {
+                        has: jobContractor.contractor.phase.id
+                    },
+                    clientTemplateId: clientTemplateInfo.id
+                },
+                orderBy: { questionnaireOrder: 'asc' },
+                include: {
+                    ClientTemplateQuestion: {
+                        where: {
+                            isDeleted: false,
+                            phaseIds: {
+                                has: jobContractor.contractor.phase.id
+                            }
+                        },
+                        orderBy: { questionOrder: 'asc' },
+                        include: {
+                            answer: {
+                                where: { jobId, companyId },
+                                omit: { createdAt: true, updatedAt: true }
+                            }
+                        }
+                    }
+                }
+            })
+            // Sorting the data based on template type
+            let linkToQuestionnaireItems = [];
+            let linkToInitialSelectionItems = [];
+            let linkToPaintSelectionItems = [];
+
+            // Loop through each category to filter questions based on the priority
+            clientCategoryDetails.forEach(category => {
+                category.ClientTemplateQuestion.forEach(question => {
+                    if (question.linkToQuestionnaire) {
+                        linkToQuestionnaireItems.push({ ...question, category });
+                    } else if (question.linkToInitalSelection) {
+                        linkToInitialSelectionItems.push({ ...question, category });
+                    } else if (question.linkToPaintSelection) {
+                        linkToPaintSelectionItems.push({ ...question, category });
+                    }
+                });
+            });
+
+            const allItems = [
+                ...linkToQuestionnaireItems,
+                ...linkToInitialSelectionItems,
+                ...linkToPaintSelectionItems
+            ];
+            let formattedDetails = clientCategoryDetails.map(clientCategory => {
+                const categoryQuestions = allItems.filter(item => item.category.id === clientCategory.id);
+                return {
+                    category: clientCategory.id,
+                    categoryName: clientCategory.name,
+                    questions: categoryQuestions.map(question => {
+                        let answer: any;
+                        if (question.questionType === "Allowance") {
+                            const answerText = question?.answer?.answerText ?? "0";
+                            answer = `$${this.formatNumberWithCommas(parseFloat(answerText as string))}`;
+                        } else if (question.questionType === "Multiple Choice Question" && question?.multipleOptions) {
+                            if (question?.answer?.answerIds?.length > 0) {
+                                let options = question?.multipleOptions as any;
+                                answer = options.filter((option, index) => question.answer.answerIds.includes(String(index)))
+                                    .map(option => option.text)
+                                    .join(", ");
+                            } else {
+                                answer = "-";
+                            }
+                        } else {
+                            answer = question?.answer?.answerText ?? "-";
+                        }
+                        return {
+                            questionId: question.id,
+                            questionText: question.question,
+                            questionType: question.questionType,
+                            answer
+                        };
+                    })
+                }
+            });
+            const response = {
+                jobDetails: jobDetails,
+                phase: jobContractor.contractor.phase,
+                details: formattedDetails,
+            };
+    
+            return { contractorDetails: response };
+        }
+        catch (error) {
+            console.log(error);
+            // Database Exceptions
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code == PrismaErrorCodes.NOT_FOUND)
+                    throw new BadRequestException(ResponseMessages.USER_NOT_FOUND);
+                else {
+                    console.log(error.code);
+                }
+            } else if (error instanceof ForbiddenException) {
+                throw error;
+            }
+            throw new InternalServerErrorException({
+                message: 'An unexpected error occurred.',
+                details: error.message,
+            });
+        }
+    }
+
     private getCurrentDate() {
         const date = new Date();
         const year = date.getFullYear().toString().slice(-2);
