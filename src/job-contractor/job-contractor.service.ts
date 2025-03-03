@@ -423,7 +423,7 @@ export class JobContractorService {
                 }
             });
             // Get template attached to project
-            const clientTemplateInfo = await this.databaseService.clientTemplate.findFirst({
+            const clientTemplateInfo = await this.databaseService.clientTemplate.findFirstOrThrow({
                 where: {
                     companyId,
                     jobId: jobId,
@@ -461,11 +461,35 @@ export class JobContractorService {
                     }
                 }
             })
-            let formattedDetails = [
-                ...clientCategoryDetails.map(clientCategory => ({
+            // Sorting the data based on template type
+            let linkToQuestionnaireItems = [];
+            let linkToInitialSelectionItems = [];
+            let linkToPaintSelectionItems = [];
+
+            // Loop through each category to filter questions based on the priority
+            clientCategoryDetails.forEach(category => {
+                category.ClientTemplateQuestion.forEach(question => {
+                    if (question.linkToQuestionnaire) {
+                        linkToQuestionnaireItems.push({ ...question, category });
+                    } else if (question.linkToInitalSelection) {
+                        linkToInitialSelectionItems.push({ ...question, category });
+                    } else if (question.linkToPaintSelection) {
+                        linkToPaintSelectionItems.push({ ...question, category });
+                    }
+                });
+            });
+
+            const allItems = [
+                ...linkToQuestionnaireItems,
+                ...linkToInitialSelectionItems,
+                ...linkToPaintSelectionItems
+            ];
+            let formattedDetails = clientCategoryDetails.map(clientCategory => {
+                const categoryQuestions = allItems.filter(item => item.category.id === clientCategory.id);
+                return {
                     category: clientCategory.id,
                     categoryName: clientCategory.name,
-                    questions: clientCategory.ClientTemplateQuestion.map(question => {
+                    questions: categoryQuestions.map(question => {
                         let answer: any;
                         if (question.questionType === "Allowance") {
                             const answerText = question?.answer?.answerText ?? "0";
@@ -489,8 +513,8 @@ export class JobContractorService {
                             answer
                         };
                     })
-                }))
-            ];
+                }
+            });
             const response = {
                 jobDetails: jobDetails,
                 phase: jobContractor.contractor.phase,
