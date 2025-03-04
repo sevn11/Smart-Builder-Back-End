@@ -642,32 +642,22 @@ export class CompanyService {
                         if (planInfo.status) {
                             return; // Active subscription already exist
                         }
-                        let createSubscriptionResult = await this.stripeService.createBuilderSignNowSubscriptionAfterSignup(company, builder, signNowPlanAmount);
-                        if (createSubscriptionResult.status) {
-                            signNowResponse.status = true;
-                            signNowResponse.message = "Sign now subscription added.";
-                        } else {
-                            signNowResponse.status = false;
-                            signNowResponse.message = "Failed to add sign now subscription.";
-                        }
-                    } else {
-                        let res = await this.stripeService.createBuilderSignNowSubscription(company, builder.stripeCustomerId, signNowPlanAmount, builder.isDemoUser);
-                        // Update new subscription info in database
-                        if (res.status) {
-                            await this.databaseService.company.update({
-                                where: { id: companyId},
-                                data: {
-                                    signNowStripeProductId: res.productId,
-                                    signNowSubscriptionId: res.subscriptionId
-                                }
-                            })
-                            signNowResponse.status = true;
-                            signNowResponse.message = "Sign now subscription added.";
-                        }
-                        else {
-                            signNowResponse.status = false;
-                            signNowResponse.message = "Failed to add sign now subscription.";
-                        }
+                    }
+                    let subscriptionRes = await this.stripeService.createBuilderSignNowSubscriptionAfterSignup(company, builder, signNowPlanAmount);
+                    if (subscriptionRes.status) {
+                        await this.databaseService.company.update({
+                            where: { id: companyId},
+                            data: {
+                                signNowStripeProductId: subscriptionRes.productId,
+                                signNowSubscriptionId: subscriptionRes.subscriptionId
+                            }
+                        })
+                        signNowResponse.status = true;
+                        signNowResponse.message = "Sign now subscription added.";
+                    }
+                    else {
+                        signNowResponse.status = false;
+                        signNowResponse.message = "Failed to add sign now subscription.";
                     }
                 } 
                 else {

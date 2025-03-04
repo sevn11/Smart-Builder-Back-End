@@ -45,10 +45,14 @@ export class AuthService {
 
             if(data) {
                 // Create new customer and add card details inside stripe
-                let response = await this.stripeService.createBuilderSubscription(body, planAmount);
+                let promoCode: string;
+                if(body.promoCode) {
+                    promoCode = body.promoCode;
+                }
+                let response = await this.stripeService.createBuilderSubscription(body, planAmount, promoCode);
                 if(response.status) {
                     let signNowSubscriptionResponse = null;
-                    let signNowSubStatus = false;
+                    let signNowSubStatus = true;
                     // Create a SignNow subscription if the builder chooses a plan
                     if (body.signNowPlanType && Object.values(BuilderPlanTypes).includes(body.signNowPlanType)) {
                         let signNowPlanAmount = 0;
@@ -57,8 +61,8 @@ export class AuthService {
                             : signNowPlanAmount = seoSettings.signNowYearlyAmount.toNumber()
     
                         signNowSubscriptionResponse = await this.stripeService.createBuilderSignNowSubscription(body, response.stripeCustomerId, signNowPlanAmount);
-                        if (signNowSubscriptionResponse.status) {
-                            signNowSubStatus = true
+                        if (!signNowSubscriptionResponse.status) {
+                            signNowSubStatus = false
                         }
                     }
                     const hash = await argon.hash(body.password);
@@ -130,6 +134,7 @@ export class AuthService {
                 throw new InternalServerErrorException()
             }
         } catch (ex) {
+            console.log(ex)
             // Database Exceptions
             if(ex instanceof BadRequestException) {
                 throw new BadRequestException(ResponseMessages.UNIQUE_EMAIL_ERROR);
@@ -507,4 +512,26 @@ export class AuthService {
         })
     }
 
+    // Fn to get promocode information
+    async getDiscountDetails(promo_code: string) {
+        try {
+            const response = await this.stripeService.getPromoCodeInfo(promo_code);
+
+            if (!response.status) {
+                throw new BadRequestException({ message: response.message });
+            }
+
+            return {
+                success: true,
+                discount: response.info.discount,
+                promoCode: response.info.promo_code_id,
+                couponId: response.info.coupon_id,
+                duration: response.info.duration,
+                message: response.message,
+            };
+        } catch (error) {
+            console.log(error)
+            throw new BadRequestException({ message: ResponseMessages.INVALID_PROMO_CODE })
+        }
+    }
 }

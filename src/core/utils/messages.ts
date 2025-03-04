@@ -42,4 +42,5 @@ export class ResponseMessages {
     static ANSWER_UPDATED_SUCCESSFULLY = 'Answer update successfully.'
     static CATEGORY_ADDED_SUCCESSFULLY = 'Category added successfully'
     static CONTRACTOR_ORDER_UPDATED = 'Contractor order updated.'
+    static INVALID_PROMO_CODE = 'Invalid promo code'
 }
