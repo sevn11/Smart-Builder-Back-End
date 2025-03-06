@@ -25,6 +25,10 @@ export class DemoUserDTO {
 
     @IsString()
     @IsNotEmpty()
+    zipcode?: string
+
+    @IsString()
+    @IsNotEmpty()
     phoneNumber?: string
 
     @IsEnum(BuilderPlanTypes)
