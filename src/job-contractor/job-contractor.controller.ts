@@ -35,4 +35,15 @@ export class JobContractorController {
     sendInfoMail(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number, @Param('jobId', ParseIntPipe) jobId: number, @Body() body: SendInfoToContractorDTO) {
         return this.jobContractorService.sendInfoMail(user, companyId, jobId, body);
     }
+    
+    @Get('/:rowId/details')
+    @HttpCode(HttpStatus.OK)
+    getJobContractorDetails(
+        @GetUser() user: User, 
+        @Param('companyId', ParseIntPipe) companyId: number, 
+        @Param('jobId', ParseIntPipe) jobId: number,
+        @Param('rowId', ParseIntPipe) rowId: number,
+    ) {
+        return this.jobContractorService.getJobContractorDetails(user, companyId, jobId, rowId);
+    }
 }
