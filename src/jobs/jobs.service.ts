@@ -120,6 +120,11 @@ export class JobsService {
                     omit: {
                         isDeleted: true
                     },
+                    orderBy: {
+                        customer: {
+                            name: 'asc'
+                        }
+                    },
                     include: {
                         customer: {
                             omit: {
