@@ -249,9 +249,10 @@ export class JobContractorService {
                                 questionnaireTemplateId: jobDetails.templateId,
                             }
                         })
-                        // Fetching all linked info of phase
-                        const [clientCategoryDetails] = await Promise.all([
-                            await this.databaseService.clientCategory.findMany({
+                        // Fetch each linked details seperately
+                        let [questionnaireDetails, initialSelectionDetails, paintSelectionDetails] = await Promise.all([
+                            // Questionnaire details
+                            this.databaseService.clientCategory.findMany({
                                 where: {
                                     companyId,
                                     isDeleted: false,
@@ -260,6 +261,7 @@ export class JobContractorService {
                                         has: contractor.phaseId
                                     },
                                     clientTemplateId: clientTemplateInfo.id,
+                                    linkToQuestionnaire: true
                                 },
                                 orderBy: { questionnaireOrder: 'asc' },
                                 include: {
@@ -268,7 +270,7 @@ export class JobContractorService {
                                             isDeleted: false,
                                             phaseIds: {
                                                 has: contractor.phaseId
-                                            },
+                                            }
                                         },
                                         orderBy: { questionOrder: 'asc' },
                                         include: {
@@ -280,36 +282,115 @@ export class JobContractorService {
                                     }
                                 }
                             }),
-                        ]);
-                        // Sorting the data based on template type
-                        let linkToQuestionnaireItems = [];
-                        let linkToInitialSelectionItems = [];
-                        let linkToPaintSelectionItems = [];
-
-                        // Loop through each category to filter questions based on the priority
-                        clientCategoryDetails.forEach(category => {
-                            category.ClientTemplateQuestion.forEach(question => {
-                                if (question.linkToQuestionnaire) {
-                                    linkToQuestionnaireItems.push({ ...question, category });
-                                } else if (question.linkToInitalSelection) {
-                                    linkToInitialSelectionItems.push({ ...question, category });
-                                } else if (question.linkToPaintSelection) {
-                                    linkToPaintSelectionItems.push({ ...question, category });
+                            // Initial selection details
+                            this.databaseService.clientCategory.findMany({
+                                where: {
+                                    companyId,
+                                    isDeleted: false,
+                                    jobId,
+                                    phaseIds: {
+                                        has: contractor.phaseId
+                                    },
+                                    clientTemplateId: clientTemplateInfo.id,
+                                    linkToInitalSelection: true,
+                                    linkToQuestionnaire: false,
+                                },
+                                orderBy: { initialOrder: 'asc' },
+                                include: {
+                                    ClientTemplateQuestion: {
+                                        where: {
+                                            isDeleted: false,
+                                            phaseIds: {
+                                                has: contractor.phaseId
+                                            }
+                                        },
+                                        orderBy: { initialQuestionOrder: 'asc' },
+                                        include: {
+                                            answer: {
+                                                where: { jobId, companyId },
+                                                omit: { createdAt: true, updatedAt: true }
+                                            }
+                                        }
+                                    }
                                 }
+                            }),
+                            // Paint selection details
+                            this.databaseService.clientCategory.findMany({
+                                where: {
+                                    companyId,
+                                    isDeleted: false,
+                                    jobId,
+                                    phaseIds: {
+                                        has: contractor.phaseId
+                                    },
+                                    clientTemplateId: clientTemplateInfo.id,
+                                    linkToPaintSelection: true,
+                                    linkToQuestionnaire: false,
+                                },
+                                orderBy: { paintOrder: 'asc' },
+                                include: {
+                                    ClientTemplateQuestion: {
+                                        where: {
+                                            isDeleted: false,
+                                            phaseIds: {
+                                                has: contractor.phaseId
+                                            }
+                                        },
+                                        orderBy: { paintQuestionOrder: 'asc' },
+                                        include: {
+                                            answer: {
+                                                where: { jobId, companyId },
+                                                omit: { createdAt: true, updatedAt: true }
+                                            }
+                                        }
+                                    }
+                                }
+                            })
+                        ]);
+
+                        // Sorting quesionnaire questions based on linking to other templates
+                        questionnaireDetails.forEach(category => {
+                            category.ClientTemplateQuestion.sort((a, b) => {
+                                // Assign priority values
+                                const getPriority = (question) => {
+                                    if (question.linkToQuestionnaire) return 3; 
+                                    if (question.linkToInitalSelection) return 2;
+                                    if (question.linkToPaintSelection) return 1;
+                                    return 0;
+                                };
+                                
+                                const priorityA = getPriority(a);
+                                const priorityB = getPriority(b);
+                                
+                                // First sort by priority (linkToQuestionnaire > linkToInitalSelection > linkToPaintSelection)
+                                if (priorityA !== priorityB) {
+                                    return priorityB - priorityA;
+                                }
+                        
+                                // If both have the same priority, then sort based on their respective order
+                                if (a.linkToInitalSelection && b.linkToInitalSelection) {
+                                    return a.initialQuestionOrder - b.initialQuestionOrder;
+                                }
+                                
+                                if (a.linkToPaintSelection && b.linkToPaintSelection) {
+                                    return a.paintQuestionOrder - b.paintQuestionOrder;
+                                }
+                                // If none of the above
+                                return 0;
                             });
-                        });
+                        });                  
+
 
                         const allItems = [
-                            ...linkToQuestionnaireItems,
-                            ...linkToInitialSelectionItems,
-                            ...linkToPaintSelectionItems
+                            ...questionnaireDetails,
+                            ...initialSelectionDetails,
+                            ...paintSelectionDetails
                         ];
-                        let formattedDetails = clientCategoryDetails.map(clientCategory => {
-                            const categoryQuestions = allItems.filter(item => item.category.id === clientCategory.id);
+                        let formattedDetails = allItems.map(clientCategory => {
                             return {
                                 category: clientCategory.id,
                                 categoryName: clientCategory.name,
-                                questions: categoryQuestions.map(question => {
+                                questions: clientCategory.ClientTemplateQuestion.map(question => {
                                     let answer: any;
                                     if (question.questionType === "Allowance") {
                                         const answerText = question?.answer?.answerText ?? "0";
@@ -431,65 +512,147 @@ export class JobContractorService {
                     questionnaireTemplateId: jobDetails.templateId,
                 }
             })
-            // Fetching all linked info of phase
-            const clientCategoryDetails = await this.databaseService.clientCategory.findMany({
-                where: {
-                    companyId,
-                    isDeleted: false,
-                    jobId,
-                    phaseIds: {
-                        has: jobContractor.contractor.phase.id
-                    },
-                    clientTemplateId: clientTemplateInfo.id
-                },
-                orderBy: { questionnaireOrder: 'asc' },
-                include: {
-                    ClientTemplateQuestion: {
-                        where: {
-                            isDeleted: false,
-                            phaseIds: {
-                                has: jobContractor.contractor.phase.id
-                            }
+            // Fetch each linked details seperately
+            let [questionnaireDetails, initialSelectionDetails, paintSelectionDetails] = await Promise.all([
+                // Questionnaire details
+                this.databaseService.clientCategory.findMany({
+                    where: {
+                        companyId,
+                        isDeleted: false,
+                        jobId,
+                        phaseIds: {
+                            has: jobContractor.contractor.phase.id
                         },
-                        orderBy: { questionOrder: 'asc' },
-                        include: {
-                            answer: {
-                                where: { jobId, companyId },
-                                omit: { createdAt: true, updatedAt: true }
+                        clientTemplateId: clientTemplateInfo.id,
+                        linkToQuestionnaire: true
+                    },
+                    orderBy: { questionnaireOrder: 'asc' },
+                    include: {
+                        ClientTemplateQuestion: {
+                            where: {
+                                isDeleted: false,
+                                phaseIds: {
+                                    has: jobContractor.contractor.phase.id
+                                }
+                            },
+                            orderBy: { questionOrder: 'asc' },
+                            include: {
+                                answer: {
+                                    where: { jobId, companyId },
+                                    omit: { createdAt: true, updatedAt: true }
+                                }
                             }
                         }
                     }
-                }
-            })
-            // Sorting the data based on template type
-            let linkToQuestionnaireItems = [];
-            let linkToInitialSelectionItems = [];
-            let linkToPaintSelectionItems = [];
-
-            // Loop through each category to filter questions based on the priority
-            clientCategoryDetails.forEach(category => {
-                category.ClientTemplateQuestion.forEach(question => {
-                    if (question.linkToQuestionnaire) {
-                        linkToQuestionnaireItems.push({ ...question, category });
-                    } else if (question.linkToInitalSelection) {
-                        linkToInitialSelectionItems.push({ ...question, category });
-                    } else if (question.linkToPaintSelection) {
-                        linkToPaintSelectionItems.push({ ...question, category });
+                }),
+                // Initial selection details
+                this.databaseService.clientCategory.findMany({
+                    where: {
+                        companyId,
+                        isDeleted: false,
+                        jobId,
+                        phaseIds: {
+                            has: jobContractor.contractor.phase.id
+                        },
+                        clientTemplateId: clientTemplateInfo.id,
+                        linkToInitalSelection: true,
+                        linkToQuestionnaire: false,
+                    },
+                    orderBy: { initialOrder: 'asc' },
+                    include: {
+                        ClientTemplateQuestion: {
+                            where: {
+                                isDeleted: false,
+                                phaseIds: {
+                                    has: jobContractor.contractor.phase.id
+                                }
+                            },
+                            orderBy: { initialQuestionOrder: 'asc' },
+                            include: {
+                                answer: {
+                                    where: { jobId, companyId },
+                                    omit: { createdAt: true, updatedAt: true }
+                                }
+                            }
+                        }
                     }
+                }),
+                // Paint selection details
+                this.databaseService.clientCategory.findMany({
+                    where: {
+                        companyId,
+                        isDeleted: false,
+                        jobId,
+                        phaseIds: {
+                            has: jobContractor.contractor.phase.id
+                        },
+                        clientTemplateId: clientTemplateInfo.id,
+                        linkToPaintSelection: true,
+                        linkToQuestionnaire: false,
+                    },
+                    orderBy: { paintOrder: 'asc' },
+                    include: {
+                        ClientTemplateQuestion: {
+                            where: {
+                                isDeleted: false,
+                                phaseIds: {
+                                    has: jobContractor.contractor.phase.id
+                                }
+                            },
+                            orderBy: { paintQuestionOrder: 'asc' },
+                            include: {
+                                answer: {
+                                    where: { jobId, companyId },
+                                    omit: { createdAt: true, updatedAt: true }
+                                }
+                            }
+                        }
+                    }
+                })
+            ]);
+
+            // Sorting quesionnaire questions based on linking to other templates
+            questionnaireDetails.forEach(category => {
+                category.ClientTemplateQuestion.sort((a, b) => {
+                    // Assign priority values
+                    const getPriority = (question) => {
+                        if (question.linkToQuestionnaire) return 3; 
+                        if (question.linkToInitalSelection) return 2;
+                        if (question.linkToPaintSelection) return 1;
+                        return 0;
+                    };
+                    
+                    const priorityA = getPriority(a);
+                    const priorityB = getPriority(b);
+                    
+                    // First sort by priority (linkToQuestionnaire > linkToInitalSelection > linkToPaintSelection)
+                    if (priorityA !== priorityB) {
+                        return priorityB - priorityA;
+                    }
+            
+                    // If both have the same priority, then sort based on their respective order
+                    if (a.linkToInitalSelection && b.linkToInitalSelection) {
+                        return a.initialQuestionOrder - b.initialQuestionOrder;
+                    }
+                    
+                    if (a.linkToPaintSelection && b.linkToPaintSelection) {
+                        return a.paintQuestionOrder - b.paintQuestionOrder;
+                    }
+                    // If none of the above
+                    return 0;
                 });
-            });
+            });                  
 
             const allItems = [
-                ...linkToQuestionnaireItems,
-                ...linkToInitialSelectionItems,
-                ...linkToPaintSelectionItems
+                ...questionnaireDetails,
+                ...initialSelectionDetails,
+                ...paintSelectionDetails
             ];
-            let formattedDetails = clientCategoryDetails.map(clientCategory => {
-                const categoryQuestions = allItems.filter(item => item.category.id === clientCategory.id);
+            let formattedDetails = allItems.map(clientCategory => {
                 return {
                     category: clientCategory.id,
                     categoryName: clientCategory.name,
-                    questions: categoryQuestions.map(question => {
+                    questions: clientCategory.ClientTemplateQuestion.map(question => {
                         let answer: any;
                         if (question.questionType === "Allowance") {
                             const answerText = question?.answer?.answerText ?? "0";
