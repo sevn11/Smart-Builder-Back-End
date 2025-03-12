@@ -49,6 +49,11 @@ export class CashFlowService {
 
                                 }
                             }
+                        },
+                        orderBy: {
+                            customer: {
+                                name: 'asc'
+                            }
                         }
                     }),
                     this.databaseService.cashFlow.findUnique({
