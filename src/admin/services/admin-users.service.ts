@@ -105,6 +105,22 @@ export class AdminUsersService {
             
                     builder.company = company;
                 }
+                // Get builder plan status
+                let builderPlanStatus = '';
+                if (builder.stripeCustomerId && builder.subscriptionId) {
+                    let userObj = await this.databaseService.user.findFirst({
+                        where: { id: builder.id }
+                    });
+                    let res = await this.stripeService.getBuilderSubscriptionInfo(userObj);
+                    if (res) {
+                        builderPlanStatus = res.builderSubscription.subscription_status;
+                    }
+                }
+                const updatedPaymentLog = builder.PaymentLog.map(payment => ({
+                    ...payment,
+                    builderPlanStatus,
+                }));
+                builder.PaymentLog = updatedPaymentLog;
             }
             
             return { builders, totalCount }
