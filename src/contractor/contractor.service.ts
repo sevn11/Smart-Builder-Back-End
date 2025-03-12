@@ -281,8 +281,11 @@ export class ContractorService {
                         where: { id: templateId }
                     })
                 }
-                const categoryDetails = await this.databaseService.category.findMany({
-                        where: categoryCondition,
+                // Fetch each linked details seperately
+                let [questionnaireDetails, initialSelectionDetails, paintSelectionDetails] = await Promise.all([
+                    // Questionnaire details
+                    this.databaseService.category.findMany({
+                        where: {...categoryCondition, linkToQuestionnaire: true},
                         orderBy: { questionnaireOrder: 'asc' },
                         include: {
                             questions: {
@@ -295,38 +298,93 @@ export class ContractorService {
                                 orderBy: { questionOrder: 'asc' },
                             }
                         }
-                })
-                // Sorting the data based on template type
-                let linkToQuestionnaireItems = [];
-                let linkToInitialSelectionItems = [];
-                let linkToPaintSelectionItems = [];
-
-                // Loop through each category to filter questions based on the priority
-                categoryDetails.forEach(category => {
-                    category.questions.forEach(question => {
-                        if (question.linkToQuestionnaire) {
-                            linkToQuestionnaireItems.push({ ...question, category });
-                        } else if (question.linkToInitalSelection) {
-                            linkToInitialSelectionItems.push({ ...question, category });
-                        } else if (question.linkToPaintSelection) {
-                            linkToPaintSelectionItems.push({ ...question, category });
+                    }),
+                    // Initial selection details
+                    this.databaseService.category.findMany({
+                        where: {
+                            ...categoryCondition,
+                            linkToInitalSelection: true,
+                            linkToQuestionnaire: false,
+                        },
+                        orderBy: { initialOrder: 'asc' },
+                        include: {
+                            questions: {
+                                where: {
+                                    isDeleted: false,
+                                    phaseIds: {
+                                        has: phaseId
+                                    }
+                                },
+                                orderBy: { initialQuestionOrder: 'asc' },
+                            }
                         }
+                    }),
+                    // Paint selection details
+                    this.databaseService.category.findMany({
+                        where: {
+                            ...categoryCondition,
+                            linkToPaintSelection: true,
+                            linkToQuestionnaire: false,
+                        },
+                        orderBy: { paintOrder: 'asc' },
+                        include: {
+                            questions: {
+                                where: {
+                                    isDeleted: false,
+                                    phaseIds: {
+                                        has: phaseId
+                                    }
+                                },
+                                orderBy: { paintQuestionOrder: 'asc' },
+                            }
+                        }
+                    })
+                ]);
+
+                // Sorting quesionnaire questions based on linking to other templates
+                questionnaireDetails.forEach(category => {
+                    category.questions.sort((a, b) => {
+                        // Assign priority values
+                        const getPriority = (question) => {
+                            if (question.linkToQuestionnaire) return 3; 
+                            if (question.linkToInitalSelection) return 2;
+                            if (question.linkToPaintSelection) return 1;
+                            return 0;
+                        };
+                        
+                        const priorityA = getPriority(a);
+                        const priorityB = getPriority(b);
+                        
+                        // Sort by priority (linkToQuestionnaire > linkToInitalSelection > linkToPaintSelection)
+                        if (priorityA !== priorityB) {
+                            return priorityB - priorityA;
+                        }
+                
+                        // If both have the same priority, then sort based on their respective order
+                        if (a.linkToInitalSelection && b.linkToInitalSelection) {
+                            return a.initialQuestionOrder - b.initialQuestionOrder;
+                        }
+                        
+                        if (a.linkToPaintSelection && b.linkToPaintSelection) {
+                            return a.paintQuestionOrder - b.paintQuestionOrder;
+                        }
+                        // If none of the above
+                        return 0;
                     });
-                });
+                });   
 
                 const allItems = [
-                    ...linkToQuestionnaireItems,
-                    ...linkToInitialSelectionItems,
-                    ...linkToPaintSelectionItems
+                    ...questionnaireDetails,
+                    ...initialSelectionDetails,
+                    ...paintSelectionDetails
                 ];
 
-                let formattedDetails = categoryDetails.map(category => {
-                    const categoryQuestions = allItems.filter(item => item.category.id === category.id);
+                let formattedDetails = allItems.map(category => {
                     
                     return {
                         category: category.id,
                         categoryName: category.name,
-                        questions: categoryQuestions.map(question => ({
+                        questions: category.questions.map(question => ({
                             questionId: question.id,
                             questionText: question.question,
                             questionType: question.questionType
