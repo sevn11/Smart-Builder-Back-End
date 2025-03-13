@@ -5,9 +5,12 @@ class Contractor {
     @IsNumber()
     @IsNotEmpty()
     id: string;
-  
+
     @IsBoolean()
     sendDetails: boolean;
+
+    @IsBoolean()
+    sendEventDetails: boolean;
 }
 export class SendInfoToContractorDTO {
     @IsArray()
