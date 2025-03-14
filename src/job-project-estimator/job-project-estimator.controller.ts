@@ -170,4 +170,16 @@ export class JobProjectEstimatorController {
     ) {
         return this.jobProjectEstimatorService.updateProfitCalculationType(user, companyId, jobId, body);
     }
+
+    // Save client project estimator as a template.
+    @HttpCode(HttpStatus.OK)
+    @Post('/save-as-template')
+    saveAsTemplate(
+        @GetUser() user: User,
+        @Param('companyId', ParseIntPipe) companyId: number,
+        @Param('jobId', ParseIntPipe) jobId: number,
+        @Body() body: { templateName: string }
+    ) {
+        return this.jobProjectEstimatorService.saveAsTemplate(user, companyId, jobId, body);
+    }
 }
