@@ -239,7 +239,7 @@ export class JobContractorService {
 
                         jobSchedules.forEach(jobSchedule => {
                             if (jobSchedule.startDate && jobSchedule.endDate) {
-                                assignedEvents.push({ startDate: jobSchedule.startDate, endDate: jobSchedule.endDate, isScheduledOnWeekend: jobSchedule.isScheduledOnWeekend, criticalTask: jobSchedule.isCritical })
+                                assignedEvents.push({ startDate: jobSchedule.startDate, endDate: jobSchedule.endDate, isScheduledOnWeekend: jobSchedule.isScheduledOnWeekend, isCritical: jobSchedule.isCritical })
                             }
                         });
                     }
