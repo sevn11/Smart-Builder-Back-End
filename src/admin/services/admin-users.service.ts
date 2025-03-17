@@ -33,9 +33,11 @@ export class AdminUsersService {
                     where: {
                         userType: UserTypes.BUILDER,
                         isActive: query.isActive,
-                        name: {
-                            contains: query.search,
-                            mode: 'insensitive'
+                        company: {
+                            name: {
+                                contains: query.search,
+                                mode: 'insensitive'
+                            },
                         },
                         isDeleted: false,
                     },
