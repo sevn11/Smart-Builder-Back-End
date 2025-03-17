@@ -13,12 +13,14 @@ import { DemoUserDTO } from "src/admin/validators/add-demo-user";
 @Injectable()
 export class StripeService {
     private StripeClient: Stripe;
+    private stripeTaxRateId: string;
 
     constructor(
         private readonly config: ConfigService,
         private databaseService: DatabaseService
     ) {
         this.StripeClient = new Stripe(config.get('STRIPE_API_KEY'))
+        this.stripeTaxRateId = config.get('STRIPE_TAX_RATE_ID')
     }
 
     // Get stripe customer
@@ -57,6 +59,7 @@ export class StripeService {
                 currency: 'usd',
                 recurring: { interval: planType },
                 product: product.id,
+                tax_behavior: 'exclusive',
             });
 
             // Create a subscription for the new employee
@@ -67,6 +70,7 @@ export class StripeService {
                 customer: customer.id,
                 items: [{ price: price.id }],
                 proration_behavior: 'none',
+                default_tax_rates: [this.stripeTaxRateId],
             };
             if (builderSubscription.trial_end > now) {
                 // Adding employee subscription within builder's trial period
@@ -246,12 +250,20 @@ export class StripeService {
             // Use the first active price (add more logic if needed)
             const activePriceId = prices.data[0].id;
 
-            // Create new subscription for the employee
-            const subscription = await this.StripeClient.subscriptions.create({
+            const subscriptionPayload: Stripe.SubscriptionCreateParams = {
                 customer: user.stripeCustomerId,
                 items: [{ price: activePriceId }],
                 default_payment_method: paymentMethodId,
-            });
+                default_tax_rates: [this.stripeTaxRateId],
+            };
+            let coupon: string;
+            let subscription: Stripe.Subscription;
+            if(user.isDemoUser) {
+                coupon = await this.createCoupon();
+                subscriptionPayload.coupon = coupon;
+            }
+            // Create new subscription for the employee
+            subscription = await this.StripeClient.subscriptions.create(subscriptionPayload);
 
             return { status: true, subscriptionId: subscription.id, message: 'Subscription renewed' }
         } catch (error) {
@@ -269,7 +281,12 @@ export class StripeService {
             // Create new customer in stripe
             customer = await this.StripeClient.customers.create({
                 name: body.name,
-                email: body.email
+                email: body.email,
+                address: {
+                    line1: body.address,
+                    country: 'US',
+                    postal_code: body.zipcode
+                },
             });
             // Attach payment method to customer
             await this.StripeClient.paymentMethods.attach(body.paymentMethodId, { customer: customer.id });
@@ -292,6 +309,7 @@ export class StripeService {
                 currency: 'usd',
                 recurring: { interval: planType },
                 product: product.id,
+                tax_behavior: 'exclusive'
             });
             const trialEndDate = Math.floor((new Date().getTime() + 30 * 24 * 60 * 60 * 1000) / 1000);
 
@@ -302,6 +320,7 @@ export class StripeService {
                 default_payment_method: body.paymentMethodId,
                 trial_end: trialEndDate,
                 proration_behavior: 'none',
+                default_tax_rates: [this.stripeTaxRateId],
             }
             if (promoCode) {
                 subscriptionPayload.promotion_code = promoCode;
@@ -348,6 +367,7 @@ export class StripeService {
                 items: [{ price: price.id }],
                 trial_end: trialEndDate,
                 proration_behavior: 'none',
+                default_tax_rates: [this.stripeTaxRateId],
             };
 
             // Apply coupon for demo builders
@@ -415,6 +435,7 @@ export class StripeService {
                 currency: 'usd',
                 recurring: { interval: planType },
                 product: product.id,
+                tax_behavior: 'exclusive',
             });
 
             if(!existingSignNowSubscription) {
@@ -427,6 +448,7 @@ export class StripeService {
                     customer: customer.id,
                     items: [{ price: price.id }],
                     proration_behavior: 'none',
+                    default_tax_rates: [this.stripeTaxRateId],
                 };
                 if (builderSubscription.trial_end > now) {
                     // Adding signnow subscription within builder's trial period
@@ -472,6 +494,7 @@ export class StripeService {
                 items: [{ price: price.id }],
                 billing_cycle_anchor: billingCycleAnchor,
                 proration_behavior: prorationBehavious,
+                default_tax_rates: [this.stripeTaxRateId],
             };
     
             if (trialEnd) {
