@@ -782,7 +782,7 @@ export class JobContractorService {
             if (!assignedEvents.length) {
                 htmlContent += `
                     <div style="text-align: center; margin-top: 20px; font-weight: bold;">
-                        No assigned events found
+                        No schedule found
                     </div>
                 `;
             } else {
@@ -790,8 +790,8 @@ export class JobContractorService {
                     <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
                         <thead>
                             <tr style="color: #000000; font-size: bold;">
-                                <th colspan="5" style="font-size: 14px; font-size: 16px; font-weight: bold; padding: 8px; text-align: left; text-transform: uppercase; border: 1px solid #ddd; background-color: rgb(38, 67, 115); color: white;">
-                                    Assigned events
+                                <th colspan="5" style="font-size: 14px; font-size: 16px; font-weight: bold; padding: 8px; text-align: left; border: 1px solid #ddd; background-color: rgb(38, 67, 115); color: white;">
+                                    Schedule
                             </th>
                             </tr>
                         </thead>
@@ -799,22 +799,20 @@ export class JobContractorService {
 
                 htmlContent += `
                             <tr>
-                                <td style="width: 10%; text-align: left; font-weight: bold; padding: 8px;border: 1px solid #ddd;">Sl No.</td>
                                 <td style="width: 20%; text-align: left; padding: 8px;border: 1px solid #ddd;">Start Date</td>
                                 <td style="width: 20%; text-align: left; padding: 8px;border: 1px solid #ddd;">End Date</td>
                                 <td style="width: 20%; text-align: left; padding: 8px;border: 1px solid #ddd;">Critical Task</td>
-                                <td style="width: 30%; text-align: left; padding: 8px;border: 1px solid #ddd;">Scheduled on Weekend</td>
+                                <td style="width: 40%; text-align: left; padding: 8px;border: 1px solid #ddd;">Scheduled on Weekend</td>
         
                             </tr>
                             `;
                 assignedEvents.forEach((assignedEvent, index) => {
                     htmlContent += `
                             <tr>
-                                <td style="width: 10%; text-align: left; font-weight: bold; padding: 8px;border: 1px solid #ddd;">${index + 1}</td>
                                 <td style="width: 20%; text-align: left; padding: 8px;border: 1px solid #ddd;">${convertDate(assignedEvent.startDate)}</td>
                                 <td style="width: 20%; text-align: left; padding: 8px;border: 1px solid #ddd;">${convertDate(assignedEvent.endDate)}</td>
                                 <td style="width: 20%; text-align: left; padding: 8px;border: 1px solid #ddd;">${assignedEvent.isCritical ? `Critical` : 'Not Critical'}</td>
-                                <td style="width: 30%; text-align: left; padding: 8px;border: 1px solid #ddd;">${assignedEvent.isScheduledOnWeekend ? 'Yes' : 'No'}</td>
+                                <td style="width: 40%; text-align: left; padding: 8px;border: 1px solid #ddd;">${assignedEvent.isScheduledOnWeekend ? 'Yes' : 'No'}</td>
                             </tr>
                     `
                 })
