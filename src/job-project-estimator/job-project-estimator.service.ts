@@ -2,7 +2,7 @@ import { BadRequestException, ConflictException, ForbiddenException, Injectable,
 import { Prisma, User } from '@prisma/client';
 import { DatabaseService } from 'src/database/database.service';
 import { JobProjectEstimatorHeaderDTO } from './validators/add-header';
-import { PrismaErrorCodes, ResponseMessages, UserTypes } from 'src/core/utils';
+import { PrismaErrorCodes, ResponseMessages, TemplateType, UserTypes } from 'src/core/utils';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { JobProjectEstimatorDTO } from './validators/add-project-estimator';
 import { JobProjectEstimatorAccountingDTO } from './validators/add-project-estimator-accounting';
@@ -918,5 +918,143 @@ export class JobProjectEstimatorService {
             })
         }
     }
+    
+    public async saveAsTemplate(user: User, companyId: number, jobId: number, body: { templateName: string }) {
+        try {
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) {
+                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
+                    throw new ForbiddenException("Action Not Allowed");
+                }
 
+                // Fetch job and client template in parallel
+                const [job, clientTemplate] = await Promise.all([
+                    this.databaseService.job.findUnique({
+                        where: {
+                            id: jobId,
+                            companyId,
+                            isDeleted: false,
+                            isClosed: false
+                        },
+                        include: { customer: true }
+                    }),
+                    this.databaseService.clientTemplate.findFirst({
+                        where: {
+                            companyId,
+                            jobId,
+                            isDeleted: false
+                        }
+                    })
+                ]);
+
+                if (!job) {
+                    return { success: false, message: "Could not find job details." };
+                }
+
+                if (!clientTemplate) {
+                    return { success: false, message: "Unable to fetch the client template details." };
+                }
+
+                // Fetch project estimator data
+                const prData = await this.databaseService.jobProjectEstimatorHeader.findMany({
+                    where: {
+                        companyId,
+                        jobId,
+                        isDeleted: false
+                    },
+                    include: {
+                        JobProjectEstimator: {
+                            where: { isDeleted: false },
+                            orderBy: { order: 'asc' }
+                        }
+                    },
+                    orderBy: { headerOrder: 'asc' }
+                });
+
+                if (!prData.length) {
+                    return { success: false, message: "No project estimator data found." };
+                }
+
+                // Execute transaction
+                const result = await this.databaseService.$transaction(async (tx) => {
+                    // Create template
+                    const projectEstimatorTemplate = await tx.projectEstimatorTemplate.create({
+                        data: {
+                            templateName: body.templateName,
+                            companyId,
+                            profitCalculationType: clientTemplate.accProfitCalculationType
+                        }
+                    });
+
+                    // Create questionnaire template
+                    await tx.questionnaireTemplate.create({
+                        data: {
+                            name: body.templateName,
+                            isCompanyTemplate: true,
+                            companyId,
+                            templateType: TemplateType.PROJECT_ESTIMATOR,
+                            projectEstimatorTemplateId: projectEstimatorTemplate.id,
+                        }
+                    });
+
+                    // Create headers and their data in a more efficient way
+                    await Promise.all(prData.map(async (prEst) => {
+                        const header = await tx.projectEstimatorTemplateHeader.create({
+                            data: {
+                                name: prEst.name,
+                                companyId,
+                                petId: projectEstimatorTemplate.id,
+                                headerOrder: prEst.headerOrder
+                            }
+                        });
+
+                        // Batch create template data entries
+                        const dataEntries = prEst.JobProjectEstimator.map(estData => ({
+                            item: estData.item,
+                            description: estData.description,
+                            costType: estData.costType,
+                            quantity: estData.quantity,
+                            unitCost: estData.unitCost,
+                            actualCost: estData.actualCost,
+                            grossProfit: estData.grossProfit,
+                            contractPrice: estData.contractPrice,
+                            isLotCost: estData.isLootCost,
+                            isCourtesyCredit: estData.isCourtesyCredit,
+                            petHeaderId: header.id,
+                            order: estData.order,
+                        }));
+
+                        if (dataEntries.length) {
+                            await tx.projectEstimatorTemplateData.createMany({
+                                data: dataEntries
+                            });
+                        }
+                    }));
+
+                    return projectEstimatorTemplate;
+                });
+
+                return {
+                    success: true,
+                    message: ResponseMessages.SUCCESSFUL,
+                    data: result
+                };
+
+            } else {
+                throw new ForbiddenException("Action Not Allowed");
+            }
+        } catch (error) {
+            console.log(error);
+            // Database Exceptions
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code == PrismaErrorCodes.NOT_FOUND)
+                    throw new BadRequestException(ResponseMessages.RESOURCE_NOT_FOUND);
+                else {
+                    console.log(error.code);
+                }
+            } else if (error instanceof ForbiddenException) {
+                throw error;
+            }
+            throw new InternalServerErrorException();
+        }
+    }
 }
