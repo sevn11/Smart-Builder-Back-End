@@ -9,6 +9,7 @@ import { readFile } from 'fs/promises';
 import { SendgridService } from 'src/core/services';
 import { ConfigService } from '@nestjs/config';
 const convertHTMLToPDF = require('pdf-puppeteer');
+import { convertDate } from 'src/core/utils/date';
 
 @Injectable()
 export class JobContractorService {
@@ -230,16 +231,31 @@ export class JobContractorService {
                         subject: subject,
                     };
 
-                    // Fetch linked informations if send details is checked
-                    if (jobContractor.sendDetails) {
-                        let jobDetails = await this.databaseService.job.findFirst({
-                            where: { id: jobId, companyId, isDeleted: false },
-                            include: {
-                                customer: true,
-                                description: true,
-                                company: true
+                    const assignedEvents = [];
+                    if (jobContractor.sendEventDetails) {
+                        const jobSchedules = await this.databaseService.jobSchedule.findMany({
+                            where: { companyId, jobId, contractorId: contractor.id, isDeleted: false }
+                        });
+
+                        jobSchedules.forEach(jobSchedule => {
+                            if (jobSchedule.startDate && jobSchedule.endDate) {
+                                assignedEvents.push({ startDate: jobSchedule.startDate, endDate: jobSchedule.endDate, isScheduledOnWeekend: jobSchedule.isScheduledOnWeekend, criticalTask: jobSchedule.isCritical })
                             }
                         });
+                    }
+
+                    let jobDetails = await this.databaseService.job.findFirst({
+                        where: { id: jobId, companyId, isDeleted: false },
+                        include: {
+                            customer: true,
+                            description: true,
+                            company: true
+                        }
+                    });
+
+                    let formattedDetails = [];
+                    // Fetch linked informations if send details is checked
+                    if (jobContractor.sendDetails) {
                         // Get template attached to project
                         const clientTemplateInfo = await this.databaseService.clientTemplate.findFirstOrThrow({
                             where: {
@@ -386,7 +402,7 @@ export class JobContractorService {
                             ...initialSelectionDetails,
                             ...paintSelectionDetails
                         ];
-                        let formattedDetails = allItems.map(clientCategory => {
+                        formattedDetails = allItems.map(clientCategory => {
                             return {
                                 category: clientCategory.id,
                                 categoryName: clientCategory.name,
@@ -416,8 +432,10 @@ export class JobContractorService {
                                 })
                             }
                         });
+                    }
+                    if (jobContractor.sendDetails || jobContractor.sendEventDetails) {
 
-                        let htmlContent = await this.generateDetailsHtml(jobDetails, formattedDetails, contractor.phase);
+                        let htmlContent = await this.generateDetailsHtml(jobDetails, formattedDetails, contractor.phase, assignedEvents, jobContractor);
                         // Generate pdf from HTML and add as attachment
                         await convertHTMLToPDF(
                             htmlContent,
@@ -714,7 +732,7 @@ export class JobContractorService {
         return `${month}/${day}/${year}`;
     }
 
-    private async generateDetailsHtml(jobDetails: any, formattedDetails: any[], phase: any) {
+    private async generateDetailsHtml(jobDetails: any, formattedDetails: any[], phase: any, assignedEvents: any[], jobContractor: any) {
         const phaseName = phase?.name || "N/A";
         let logo = jobDetails.company.logo ? jobDetails.company.logo : "https://smart-builder-asset.s3.us-east-1.amazonaws.com/companies/53/logos/smartbuilder-logo.png"
         const response = await fetch(logo);
@@ -760,37 +778,83 @@ export class JobContractorService {
                     </div>
         `;
 
-        if (formattedDetails.length === 0) {
-            htmlContent += `
-                <div style="text-align: center; margin-top: 20px; font-weight: bold;">
-                    No data found
-                </div>
-            `;
-        }
-        else {
-            formattedDetails.forEach((category: any) => {
+        if (jobContractor.sendEventDetails) {
+            if (!assignedEvents.length) {
                 htmlContent += `
-                <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
-                   <thead>
-                        <tr style="color: #000000; font-size: bold;">
-                            <th colspan="2" style="font-size: 14px; font-size: 16px; font-weight: bold; padding: 8px; text-align: left; text-transform: uppercase; border: 1px solid #ddd; background-color: rgb(38, 67, 115); color: white;">
-                        ${category.categoryName}
-                      </th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                `
-                category.questions.forEach((question: any) => {
-                    let answer = question.answer ?? "-"
+                    <div style="text-align: center; margin-top: 20px; font-weight: bold;">
+                        No schedule found
+                    </div>
+                `;
+            } else {
+                htmlContent += `
+                    <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+                        <thead>
+                            <tr style="color: #000000; font-size: bold;">
+                                <th colspan="5" style="font-size: 14px; font-size: 16px; font-weight: bold; padding: 8px; text-align: left; border: 1px solid #ddd; background-color: rgb(38, 67, 115); color: white;">
+                                    Schedule
+                            </th>
+                            </tr>
+                        </thead>
+                        <tbody>`
 
+                htmlContent += `
+                            <tr>
+                                <td style="width: 20%; text-align: left; padding: 8px;border: 1px solid #ddd;">Start Date</td>
+                                <td style="width: 20%; text-align: left; padding: 8px;border: 1px solid #ddd;">End Date</td>
+                                <td style="width: 20%; text-align: left; padding: 8px;border: 1px solid #ddd;">Critical Task</td>
+                                <td style="width: 40%; text-align: left; padding: 8px;border: 1px solid #ddd;">Scheduled on Weekend</td>
+        
+                            </tr>
+                            `;
+                assignedEvents.forEach((assignedEvent, index) => {
                     htmlContent += `
-                    <tr>
-                        <td style="width: 50%; text-align: left; font-weight: bold; padding: 8px;border: 1px solid #ddd;">${question.questionText}</td>
-                        <td style="width: 50%; text-align: left; padding: 8px;border: 1px solid #ddd;">${answer}</td>
-                    </tr>
-              `;
+                            <tr>
+                                <td style="width: 20%; text-align: left; padding: 8px;border: 1px solid #ddd;">${convertDate(assignedEvent.startDate)}</td>
+                                <td style="width: 20%; text-align: left; padding: 8px;border: 1px solid #ddd;">${convertDate(assignedEvent.endDate)}</td>
+                                <td style="width: 20%; text-align: left; padding: 8px;border: 1px solid #ddd;">${assignedEvent.isCritical ? `Critical` : 'Not Critical'}</td>
+                                <td style="width: 40%; text-align: left; padding: 8px;border: 1px solid #ddd;">${assignedEvent.isScheduledOnWeekend ? 'Yes' : 'No'}</td>
+                            </tr>
+                    `
+                })
+                htmlContent += `</tbody>
+                </table>
+            `;
+            }
+        }
+
+        if (jobContractor.sendDetails) {
+            if (formattedDetails.length === 0) {
+                htmlContent += `
+                    <div style="text-align: center; margin-top: 20px; font-weight: bold;">
+                        No data found
+                    </div>
+                `;
+            }
+            else {
+                formattedDetails.forEach((category: any) => {
+                    htmlContent += `
+                    <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+                       <thead>
+                            <tr style="color: #000000; font-size: bold;">
+                                <th colspan="2" style="font-size: 14px; font-size: 16px; font-weight: bold; padding: 8px; text-align: left; text-transform: uppercase; border: 1px solid #ddd; background-color: rgb(38, 67, 115); color: white;">
+                            ${category.categoryName}
+                          </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                    `
+                    category.questions.forEach((question: any) => {
+                        let answer = question.answer ?? "-"
+
+                        htmlContent += `
+                        <tr>
+                            <td style="width: 50%; text-align: left; font-weight: bold; padding: 8px;border: 1px solid #ddd;">${question.questionText}</td>
+                            <td style="width: 50%; text-align: left; padding: 8px;border: 1px solid #ddd;">${answer}</td>
+                        </tr>
+                  `;
+                    });
                 });
-            });
+            }
         }
 
         htmlContent += `
