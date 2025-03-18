@@ -140,11 +140,7 @@ export class AuthService {
             if(ex instanceof BadRequestException) {
                 throw new BadRequestException(ResponseMessages.UNIQUE_EMAIL_ERROR);
             }
-            throw new InternalServerErrorException({
-                statusCode: 500,
-                message: ex,
-                error: 'InternalServerError',
-            });
+            throw new InternalServerErrorException()
         }
     }
 
