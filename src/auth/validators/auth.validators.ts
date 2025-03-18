@@ -43,6 +43,10 @@ export class SignUpDTO {
   @Optional()
   @IsEnum(BuilderPlanTypes)
   signNowPlanType: BuilderPlanTypes;
+
+  @IsString()
+  @IsOptional()
+  promoCode: string;
 }
 
 

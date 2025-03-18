@@ -1,4 +1,4 @@
-import { Body, Controller, HttpCode, HttpStatus, Param, ParseIntPipe, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Patch, Post } from '@nestjs/common';
 import { SignUpDTO, SignInDTO, ForgotPasswordDTO, PasswordResetDTO } from './validators';
 import { AuthService } from './auth.service';
 import { SetPasswordDTO } from './validators/set-password';
@@ -41,4 +41,9 @@ export class AuthController {
 
   }
 
+  @HttpCode(HttpStatus.OK)
+  @Get('/plan/:promo_code')
+  getDiscountDetails(@Param('promo_code') promo_code: string) {
+    return this.authService.getDiscountDetails(promo_code);
+  }
 }
