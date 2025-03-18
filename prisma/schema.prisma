@@ -110,6 +110,7 @@ model Company {
   clientQuestionAnswer   ClientQuestionAnswer[]
   JobScheduleLink        JobScheduleLink[]
   GoogleEventId          GoogleEventId[]
+  SignNowDocuments       SignNowDocuments[]
   @@map("companies")
 }
 
@@ -244,6 +245,7 @@ model Job {
   jobScheduleLinks     JobScheduleLink[] @relation
 
   GoogleEventId        GoogleEventId[]
+  SignNowDocuments       SignNowDocuments[]
   @@map("jobs")
 }
 
@@ -481,6 +483,7 @@ model JobProjectEstimator {
   order             Int?               @default(0) @map("order")
   jobProjectEstimatorHeaderId          Int? @map("job_project_estimator_header_id")
   jobProjectEstimatorHeader            JobProjectEstimatorHeader? @relation(fields: [jobProjectEstimatorHeaderId], references: [id], onDelete: Cascade)
+  SignNowDocuments       SignNowDocuments[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
@@ -940,4 +943,36 @@ model MasterTemplateQuestion {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("master_template_question")
+}
+
+model SignNowDocuments {
+  id                Int           @id @default(autoincrement())
+
+  companyId         Int           @map("company_id")
+  company           Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  jobId             Int           @map("job_id")
+  job               Job           @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  documentType      DocumentType  @map("document_type")
+  documentId        String        @unique @map("document_id")
+  signNowEventId    String        @map("sign_now_event_id")
+  status            String        @default("pending")
+
+  changeOrderId     Int?          @map("change_order_id")
+  jobProjectEstimator JobProjectEstimator? @relation(fields: [changeOrderId], references: [id], onDelete: Cascade)
+
+  isDeleted         Boolean       @default(false) @map("is_deleted")
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @default(now()) @updatedAt  @map("updated_at")
+
+  @@map("sign_now_documents")
+}
+
+enum DocumentType {
+  PROPOSAL
+  SPECIFICATION
+  CHANGE_ORDER
+  INITIAL_SELECTION
+  PAINT_SELECTION
 }

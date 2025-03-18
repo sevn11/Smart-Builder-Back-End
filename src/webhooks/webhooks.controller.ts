@@ -23,4 +23,10 @@ export class WebhooksController {
     handleStripeWebhook(@Body() body: any) {
         this.webhookService.handleStripeWebhook(body);
     }
+
+    @HttpCode(HttpStatus.OK)
+    @Post('sign-now-document')
+    handleSignNowDocumentStatus(@Body() body: any) {
+        this.webhookService.updateDocumentStatus(body);
+    }
 }

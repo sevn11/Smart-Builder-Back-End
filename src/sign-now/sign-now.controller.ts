@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseInterceptors, UploadedFile, UseGuards, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseInterceptors, UploadedFile, UseGuards, ParseIntPipe, HttpStatus, HttpCode } from '@nestjs/common';
 import { SignNowService } from './sign-now.service';
 import { UploadDocumentDTO } from './validators/upload-document';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -21,6 +21,18 @@ export class SignNowController {
     @GetUser() user: User
   ) {
     return this.signNowService.signDocument(companyId, jobId, file, body, user);
+  }
+
+  // get document signature status
+  @Get('/:documentType')
+  @HttpCode(HttpStatus.OK)
+  getProjectEstimatorData(
+      @GetUser() user: User,
+      @Param('companyId', ParseIntPipe) companyId: number,
+      @Param('jobId', ParseIntPipe) jobId: number,
+      @Param('documentType') documentType: string,
+  ) {
+      return this.signNowService.getDocumentStatus(companyId, jobId, user, documentType);
   }
 
 }

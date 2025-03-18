@@ -10,6 +10,7 @@ import { BulkUpdateProjectEstimatorDTO } from './validators/pe-bulk-update';
 import { UpdateStatementDTO } from './validators/update-statement';
 import { ProfitCalculationType } from 'src/core/utils/company';
 import { marginCalculation, markupCalculation, ProfitCalculationTypeEnum } from 'src/core/utils/profit-calculation';
+import { DocumentTypes } from 'src/core/utils/sign-now-document-types';
 
 @Injectable()
 export class JobProjectEstimatorService {
@@ -692,6 +693,29 @@ export class JobProjectEstimatorService {
                         invoiceId: true
                     },
                 });
+
+                if (changeOrders.length > 0) {
+                    for (let changeOrder of changeOrders) { 
+                      // Check and get latest signed document
+                      const signedDocument = await this.databaseService.signNowDocuments.findFirst({
+                        where: {
+                          documentType: DocumentTypes.CHANGE_ORDER,
+                          changeOrderId: changeOrder.id,
+                        },
+                        orderBy: {
+                          updatedAt: 'desc'
+                        },
+                        select: {
+                          id: true,
+                          status: true,
+                        }
+                      });
+                      (changeOrder as any).signedDocument = null;
+                      if (signedDocument) {
+                        (changeOrder as any).signedDocument = signedDocument;
+                      }
+                    }
+                }
 
                 return { changeOrders }
             } else {

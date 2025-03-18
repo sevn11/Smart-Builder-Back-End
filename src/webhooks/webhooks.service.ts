@@ -158,4 +158,23 @@ export class WebhooksService {
         }
         return
     }
+
+    async updateDocumentStatus (body: any) {
+        try {
+            let documentId = body.content.document_id;
+            if (documentId) {
+                await this.databaseService.signNowDocuments.update({
+                    where: { documentId: documentId },
+                    data: {
+                        status: 'completed'
+                    }
+                });
+            }
+        } catch (error) {
+            console.log(error)
+            throw new InternalServerErrorException({
+                message: 'An unexpected error occurred.'
+            });
+        }
+    }
 }

@@ -7,6 +7,7 @@ import * as FormData from 'form-data';
 import axios from 'axios';
 import { UploadDocumentDTO } from './validators/upload-document';
 import { ResponseMessages } from 'src/core/utils';
+import { DocumentTypes } from 'src/core/utils/sign-now-document-types';
 
 @Injectable()
 export class SignNowService {
@@ -15,6 +16,7 @@ export class SignNowService {
     private SignNowUserName: string;
     private SignNowPassword: string;
 	private AccessToken: string;
+	private BackendUrl: string;
 
     constructor(
         private readonly config: ConfigService,
@@ -24,6 +26,7 @@ export class SignNowService {
         this.AuthToken = config.get('SIGN_NOW_AUTH_TOKEN');
         this.SignNowUserName = config.get('SIGN_NOW_USER_NAME');
         this.SignNowPassword = config.get('SIGN_NOW_PASSWORD');
+		this.BackendUrl = config.get('BACKEND_BASEURL');
     }
 
     private async getAccessToken() {
@@ -66,6 +69,11 @@ export class SignNowService {
 			const readableStream = new PassThrough();
 			readableStream.end(file.buffer);
 			const recipients = JSON.parse(body.recipients);
+			const documentType = body.documentType;
+			let changeOrderId: number;
+			if (documentType == DocumentTypes.CHANGE_ORDER && body.changeOrderId) {
+				changeOrderId = parseInt(body.changeOrderId);
+			}
 			// Attach logged in user itself as a signer
 			let recipientsPayload = [];
 			recipients.forEach(async (recipient: string, index: number) => {
@@ -112,6 +120,7 @@ export class SignNowService {
 				const documentId = response.data.id;
 
 				if(documentId) {
+					await this.createSignNowEvent(documentId, documentType, companyId, jobId, changeOrderId);
 					await this.sendSignInvite(documentId, recipientsPayload);
 				} else {
 					throw new InternalServerErrorException({
@@ -155,6 +164,108 @@ export class SignNowService {
 			throw new InternalServerErrorException({
                 message: 'An unexpected error occurred.'
             });
+		}
+	}
+
+	private async createSignNowEvent(documentId: string, documentType: DocumentTypes, companyId: number, jobId: number, changeOrderId?: number) {
+		try {
+			const options = {
+				method: 'POST',
+				url: `${this.baseURL}/api/v2/events`,
+				headers: { Authorization: `Bearer ${this.AccessToken}`, Accept: 'application/json' },
+				data: {
+					event: 'document.complete',
+					entity_id: documentId,
+					action: 'callback',
+					attributes: {
+						callback: `${this.BackendUrl}/webhooks/sign-now-document`,
+					}
+				},
+			}
+			// Create event for document in sign now
+			await axios.request(options);
+
+			// Get created event details and create entry in database
+			let eventData = await this.getSignNowEvent(documentId);
+			if(eventData && eventData.id) {
+				await this.databaseService.signNowDocuments.create({
+					data: {
+						companyId,
+						jobId,
+						documentId,
+						documentType,
+						signNowEventId: eventData.id,
+						changeOrderId: changeOrderId ?? null
+					}
+				});
+			}
+	
+		} catch (error) {
+			console.log(error?.response?.data || error);
+			throw new InternalServerErrorException({
+                message: 'An unexpected error occurred.'
+            });
+		}
+	}
+
+	private async getSignNowEvent(documentId: string) {
+		const eventParams = {
+			filters: JSON.stringify([{
+				"_OR": [
+					{ "entity_id": { "type": "like", "value": documentId } }
+				]
+			}]),
+		};
+		const eventPptions = {
+			method: 'GET',
+			url: `${this.baseURL}/v2/event-subscriptions`,
+			headers: {
+				Authorization: `Bearer ${this.AccessToken}`,
+				'Content-Type': 'application/json'
+			},
+			params: eventParams
+		};
+	
+		try {
+			const response = await axios.request(eventPptions);
+			if (response.data.data[0]) {
+				return response.data.data[0];
+			} else {
+				return null;
+			}
+		} catch (error) {
+			console.error('Error fetching event subscriptions:', error.response ? error.response.data : error.message);
+		}
+	}
+
+	async getDocumentStatus(companyId: number, jobId: number, user: User, documentType: string) {
+		try {
+			const documentTypeMap: Record<string, DocumentTypes> = {
+				proposal: DocumentTypes.PROPOSAL,
+				specification: DocumentTypes.SPECIFICATION,
+				change_order: DocumentTypes.CHANGE_ORDER,
+				initial_selection: DocumentTypes.INITIAL_SELECTION,
+				paint_selection: DocumentTypes.PAINT_SELECTION,
+			};
+		
+			const type = documentTypeMap[documentType];
+			const document = await this.databaseService.signNowDocuments.findFirst({
+				where: {
+					companyId,
+					jobId,
+				  	documentType: type,
+				},
+				orderBy: {
+				  updatedAt: 'desc'
+				},
+				select: {
+				  id: true,
+				  status: true,
+				}
+			});
+			return { document }
+		} catch (error) {
+			console.error('Error getting document status:', error);
 		}
 	}
 }
