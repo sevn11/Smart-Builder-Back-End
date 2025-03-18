@@ -137,8 +137,10 @@ export class AuthService {
         } catch (ex) {
             console.log(ex)
             // Database Exceptions
-            if(ex instanceof BadRequestException) {
-                throw new BadRequestException(ResponseMessages.UNIQUE_EMAIL_ERROR);
+            if (ex instanceof PrismaClientKnownRequestError) {
+                if (ex.code == PrismaErrorCodes.UNIQUE_CONSTRAINT_ERROR) {
+                    throw new BadRequestException(ResponseMessages.UNIQUE_EMAIL_ERROR);
+                }
             }
             throw new InternalServerErrorException()
         }
