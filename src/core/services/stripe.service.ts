@@ -691,7 +691,7 @@ export class StripeService {
         }
     }
 
-    // Function to get promocode information
+    // Function to get promo code information
     async getPromoCodeInfo (promo_code: string) {
         try {
             const promotionCodes = await this.StripeClient.promotionCodes.list({
