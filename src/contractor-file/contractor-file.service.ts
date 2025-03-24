@@ -161,6 +161,18 @@ export class ContractorFileService {
                     }
                 });
 
+                // Normalize file paths if necessary
+                for (const file of files) {
+                    const normalizedFilePath = file.filePath.replace(/\\/g, '/');
+                    if (normalizedFilePath !== file.filePath) {
+                        await this.databaseService.contractorFiles.update({
+                            where: { id: file.id },
+                            data: { filePath: normalizedFilePath }
+                        });
+                        file.filePath = normalizedFilePath;
+                    }
+                }
+
                 return files.map(file => {
                     const fileData = {
                         id: file.id,
@@ -447,13 +459,27 @@ export class ContractorFileService {
                 }
 
                 // Fetch the file or folder from the database
-                const file = await this.databaseService.contractorFiles.findFirst({
+                let file = await this.databaseService.contractorFiles.findFirst({
                     where: { id: fileId, jobId, companyId }
                 });
 
                 if (!file) {
                     throw new NotFoundException("File or Folder not found.");
                 }
+
+                // Normalize backslashes to forward slashes
+                const normalizedFilePath = file.filePath.replace(/\\/g, '/');
+
+                // Update the database if normalization was needed
+                if (normalizedFilePath !== file.filePath) {
+                    file = await this.databaseService.contractorFiles.update({
+                        where: { id: fileId },
+                        data: { filePath: normalizedFilePath }
+                    });
+                }
+
+
+
 
                 let updatedName = name;
                 let newFilePath: string;
