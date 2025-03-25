@@ -24,10 +24,6 @@ export class SendInfoToContractorDTO {
     @IsNotEmpty()
     files: number[];
 
-    @IsOptional()
-    @IsBoolean()
-    sendCC: boolean;
-
     @IsString()
     @IsNotEmpty()
     subject: string
