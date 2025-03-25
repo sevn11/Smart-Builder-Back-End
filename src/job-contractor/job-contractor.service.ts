@@ -175,7 +175,6 @@ export class JobContractorService {
                 }
 
                 const jobContractors = body.jobContractors;
-                const sendCC = body.sendCC;
                 const subject = body.subject
                 let ccMail = null;
 
@@ -470,9 +469,19 @@ export class JobContractorService {
                         templateData,
                         attachments,
                         replyTo,
-                        sendCC,
-                        ccMail
                     );
+                    // Create an entry in the mail info table after the email has been sent successfully.
+                    await this.databaseService.contractorMailInfo.create({
+                        data: {
+                            companyId: companyId,
+                            jobId: jobId,
+                            contractorId: contractor.id,
+                            isDetailsAttached: jobContractor.sendDetails,
+                            isScheduleSent: jobContractor.sendEventDetails,
+                            contractorFiles: body.files
+                        }
+                    })
+
                 }));
 
                 return { message: ResponseMessages.SUCCESSFUL }

@@ -110,6 +110,7 @@ model Company {
   clientQuestionAnswer   ClientQuestionAnswer[]
   JobScheduleLink        JobScheduleLink[]
   GoogleEventId          GoogleEventId[]
+  ContractorMailInfo    ContractorMailInfo[]
   @@map("companies")
 }
 
@@ -244,6 +245,7 @@ model Job {
   jobScheduleLinks     JobScheduleLink[] @relation
 
   GoogleEventId        GoogleEventId[]
+  ContractorMailInfo    ContractorMailInfo[]
   @@map("jobs")
 }
 
@@ -384,6 +386,7 @@ model Contractor {
   isDeleted         Boolean?           @default(false) @map("is_deleted")
   JobContractor     JobContractor[]
   JobSchedule       JobSchedule[]
+  ContractorMailInfo    ContractorMailInfo[]
   contractorOrder   Int?               @map("contractor_order")
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -940,4 +943,23 @@ model MasterTemplateQuestion {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("master_template_question")
+}
+
+model ContractorMailInfo {
+  id                 Int          @id @default(autoincrement())
+  companyId          Int          @map("company_id")
+  company            Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  jobId              Int          @map("job_id")
+  job                Job          @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  contractorId       Int          @map("contractor_id")
+  contractor         Contractor   @relation(fields: [contractorId], references: [id], onDelete: Cascade)
+  isDetailsAttached  Boolean?     @default(false) @map("is_details_attached")
+  isScheduleSent     Boolean?     @default(false) @map("is_schedule_sent")
+  contractorFiles    Int[]        @default([])
+  isSentToBuilder    Boolean      @default(false) @map("is_sent_to_builder")
+
+  createdAt          DateTime     @default(now()) @map("created_at")
+  updatedAt          DateTime     @updatedAt @map("updated_at")
+
+  @@map("contractor_mail_info")
 }
