@@ -80,7 +80,7 @@ export class CronJobsService {
           let HTMLContent = await this.generateHtmlTable({ [jobId]: job });
           let templateData = {
             date: this.getCurrentDate(),
-            subject: `${job[0].jobName} Contractor mail details`,
+            subject: `${job[0].jobName} - Contractor email details`,
             project_name: job[0].jobName,
             html: HTMLContent,
           }
