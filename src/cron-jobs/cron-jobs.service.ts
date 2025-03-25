@@ -80,7 +80,8 @@ export class CronJobsService {
           let HTMLContent = await this.generateHtmlTable({ [jobId]: job });
           let templateData = {
             date: this.getCurrentDate(),
-            subject: job[0].jobName,
+            subject: `${job[0].jobName} Contractor mail details`,
+            project_name: job[0].jobName,
             html: HTMLContent,
           }
           // Send the email for this job to the builder
