@@ -33,7 +33,13 @@ export class CronJobsService {
       for (const companyRecord of companiesWithMailInfo) {
         const companyId = companyRecord.companyId;
         const builder = await this.databaseService.user.findFirst({
-          where: { companyId }
+          where: { 
+            companyId,
+            OR: [
+                { userType: UserTypes.BUILDER },
+                { userType: UserTypes.ADMIN }
+            ]
+          }
         });
 
         const contractorMailInfos = await this.databaseService.contractorMailInfo.findMany({
