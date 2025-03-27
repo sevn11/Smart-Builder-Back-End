@@ -498,7 +498,9 @@ model ContractorFiles {
   jobId             Int?                @map("job_id")
   job               Job?                @relation(fields: [jobId], references: [id], onDelete: Cascade)
   fileName          String
-  filePath          String          
+  filePath          String         
+  isDirectory       Boolean             @default(false)
+  
 
   createdAt         DateTime            @default(now()) @map("created_at")
   updatedAt         DateTime            @updatedAt @map("updated_at")
