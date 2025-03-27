@@ -6,7 +6,7 @@ import { PassThrough } from 'stream';
 import * as FormData from 'form-data';
 import axios from 'axios';
 import { UploadDocumentDTO } from './validators/upload-document';
-import { ResponseMessages } from 'src/core/utils';
+import { ResponseMessages, UserTypes } from 'src/core/utils';
 
 @Injectable()
 export class SignNowService {
@@ -79,10 +79,22 @@ export class SignNowService {
 				}
 				recipientsPayload.push(payload);
 			});
-			if(this.SignNowUserName !== user.email) {
-				recipients.push(user.email);
+			let senderEmail = body.senderEmail;
+			let sendCC = body.sendCC == 'true';
+			let builder = await this.databaseService.user.findFirst({
+				where: { 
+					companyId: user.companyId, 
+					OR: [
+						{ userType: UserTypes.BUILDER },
+						{ userType: UserTypes.ADMIN }
+					]
+				},
+				select: { email: true }
+			});
+			if (this.SignNowUserName !== senderEmail) {
+				recipients.push(senderEmail);
 				recipientsPayload.push({
-					email: user.email,
+					email: senderEmail,
 					role_id: "",
 					role: "Builder",
 					order: 1,
@@ -112,7 +124,7 @@ export class SignNowService {
 				const documentId = response.data.id;
 
 				if(documentId) {
-					await this.sendSignInvite(documentId, recipientsPayload);
+					await this.sendSignInvite(documentId, recipientsPayload, sendCC, builder);
 				} else {
 					throw new InternalServerErrorException({
 						message: 'An unexpected error occurred.'
@@ -133,14 +145,18 @@ export class SignNowService {
 		}
     }
 
-	private async sendSignInvite(documentId: string, recipientData: any[]) {
+	private async sendSignInvite(documentId: string, recipientData: any[], sendCC: boolean, builder: any) {
 		try {
 			let formData = {
 				documentId,
 				to: recipientData,
 				from: this.SignNowUserName,
-				subject: "You Are Invited to Sign a Document from Smart Builder"
+				subject: "You Are Invited to Sign a Document from Smart Builder",
+				cc: []
 			};
+			if (sendCC && builder) {
+				formData.cc.push(builder.email);
+			}
 			const options = {
 				method: 'POST',
 				maxBodyLength: Infinity,
