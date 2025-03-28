@@ -151,7 +151,7 @@ export class CronJobsService {
     for (const jobId of Object.keys(jobsGroupedById)) {
       for (const job of jobsGroupedById[jobId]) {
         const fileNames = await Promise.all(job.contractorFiles.map(fileId => this.getFileNames(fileId)));
-        const fileNamesString = fileNames.map(file => file.fileName).join(', ');
+        const fileNamesString = fileNames.filter(file => file !== null).map(file => file.fileName).join(', ');
         htmlContent += `
           <tr>
             <td class="td">${job.email}</td>
