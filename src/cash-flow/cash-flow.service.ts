@@ -71,6 +71,7 @@ export class CashFlowService {
                     let totalEstimatedCost = 0;
                     
                     project.JobProjectEstimatorHeader.forEach(header => {
+                        if (header.name !== "Statements") {
                         header.JobProjectEstimator.forEach(estimator => {
                             const sales = Number(estimator.contractPrice).toFixed(2) || "0";
                             const unitCost = Number(estimator.unitCost).toFixed(2) || "0";
@@ -84,10 +85,11 @@ export class CashFlowService {
                             totalSales = totalSales + parseFloat(sales);
                             totalEstimatedCost += parseFloat(estimatedCost.toString());
                         });
+                        }
                     });
 
-                    let roundedSales = parseFloat(totalSales.toString()).toFixed();
-                    let roundedProfit = parseFloat(totalEstimatedCost.toString()).toFixed();
+                    let roundedSales = parseFloat(totalSales.toString()).toFixed(2);
+                    let roundedProfit = parseFloat(totalEstimatedCost.toString()).toFixed(2);
                 
                     return {
                         id: project.id,
