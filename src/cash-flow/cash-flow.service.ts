@@ -71,6 +71,7 @@ export class CashFlowService {
                     let totalEstimatedCost = 0;
                     
                     project.JobProjectEstimatorHeader.forEach(header => {
+                        if (header.name !== "Statements") {
                         header.JobProjectEstimator.forEach(estimator => {
                             const sales = Number(estimator.contractPrice).toFixed(2) || "0";
                             const unitCost = Number(estimator.unitCost).toFixed(2) || "0";
@@ -84,25 +85,26 @@ export class CashFlowService {
                             totalSales = totalSales + parseFloat(sales);
                             totalEstimatedCost += parseFloat(estimatedCost.toString());
                         });
+                        }
                     });
 
-                    let roundedSales = parseFloat(totalSales.toString()).toFixed();
-                    let roundedProfit = parseFloat(totalEstimatedCost.toString()).toFixed();
+                    let roundedSales = Number(totalSales.toString()).toFixed(2);
+                    let roundedProfit = Number(totalEstimatedCost.toString()).toFixed(2);
                 
                     return {
                         id: project.id,
                         customerName,
                         description,
-                        sales: parseFloat(roundedSales),
-                        projectProfit: parseFloat(roundedProfit)
+                        sales: roundedSales,
+                        projectProfit: roundedProfit,
                     };
                 });
 
                 return {
-                    salesDeduction: cashFlowData?.salesDeduction ?? 0,
-                    deduction: cashFlowData?.deduction ?? 0,
-                    depreciation: cashFlowData?.depreciation ?? 0,
-                    expenses: cashFlowData?.expense ?? 0,
+                    salesDeduction: Number(cashFlowData?.salesDeduction).toFixed(2) ?? "0.00",
+                    deduction: Number(cashFlowData?.deduction).toFixed(2) ?? "0.00",
+                    depreciation: Number(cashFlowData?.depreciation).toFixed(2) ?? "0.00",
+                    expenses: Number(cashFlowData?.expense).toFixed(2) ?? "0.00",
                     projects: formattedProjects
                 };
             } else {
