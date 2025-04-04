@@ -857,7 +857,7 @@ export class CompanyService {
                     }
                 }
             }
-            await this.sendMailToAdmin(company);
+            await this.sendMailToAdmin(company, builder);
             return { message: ResponseMessages.SUCCESSFUL }
         } catch (error) {
             console.log(error)
@@ -894,7 +894,7 @@ export class CompanyService {
         }
     }
 
-    private async sendMailToAdmin(company: any) {
+    private async sendMailToAdmin(company: any, builder: any) {
         const admins = await this.databaseService.user.findMany({
             where: {
                 userType: UserTypes.ADMIN,
@@ -905,7 +905,7 @@ export class CompanyService {
         let templateData = {
             admin: "",
             companyName: company.name ?? "",
-            email: company.email ?? "",
+            email: builder.email ?? "",
             address: company.address ?? "",
             zipCode: company.zipcode ?? "",
             phoneNumber: company.phoneNumber ?? "",
