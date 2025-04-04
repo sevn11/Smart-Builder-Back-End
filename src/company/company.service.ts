@@ -11,6 +11,7 @@ import { PaymentMethodDTO } from './validators/payment-method';
 import { BuilderPlanTypes } from 'src/core/utils/builder-plan-types';
 import { ProfitCalculationType } from 'src/core/utils/company';
 import { marginCalculation, markupCalculation } from 'src/core/utils/profit-calculation';
+import { formatNumberWithCommas } from 'src/core/utils/formatNumber';
 
 @Injectable()
 export class CompanyService {
@@ -909,7 +910,7 @@ export class CompanyService {
             zipCode: company.zipcode ?? "",
             phoneNumber: company.phoneNumber ?? "",
             planType: company.planType ?? "",
-            planAmount: company.planAmount ?? "",
+            planAmount: formatNumberWithCommas(company.planAmount) ?? "",
         }
     
         if (admins.length > 0) {
