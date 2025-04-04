@@ -856,6 +856,7 @@ export class CompanyService {
                     }
                 }
             }
+            await this.sendMailToAdmin(company);
             return { message: ResponseMessages.SUCCESSFUL }
         } catch (error) {
             console.log(error)
@@ -889,6 +890,39 @@ export class CompanyService {
             return { signNowPlanPriceInfo: { signNowMonthlyAmount, signNowYearlyAmount }, isSignNowCancelled }
         } catch (error) {
             console.log(error);
+        }
+    }
+
+    private async sendMailToAdmin(company: any) {
+        const admins = await this.databaseService.user.findMany({
+            where: {
+                userType: UserTypes.ADMIN,
+                isDeleted: false,
+            }
+        });
+
+        let templateData = {
+            admin: "",
+            companyName: company.name ?? "",
+            email: company.email ?? "",
+            address: company.address ?? "",
+            zipCode: company.zipcode ?? "",
+            phoneNumber: company.phoneNumber ?? "",
+            planType: company.planType ?? "",
+            planAmount: company.planAmount ?? "",
+        }
+    
+        if (admins.length > 0) {
+            const emailPromises = admins.map(admin => {
+                templateData.admin = admin.name;
+                this.sendgridService.sendEmailWithTemplate(
+                    admin.email,
+                    this.config.get('CLIENT_PLAN_CANCELLATION_NOTIFICATION_TEMPLATE_ID'),
+                    templateData,
+                );
+            });
+    
+            await Promise.all(emailPromises);
         }
     }
 }
