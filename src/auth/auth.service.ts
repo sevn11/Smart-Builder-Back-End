@@ -126,6 +126,9 @@ export class AuthService {
                         await this.prepareBuilderTemplateData(user);
                     }
 
+                    // Send mail to admin
+                    await this.sendMailToAdmin(user);
+
                     return { status: true, user, access_token, signNowSubStatus };
                 }
                 else {
@@ -535,6 +538,37 @@ export class AuthService {
         } catch (error) {
             console.log(error)
             throw new BadRequestException({ message: ResponseMessages.INVALID_PROMO_CODE })
+        }
+    }
+
+    private async sendMailToAdmin(user: any) {
+        const admins = await this.databaseService.user.findMany({
+            where: {
+                userType: UserTypes.ADMIN,
+                isDeleted: false,
+            }
+        });
+
+        let templateData = {
+            admin: "",
+            companyName: user.company.name ?? "",
+            email: user.email ?? "",
+            address: user.company.address ?? "",
+            zipCode: user.company.zipcode ?? "",
+            phoneNumber: user.company.phoneNumber ?? "",
+        }
+    
+        if (admins.length > 0) {
+            const emailPromises = admins.map(admin => {
+                templateData.admin = admin.name;
+                this.sendgridService.sendEmailWithTemplate(
+                    admin.email,
+                    this.config.get('NEW_CLIENT_NOTIFICATION_TEMPLATE_ID'),
+                    templateData,
+                );
+            });
+    
+            await Promise.all(emailPromises);
         }
     }
 }
