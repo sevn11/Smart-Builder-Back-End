@@ -11,6 +11,7 @@ import { PaymentMethodDTO } from './validators/payment-method';
 import { BuilderPlanTypes } from 'src/core/utils/builder-plan-types';
 import { ProfitCalculationType } from 'src/core/utils/company';
 import { marginCalculation, markupCalculation } from 'src/core/utils/profit-calculation';
+import { formatNumberWithCommas } from 'src/core/utils/formatNumber';
 
 @Injectable()
 export class CompanyService {
@@ -856,6 +857,7 @@ export class CompanyService {
                     }
                 }
             }
+            await this.sendMailToAdmin(company, builder);
             return { message: ResponseMessages.SUCCESSFUL }
         } catch (error) {
             console.log(error)
@@ -889,6 +891,39 @@ export class CompanyService {
             return { signNowPlanPriceInfo: { signNowMonthlyAmount, signNowYearlyAmount }, isSignNowCancelled }
         } catch (error) {
             console.log(error);
+        }
+    }
+
+    private async sendMailToAdmin(company: any, builder: any) {
+        const admins = await this.databaseService.user.findMany({
+            where: {
+                userType: UserTypes.ADMIN,
+                isDeleted: false,
+            }
+        });
+
+        let templateData = {
+            admin: "",
+            companyName: company.name ?? "",
+            email: builder.email ?? "",
+            address: company.address ?? "",
+            zipCode: company.zipcode ?? "",
+            phoneNumber: company.phoneNumber ?? "",
+            planType: company.planType ?? "",
+            planAmount: formatNumberWithCommas(company.planAmount) ?? "",
+        }
+    
+        if (admins.length > 0) {
+            const emailPromises = admins.map(admin => {
+                templateData.admin = admin.name;
+                this.sendgridService.sendEmailWithTemplate(
+                    admin.email,
+                    this.config.get('CLIENT_PLAN_CANCELLATION_NOTIFICATION_TEMPLATE_ID'),
+                    templateData,
+                );
+            });
+    
+            await Promise.all(emailPromises);
         }
     }
 }
