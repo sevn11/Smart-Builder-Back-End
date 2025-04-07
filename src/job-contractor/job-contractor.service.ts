@@ -413,10 +413,21 @@ export class JobContractorService {
                                         answer = `$${this.formatNumberWithCommas(parseFloat(answerText as string))}`;
                                     } else if (question.questionType === "Multiple Choice Question" && question?.multipleOptions) {
                                         if (question?.answer?.answerIds?.length > 0) {
+                                            if (question?.answer?.answerIds.includes("other")) {
+                                                let options = question?.multipleOptions as any;
+                                                answer = [
+                                                    options
+                                                      .filter((option, index) => question.answer.answerIds.includes(String(index)) && option.text !== "other")
+                                                      .map(option => option.text)
+                                                      .join(", "),
+                                                    question?.answer?.answerText ?? "-"
+                                                  ].join(", ")
+                                            } else {
                                             let options = question?.multipleOptions as any;
                                             answer = options.filter((option, index) => question.answer.answerIds.includes(String(index)))
                                                 .map(option => option.text)
                                                 .join(", ");
+                                            }
                                         } else {
                                             answer = "-";
                                         }
@@ -677,10 +688,21 @@ export class JobContractorService {
                             answer = `$${this.formatNumberWithCommas(parseFloat(answerText as string))}`;
                         } else if (question.questionType === "Multiple Choice Question" && question?.multipleOptions) {
                             if (question?.answer?.answerIds?.length > 0) {
+                                if (question?.answer?.answerIds.includes("other")) {
+                                    let options = question?.multipleOptions as any;
+                                    answer = [
+                                        options
+                                          .filter((option, index) => question.answer.answerIds.includes(String(index)) && option.text !== "other")
+                                          .map(option => option.text)
+                                          .join(", "),
+                                        question?.answer?.answerText ?? "-"
+                                      ].join(", ")
+                                } else {
                                 let options = question?.multipleOptions as any;
                                 answer = options.filter((option, index) => question.answer.answerIds.includes(String(index)))
                                     .map(option => option.text)
                                     .join(", ");
+                                }
                             } else {
                                 answer = "-";
                             }
