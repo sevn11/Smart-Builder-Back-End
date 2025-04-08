@@ -5,6 +5,9 @@ export class QuestionAnswerDTO {
     @IsNotEmpty()
     questionId: number;
 
+    @IsOptional()
+    isLinkToQuestionnaire: boolean;
+
     @IsArray()
     @IsOptional()
     answerIds: string[];

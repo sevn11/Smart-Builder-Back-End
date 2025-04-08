@@ -144,6 +144,22 @@ export class TemplateService {
                 });
             }
 
+            // Set flag to true if linked question was udpated from selection
+            if (type === 'initial-selection' || type === 'paint-selection') {
+                if (body.isLinkToQuestionnaire === true) {
+                    await this.databaseService.clientTemplateQuestion.update({
+                        where: { id: questionId, clientCategoryId: category.id },
+                        data: { updatedFromSelection: true }
+                    });
+                }
+            }
+            if (type === 'questionnaire') {
+                await this.databaseService.clientTemplateQuestion.update({
+                    where: { id: questionId, clientCategoryId: category.id },
+                    data: { updatedFromSelection: false }
+                });
+            }
+
             let whereClause: any = {};
             let orderByQuestion: any = {};
             let orderByCategory: any = {};
