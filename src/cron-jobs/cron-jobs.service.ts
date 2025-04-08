@@ -115,6 +115,7 @@ export class CronJobsService {
     }
   }
 
+  // Fn to generate html for builder mail
   private async generateHtmlTable(jobsGroupedById) {
     let htmlContent = `
       <html>
