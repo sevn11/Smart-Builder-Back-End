@@ -718,6 +718,7 @@ model ClientTemplateQuestion {
   clientTemplate         ClientTemplate           @relation(fields: [clientTemplateId], references: [id], onDelete: Cascade)
   initialQuestionOrder   Int                    @default(0) @map("initial_question_order")
   paintQuestionOrder     Int                    @default(0) @map("paint_question_order")
+  updatedFromSelection   Boolean                @default(false) @map("updated_from_selection")
   answer                ClientQuestionAnswer?
   @@map("client_template_question")
 }
