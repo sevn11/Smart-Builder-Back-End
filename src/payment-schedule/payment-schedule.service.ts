@@ -45,9 +45,10 @@ export class PaymentScheduleService {
                     addtFundDisbursed: Number(paymentSchedules.addtFundDisbursed).toFixed(2),
                     draws: paymentSchedules.draws.map(draw => ({
                         ...draw,
+                        amount: Number(draw.amount).toFixed(2),
                         bankFees: Number(draw.bankFees).toFixed(2)
                     }))
-                  };
+                };
                 return { formattedPaymentSchedule }
             } else {
                 throw new ForbiddenException("Action Not Allowed");
