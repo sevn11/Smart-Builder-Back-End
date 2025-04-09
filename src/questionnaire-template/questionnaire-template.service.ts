@@ -36,13 +36,18 @@ export class QuestionnaireTemplateService {
                             companyId
                         }
                     });
+
+                    const calendarTemplate = await tx.calendarTemplate.create({
+                        data: { name: body.name, companyId }
+                    });
                     const questionnaireTemplate = await tx.questionnaireTemplate.create({
                         data: {
                             name: body.name,
                             companyId: company.id,
                             isCompanyTemplate: true,
                             templateType: TemplateType.QUESTIONNAIRE,
-                            projectEstimatorTemplateId: projectEstimatorTemplate.id
+                            projectEstimatorTemplateId: projectEstimatorTemplate.id,
+                            calendarTemplateId: calendarTemplate.id
                         },
                         omit: {
 
@@ -202,7 +207,6 @@ export class QuestionnaireTemplateService {
                 }
 
                 let updateResponse = await this.databaseService.$transaction(async (tx) => {
-
                     const questionnaireTemplate = await tx.questionnaireTemplate.update({
                         where: {
                             id: templateId,
@@ -251,6 +255,14 @@ export class QuestionnaireTemplateService {
                             }
                         }
                     });
+
+                    if (questionnaireTemplate.calendarTemplateId) {
+                        await tx.calendarTemplate.update({
+                            where: { id: questionnaireTemplate.calendarTemplateId },
+                            data: { name: body.name }
+                        })
+                    }
+
                     if (questionnaireTemplate.projectEstimatorTemplateId) {
                         const projectEstimator = await tx.projectEstimatorTemplate.update({
                             where: {
@@ -337,6 +349,18 @@ export class QuestionnaireTemplateService {
                                 data: { isDeleted: true, headerOrder: 0 }
                             })
                         }
+                    }
+
+                    if (tempToDelete.calendarTemplateId) {
+                        const clTemplate = await tx.calendarTemplate.update({
+                            where: { id: tempToDelete.calendarTemplateId },
+                            data: { isDeleted: true }
+                        })
+
+                        await tx.calendarTemplateData.updateMany({
+                            where: { ctId: clTemplate.id },
+                            data: { isDeleted: true }
+                        })
                     }
 
                     await tx.questionnaireTemplate.update({

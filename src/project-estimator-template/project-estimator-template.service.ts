@@ -42,13 +42,18 @@ export class ProjectEstimatorTemplateService {
                         }
                     });
 
+                    const calendarTemplate = await tx.calendarTemplate.create({
+                        data: { name: body.name, companyId }
+                    });
+
                     const questTemplate = await tx.questionnaireTemplate.create({
                         data: {
                             name: body.name,
                             companyId,
                             isCompanyTemplate: true,
                             templateType: TemplateType.PROJECT_ESTIMATOR,
-                            projectEstimatorTemplateId: projectEstTemplate.id
+                            projectEstimatorTemplateId: projectEstTemplate.id,
+                            calendarTemplateId: calendarTemplate.id
                         }
                     })
                     return { projectEstTemplate, questTemplate }
@@ -119,7 +124,12 @@ export class ProjectEstimatorTemplateService {
                                 name: body.name
                             }
                         })
-
+                        if (questionnaireTemplate.calendarTemplateId) {
+                            await tx.calendarTemplate.update({
+                                where: { id: questionnaireTemplate.calendarTemplateId },
+                                data: { name: body.name }
+                            })
+                        }
                         return { projectEstimator, updateQuestionnaireTemplate }
                     }
                     return { projectEstimator }
@@ -187,6 +197,18 @@ export class ProjectEstimatorTemplateService {
                         await tx.templateQuestion.updateMany({
                             where: { questionnaireTemplateId: questionnaireTemplateId },
                             data: { isDeleted: true, }
+                        })
+                    }
+
+                    if(questionnaireTemplate.calendarTemplateId) {
+                        const clTemplate = await tx.calendarTemplate.update({
+                            where: { id: questionnaireTemplate.calendarTemplateId },
+                            data: { isDeleted: true }
+                        });
+
+                        await tx.calendarTemplateData.updateMany({
+                            where: { ctId: clTemplate.id },
+                            data: { isDeleted: true }
                         })
                     }
                     // deleting all selection and questionnaire template ends here.
@@ -1172,7 +1194,7 @@ export class ProjectEstimatorTemplateService {
         }
     }
 
-    async updateTemplateProfitCalculationType (user: User, companyId: number, templateId: number, body: { profitCalculationType: ProfitCalculationTypeEnum }) {
+    async updateTemplateProfitCalculationType(user: User, companyId: number, templateId: number, body: { profitCalculationType: ProfitCalculationTypeEnum }) {
         try {
             if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) {
                 if ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId !== companyId) {
@@ -1206,7 +1228,7 @@ export class ProjectEstimatorTemplateService {
                             const unitCost = parseFloat(data.unitCost.toString());
                             const quantity = parseFloat(data.quantity.toString());
                             const grossProfit = parseFloat(data.grossProfit.toString());
-                            
+
                             const contractPrice =
                                 updatedTemplate.profitCalculationType === ProfitCalculationType.MARKUP
                                     ? markupCalculation(quantity * unitCost, grossProfit)
@@ -1224,7 +1246,7 @@ export class ProjectEstimatorTemplateService {
                 }
 
                 return { message: ResponseMessages.SUCCESSFUL }
-               
+                
             } else {
                 throw new ForbiddenException("Action Not Allowed");
             }
