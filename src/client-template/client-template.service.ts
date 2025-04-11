@@ -98,7 +98,7 @@ export class ClientTemplateService {
             const job = await this.checkJobExist(jobId, companyId);
             const template = await this.checkTemplateExist(templateId, job.customerId, job.id, companyId);
             const linkedTypeCondition = { clientTemplateId: template.id, isDeleted: false };
-            const whereClause = { [linkFieldMapping[type]]: true, };
+            const whereClause: any = { [linkFieldMapping[type]]: true, };
 
             const { _max } = await this.databaseService.clientCategory.aggregate({
                 _max: { questionnaireOrder: true, initialOrder: true, paintOrder: true, },
@@ -521,7 +521,7 @@ export class ClientTemplateService {
 
             const initialSelectionTypes = { linkToInitalSelection: false, linkToPaintSelection: false };
             const orderValues = { questionOrder: 0, initialQuestionOrder: 0, paintQuestionOrder: 0 };
-            const whereClause = { [linkFieldMapping[type]]: true };
+            const whereClause: any = { [linkFieldMapping[type]]: true };
             const orderByClause = {
                 'questionnaire': { 'category': 'questionnaireOrder', 'question': 'questionOrder' },
                 'initial-selection': { 'category': 'initialOrder', 'question': 'initialQuestionOrder' },

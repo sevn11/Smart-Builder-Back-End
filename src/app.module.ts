@@ -39,6 +39,7 @@ import { SignNowModule } from './sign-now/sign-now.module';
 import { GanttModule } from './gantt/gantt.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { CronJobsModule } from './cron-jobs/cron-jobs.module';
+import { CalendarTemplateModule } from './calendar-template/calendar-template.module';
 @Module({
   imports: [
     ServeStaticModule.forRoot({
@@ -82,6 +83,7 @@ import { CronJobsModule } from './cron-jobs/cron-jobs.module';
     GanttModule,
     ScheduleModule.forRoot(),
     CronJobsModule,
+    CalendarTemplateModule,
   ],
 })
 export class AppModule { }
