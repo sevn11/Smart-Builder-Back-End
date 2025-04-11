@@ -531,7 +531,7 @@ model PaymentSchedule {
 model PaymentScheduleDraw {
   id                  Int             @id @default(autoincrement())
   paymentDate         DateTime        @map("payment_date")
-  amount              Float           @default(0)
+  amount              Decimal?        @map("amount") @db.Decimal(10, 2) @default(0.00)
   drawPercentage      Float           @map("draw_percentage") @default(0)
   bankFees            Decimal?        @map("bank_fees") @db.Decimal(10, 2) @default(0.00)
   received            Boolean         @default(false)
