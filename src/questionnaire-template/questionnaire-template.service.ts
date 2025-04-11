@@ -38,7 +38,7 @@ export class QuestionnaireTemplateService {
                     });
 
                     const calendarTemplate = await tx.calendarTemplate.create({
-                        data: { name: body.name, companyId }
+                        data: { name: body.name, companyId, isCompanyTemplate: true }
                     });
                     const questionnaireTemplate = await tx.questionnaireTemplate.create({
                         data: {

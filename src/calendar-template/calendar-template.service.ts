@@ -31,7 +31,8 @@ export class CalendarTemplateService {
                     const calendarTemplateService = await tx.calendarTemplate.create({
                         data: {
                             name: body.name,
-                            companyId
+                            companyId,
+                            isCompanyTemplate: true
                         }
                     });
 
@@ -102,7 +103,7 @@ export class CalendarTemplateService {
 
                     if (questionnaireTemplate) {
                         await tx.questionnaireTemplate.update({
-                            where: { id: questionnaireTemplate.projectEstimatorTemplateId, isDeleted: false },
+                            where: { id: questionnaireTemplate.id, isDeleted: false },
                             data: { name: body.name }
                         })
                         if (questionnaireTemplate && questionnaireTemplate.projectEstimatorTemplateId) {
