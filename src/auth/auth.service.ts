@@ -359,13 +359,21 @@ export class AuthService {
                     companyId: user.company.id
                 }
             });
+            const calendarTemplate = await this.databaseService.calendarTemplate.create({
+                data: {
+                    name: mTemplate.name,
+                    companyId: user.company.id,
+                    isCompanyTemplate: true
+                }
+            })
             const builderTemplate = await this.databaseService.questionnaireTemplate.create({
                 data: {
                     name: mTemplate.name,
                     companyId: user.company.id,
                     isCompanyTemplate: true,
                     templateType: mTemplate.templateType,
-                    projectEstimatorTemplateId: builderProjectEstimatorTemplate.id
+                    projectEstimatorTemplateId: builderProjectEstimatorTemplate.id,
+                    calendarTemplateId: calendarTemplate.id
                 }
             });
 
