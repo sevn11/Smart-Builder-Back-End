@@ -841,38 +841,8 @@ export class JobsService {
                     return { error: 'Job not found' };
                 }
 
-                let isSynced = false;
-
-                const jobSyncExist = await this.databaseService.googleEventId.findFirst({
-                    where: {
-                        companyId,
-                        userId: user.id,
-                        jobId: jobId,
-                        jobScheduleId: null,
-                        isDeleted: false,
-                    },
-                    orderBy: { id: 'desc' },
-                    take: 1
-                })
-                if (jobSyncExist && jobSyncExist?.eventId) {
-                    let event = await this.googleService.getEventFromGoogleCalendar(user, jobSyncExist);
-                    if (event) {
-                        isSynced = true;
-                    }
-                }
                 let uniqueId = 1;
-                const openJob = {
-                    id: uniqueId,
-                    jobId: job.id,
-                    title: `${job.customer?.name}: ${job.description.name ?? ""}`,
-                    start: job.startDate,
-                    end: job.endDate,
-                    customerId: job.customer?.id,
-                    color: job.calendarColor,
-                    isSynced,
-                    type: "project"
-                };
-
+                                
                 // Check sync status for each schedule
                 const schedulesWithSyncStatus = await Promise.all(
                     job.JobSchedule.map(async (schedule, index) => {
@@ -913,9 +883,8 @@ export class JobsService {
                     })
                 );
 
-                const result = [openJob, ...schedulesWithSyncStatus];
 
-                return { jobAndSchedules: result };
+                return { jobAndSchedules: schedulesWithSyncStatus };
 
             } else {
                 throw new ForbiddenException("Action Not Allowed");
