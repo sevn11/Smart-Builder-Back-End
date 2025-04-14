@@ -113,4 +113,13 @@ export class CompanyController {
     getSignNowPlanInfo(@GetUser() user: User, @Param('id', ParseIntPipe) companyId: number) {
         return this.companyService.getSignNowPlanInfo(user, companyId);
     }
+
+    @Patch(':id/sales-tax-rate')
+    updateCompanySalesTaxRate(
+        @GetUser() user: User, 
+        @Param('id', ParseIntPipe) companyId: number,
+        @Body() body: { salesTaxRate: number })
+    {
+        return this.companyService.updateCompanySalesTaxRate(user, companyId, body)
+    }
 }
