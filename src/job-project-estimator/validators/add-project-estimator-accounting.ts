@@ -41,4 +41,11 @@ export class JobProjectEstimatorAccountingDTO {
     @IsBoolean()
     @IsOptional()
     isCourtesyCredit: boolean
+
+    @IsBoolean()
+    @IsOptional()
+    isSalesTaxApplicable: boolean
+
+    @IsNumber()
+    salesTaxPercentage: number
 }

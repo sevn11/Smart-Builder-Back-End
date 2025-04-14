@@ -480,6 +480,8 @@ model JobProjectEstimator {
   invoiceId         Int?               @map("invoice_id")
   isLootCost        Boolean?           @default(false) @map("is_loot_cost")
   isCourtesyCredit  Boolean?           @default(false) @map("is_courtesy_credit")
+  isSalesTaxApplicable  Boolean?       @default(false) @map("is_sales_tax_applicable")
+  salesTaxPercentage    Decimal?       @map("sales_tax_percentage") @db.Decimal(10, 2) @default(0.00)
   isDeleted         Boolean?           @default(false) @map("is_deleted")
   order             Int?               @default(0) @map("order")
   jobProjectEstimatorHeaderId          Int? @map("job_project_estimator_header_id")
