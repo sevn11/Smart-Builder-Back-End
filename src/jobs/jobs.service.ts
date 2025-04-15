@@ -43,7 +43,8 @@ export class JobsService {
                         descriptionId: body.description,
                         customerId: body.customerId,
                         status: JobStatus.OPEN,
-                        companyId: company.id
+                        companyId: company.id,
+                        userId: user.id
                     },
                     omit: {
                         isDeleted: true
@@ -101,12 +102,20 @@ export class JobsService {
                 if (!company) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
+                // Check user project permission
+                let userProjectPermission = await this.databaseService.permissionSet.findUnique({
+                    where: { userId: user.id },
+                    select: { projectAccess: true }
+                });
+                
+                const hasProjectAccess = userProjectPermission?.projectAccess ?? false;
                 query.page = query.page === 0 ? 0 : query.page - 1
                 let jobdata = await this.databaseService.job.findMany({
                     where: {
                         companyId,
                         isClosed: query.closed || false,
                         isDeleted: false,
+                        userId: hasProjectAccess ? user.id : undefined,
                         customer: {
                             name: {
                                 contains: query.search,
@@ -151,6 +160,7 @@ export class JobsService {
                         companyId,
                         isClosed: query.closed || false,
                         isDeleted: false,
+                        userId: hasProjectAccess ? user.id : undefined,
                         customer: {
                             name: {
                                 contains: query.search,

@@ -132,6 +132,7 @@ export class CompanyService {
                                 contractorAndFiles: body.PermissionSet.contractorAndFiles,
                                 settings: body.PermissionSet.settings,
                                 ytdReport: body.PermissionSet.ytdReport,
+                                projectAccess: body.PermissionSet.projectAccess,
                                 viewOnly: body.PermissionSet.viewOnly
                             }
                         }
@@ -310,6 +311,7 @@ export class CompanyService {
                                     contractorAndFiles: body.PermissionSet.contractorAndFiles,
                                     settings: body.PermissionSet.settings,
                                     ytdReport: body.PermissionSet.ytdReport,
+                                    projectAccess: body.PermissionSet.projectAccess,
                                     viewOnly: body.PermissionSet.viewOnly
                                 }
                             },

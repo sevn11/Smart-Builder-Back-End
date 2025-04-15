@@ -167,5 +167,34 @@ export class UserService {
             throw new InternalServerErrorException()
         }
     }
+
+    async checkProjectAccess(user: User, jobId: number) {
+        try {
+            const userProjectPermission = await this.databaseService.permissionSet.findUnique({
+                where: { userId: user.id },
+                select: { projectAccess: true }
+            });
+    
+            if (!userProjectPermission) {
+                return { hasProjectAccess: false };
+            }
+    
+            if (!userProjectPermission.projectAccess) {
+                // If user has global project access, no need to check project
+                return { hasProjectAccess: true };
+            }
+    
+            const projectWithPermission = await this.databaseService.job.findUnique({
+                where: { id: jobId, userId: user.id }
+            });
+    
+            const hasProjectAccess = !!projectWithPermission;
+            return { hasProjectAccess };
+    
+        } catch (error) {
+            console.error('checkProjectAccess error:', error);
+            return { hasProjectAccess: false };
+        }
+    }
 }
 

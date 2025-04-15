@@ -45,6 +45,10 @@ export class PermissionSetDTO {
 
     @IsBoolean()
     @IsNotEmpty()
+    projectAccess: boolean
+
+    @IsBoolean()
+    @IsNotEmpty()
     viewOnly: boolean
 
 }
