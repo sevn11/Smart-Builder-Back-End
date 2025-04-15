@@ -426,9 +426,15 @@ export class StripeService {
     // Function re create sign-now subscription
     async createBuilderSignNowSubscriptionAfterSignup(company: any, builder: any, signNowPlanAmount: number) {
         try {
-            let existingSignNowSubscription = company.signNowSubscriptionId
-                ? await this.StripeClient.subscriptions.retrieve(company.signNowSubscriptionId)
-                : null;
+            let existingSignNowSubscription = null;
+            try {
+                if (company.signNowSubscriptionId) {
+                    existingSignNowSubscription = await this.StripeClient.subscriptions.retrieve(company.signNowSubscriptionId);
+                }
+            } catch (error) {
+                console.warn(`Unable to retrieve existing SignNow subscription for company ${company.id}: ${error}`);
+                existingSignNowSubscription = null;
+            }
             
             const planType = company.planType == BuilderPlanTypes.MONTHLY ? 'month' : 'year';
             
