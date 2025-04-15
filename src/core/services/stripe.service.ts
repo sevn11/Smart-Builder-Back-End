@@ -397,11 +397,15 @@ export class StripeService {
 
     // Function to get sign now subscription status
     async getSignNowPlanStatus (subscriptionId: string) {
+        try {
         let subInfo = await this.StripeClient.subscriptions.retrieve(subscriptionId);
         const currentDate = Math.floor(Date.now() / 1000);
         if(subInfo.current_period_end > currentDate) {
             return { status: true };
         } else {
+            return { status: false };
+        }
+        } catch (error) {
             return { status: false };
         }
     }
