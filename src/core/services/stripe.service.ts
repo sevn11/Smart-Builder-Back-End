@@ -407,10 +407,14 @@ export class StripeService {
     }
 
     async isSignNowCancelled (subscriptionId: string) {
-        let subInfo = await this.StripeClient.subscriptions.retrieve(subscriptionId);
-        if(subInfo.status != 'canceled') {
-            return { status: true };
-        } else {
+        try {
+            let subInfo = await this.StripeClient.subscriptions.retrieve(subscriptionId);
+            if(subInfo.status != 'canceled') {
+                return { status: true };
+            } else {
+                return { status: false };
+            }
+        } catch (error) {
             return { status: false };
         }
     }
