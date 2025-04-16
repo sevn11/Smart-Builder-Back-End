@@ -6,7 +6,7 @@ import { PrismaErrorCodes, ResponseMessages, TemplateType, UserTypes } from 'src
 import { DefaultArgs, PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { EventDTO } from './validators/event';
 import { ContractorAssignmentDTO } from './validators/contractor-assignment';
-import { formatCalendarDate, formatEndDate } from 'src/core/utils/date';
+import { formatCalendarDate, formatEndDate, resetEventStart } from 'src/core/utils/date';
 import { GoogleService } from 'src/core/services/google.service';
 
 @Injectable()
@@ -690,8 +690,8 @@ export class CalendarTemplateService {
                     companyId,
                     jobId
                 };
-
-                scheduleStartDate = scheduleEndDate
+                // The start date of the next event will end date of previous + 1
+                scheduleStartDate = resetEventStart(scheduleEndDate)
                 await tx.jobSchedule.create({
                     data: payload
                 });
