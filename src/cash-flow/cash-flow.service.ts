@@ -73,16 +73,23 @@ export class CashFlowService {
                     project.JobProjectEstimatorHeader.forEach(header => {
                         if (header.name !== "Statements") {
                         header.JobProjectEstimator.forEach(estimator => {
-                            const sales = Number(estimator.contractPrice).toFixed(2) || "0";
+                            const contractPrice = Number(estimator.contractPrice) || 0;
+                            const salesTaxPercentage = Number(estimator.salesTaxPercentage);
                             const unitCost = Number(estimator.unitCost).toFixed(2) || "0";
                             const quantity = estimator.quantity || 0;
+                            const salesTax = estimator.isSalesTaxApplicable
+                                ? Number(((contractPrice * salesTaxPercentage) / 100).toFixed(2))
+                                : 0;
+
+                            // Add sales tax to the contract price
+                            const sales = contractPrice + salesTax;
                             let estimatedCost = (
                                 parseFloat(sales.toString()) -
                                 parseFloat(unitCost.toString()) *
                                   parseFloat(quantity.toString())
                             )
                             
-                            totalSales = totalSales + parseFloat(sales);
+                            totalSales = totalSales + sales;
                             totalEstimatedCost += parseFloat(estimatedCost.toString());
                         });
                         }
