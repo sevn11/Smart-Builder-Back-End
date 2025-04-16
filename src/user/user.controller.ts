@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Patch, Post, UseGuards } from '@nestjs/common';
 import { JwtGuard } from 'src/core/guards';
 import { UserService } from './user.service';
 import { GetUser } from 'src/core/decorators';
@@ -40,5 +40,11 @@ export class UserController {
     @Get('/me/sign-now-plan-status')
     getSignNowPlanStatus(@GetUser() user: User) {
         return this.userService.getSignNowPlanStatus(user);
+    }
+
+    @HttpCode(HttpStatus.OK)
+    @Get('/me/check-job-access/:jobId')
+    checkProjectAccess(@GetUser() user: User, @Param('jobId', ParseIntPipe) jobId: number,) {
+        return this.userService.checkProjectAccess(user, jobId);
     }
 }

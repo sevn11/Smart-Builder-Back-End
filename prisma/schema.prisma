@@ -45,6 +45,7 @@ model User {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   PaymentLog      PaymentLog[]
+  Job            Job[]
   EmployeeDetails EmployeeDetails?
   GoogleEventId   GoogleEventId[]
   
@@ -143,6 +144,7 @@ model PermissionSet {
   contractorAndFiles      Boolean  @default(false) @map("contractor_and_files")
   settings       Boolean  @default(false)
   ytdReport      Boolean  @default(false) @map("ytd_report")
+  projectAccess  Boolean  @default(false) @map("project_access")
   viewOnly       Boolean  @default(true) @map("view_only")
   isDeleted      Boolean? @default(false) @map("is_deleted")
 
@@ -226,6 +228,9 @@ model Job {
 
   companyId Int     @map("company_id")
   company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  userId    Int?      @map("user_id")
+  user      User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   customerId Int      @map("customer_id")
   customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
