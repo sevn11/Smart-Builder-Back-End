@@ -75,7 +75,7 @@ export class JobProjectEstimatorService {
                         const unitCost = Number(estimator.unitCost);
                         const actualCost = Number(estimator.actualCost);
                         const grossProfit = Number(estimator.grossProfit);
-                        const contractPrice = Number(estimator.contractPrice);
+                        let contractPrice = Number(estimator.contractPrice);
                         const isSalesTaxApplicable = estimator.isSalesTaxApplicable;
                         const salesTaxPercentage = Number(estimator.salesTaxPercentage);
                 
@@ -83,6 +83,10 @@ export class JobProjectEstimatorService {
                             ? Number(((contractPrice * salesTaxPercentage) / 100).toFixed(2))
                             : 0;
                 
+                        // Add sales tax to contract price only for "Change Order"
+                        if (item.name === "Change Orders") {
+                            contractPrice += salesTax;
+                        }
                         return {
                             ...estimator,
                             unitCost: unitCost.toFixed(2),
@@ -737,12 +741,28 @@ export class JobProjectEstimatorService {
                         id: true,
                         description: true,
                         contractPrice: true,
+                        isSalesTaxApplicable: true,
+                        salesTaxPercentage: true,
                         createdAt: true,
                         invoiceId: true
                     },
                 });
 
-                return { changeOrders }
+                const formattedData = changeOrders.map(changeOrder => {
+                    const contractPrice = Number(changeOrder.contractPrice);
+                    const isSalesTaxApplicable = changeOrder.isSalesTaxApplicable;
+                    const salesTaxPercentage = Number(changeOrder.salesTaxPercentage);
+                    const salesTax = isSalesTaxApplicable
+                        ? Number(((contractPrice * salesTaxPercentage) / 100).toFixed(2))
+                        : 0;
+                
+                    return {
+                        ...changeOrder,
+                        contractPrice: salesTax + contractPrice
+                    };
+                });
+                
+                return { changeOrders: formattedData };
             } else {
                 throw new ForbiddenException("Action Not Allowed");
             }
@@ -808,7 +828,21 @@ export class JobProjectEstimatorService {
                     }
                 });
 
-                return { statements }
+                const formattedData = statements.map(statement => {
+                    const contractPrice = Number(statement.contractPrice);
+                    const isSalesTaxApplicable = statement.isSalesTaxApplicable;
+                    const salesTaxPercentage = Number(statement.salesTaxPercentage);
+                    const salesTax = isSalesTaxApplicable
+                        ? Number(((contractPrice * salesTaxPercentage) / 100).toFixed(2))
+                        : 0;
+                
+                    return {
+                        ...statement,
+                        contractPrice: contractPrice + salesTax
+                    };
+                });
+
+                return { statements: formattedData }
             } else {
                 throw new ForbiddenException("Action Not Allowed");
             }
