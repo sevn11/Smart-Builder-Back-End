@@ -48,3 +48,12 @@ export const formatEndDate = (startDate: Date, duration: number, skipWeekend: bo
     return endDate
 }
 
+// date + 1
+export const resetEventStart = (date: Date) => {
+    const nextDate = new Date(date);
+    nextDate.setDate(nextDate.getDate() + 1);
+    nextDate.setHours(0, 0, 0, 0);
+
+    return nextDate;
+};
+
