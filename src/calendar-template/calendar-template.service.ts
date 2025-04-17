@@ -691,8 +691,8 @@ export class CalendarTemplateService {
                     jobId
                 };
                 // The start date of the next event will end date of previous + 1
-                scheduleStartDate = resetEventStart(scheduleEndDate)
-                await tx.jobSchedule.create({
+                scheduleStartDate = scheduleEndDate
+                const jobSchedule = await tx.jobSchedule.create({
                     data: payload
                 });
             }
