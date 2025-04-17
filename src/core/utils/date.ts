@@ -24,7 +24,7 @@ export const formatCalendarDate = (date: Date) => {
 export const formatEndDate = (startDate: Date, duration: number, skipWeekend: boolean) => {
 
     let endDate = new Date(startDate);
-    if (!!skipWeekend) {
+    if (!skipWeekend) {
 
         // If weekends are included, just add (duration - 1) days
         endDate.setDate(startDate.getDate() + (duration - 1));
@@ -34,10 +34,8 @@ export const formatEndDate = (startDate: Date, duration: number, skipWeekend: bo
     // If weekends are skipped
     let daysAdded = 0;
     while (daysAdded < duration) {
-        // Move to the next day (except for the first iteration)
-        if (daysAdded > 0) {
-            endDate.setDate(endDate.getDate() + 1);
-        }
+        // Always move to the next day
+        endDate.setDate(endDate.getDate() + 1);
 
         // Only count weekdays (Monday to Friday)
         if (endDate.getDay() !== 0 && endDate.getDay() !== 6) {
