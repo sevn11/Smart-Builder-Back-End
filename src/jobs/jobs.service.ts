@@ -1146,6 +1146,8 @@ export class JobsService {
                             contractPrice: x.contractPrice,
                             order: x.order,
                             invoiceId: currentInvoiceId,
+                            isSalesTaxApplicable: x.isSalesTaxApplicable,
+                            salesTaxPercentage: x.salesTaxPercentage,
                             isLootCost: x.isLotCost
                         }
                     })
