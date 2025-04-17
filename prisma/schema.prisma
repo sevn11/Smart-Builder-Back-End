@@ -613,6 +613,8 @@ model ProjectEstimatorTemplateData {
   grossProfit       Decimal            @map("gross_profit") @db.Decimal(10, 2) @default(0.00)
   contractPrice     Decimal            @map("contract_price") @db.Decimal(10, 2) @default(0.00)
   isLotCost         Boolean?           @default(false) @map("is_lot_cost")
+  isSalesTaxApplicable  Boolean?       @default(false) @map("is_sales_tax_applicable")
+  salesTaxPercentage    Decimal?       @map("sales_tax_percentage") @db.Decimal(10, 2) @default(0.00)
   isCourtesyCredit  Boolean?           @default(false) @map("is_courtesy_credit")
   isDeleted         Boolean?           @default(false) @map("is_deleted")
 
