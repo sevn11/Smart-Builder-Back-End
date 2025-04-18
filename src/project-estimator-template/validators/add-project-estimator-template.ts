@@ -45,4 +45,12 @@ export class ProjectEstimatorTemplateDTO {
     @IsBoolean()
     @IsOptional()
     isLotCost: boolean
+
+    @IsBoolean()
+    @IsOptional()
+    isSalesTaxApplicable: boolean
+
+    @IsNumber()
+    @IsOptional()
+    salesTaxPercentage: number
 }

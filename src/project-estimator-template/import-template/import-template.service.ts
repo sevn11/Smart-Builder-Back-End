@@ -15,6 +15,8 @@ export interface ImportData {
     grossprofit: string | number;
     contractprice: string | number;
     actualcost: string | number;
+    issalestaxapplicable?: string;
+    salestaxpercentage: string | number;
     itemorder: string | number;
     headerorder: string | number;
 }
@@ -73,6 +75,7 @@ export class ImportTemplateService {
                             const unitCost = parseFloat(String(val.unitcost));
                             const quantity = parseFloat(String(val.quantity));
                             const grossProfit = parseFloat(String(val.grossprofit));
+                            const salesTaxPercentage = parseFloat(String(val.salestaxpercentage));
 
                             const contractPrice =
                                 updateTemplate.profitCalculationType === ProfitCalculationType.MARKUP
@@ -89,6 +92,8 @@ export class ImportTemplateService {
                                     actualCost: parseFloat(String(val.actualcost)),
                                     grossProfit: parseFloat(String(val.grossprofit)),
                                     contractPrice: contractPrice,
+                                    salesTaxPercentage: salesTaxPercentage,
+                                    isSalesTaxApplicable: val.issalestaxapplicable === 'true',
                                     isDeleted: false,
                                     petHeaderId: header.id,
                                     order: Number(val.itemorder)
