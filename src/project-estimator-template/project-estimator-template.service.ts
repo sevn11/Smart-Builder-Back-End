@@ -2,7 +2,7 @@ import { BadRequestException, ConflictException, ForbiddenException, Injectable,
 import { User } from '@prisma/client';
 import { DatabaseService } from 'src/database/database.service';
 import * as csv from 'csv-parse';
-import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
+import { Decimal, PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { PrismaErrorCodes, ResponseMessages, TemplateType, UserTypes, toSnakeCase } from 'src/core/utils';
 import { ProjectEstimatorTemplateNameDTO } from './validators/templateName';
 import { ProjectEstimatorTemplateHeaderDTO } from './validators/header';
@@ -535,6 +535,13 @@ export class ProjectEstimatorTemplateService {
                         100
                     ).toFixed(2)
                     );
+                }
+                // Add sales tax to contract price only for "Change Order"
+                let estimatorTemplateHeader = await this.databaseService.projectEstimatorTemplateHeader.findUniqueOrThrow({
+                    where: { id: projectEstimator.petHeaderId }
+                });
+                if (estimatorTemplateHeader.name === "Change Orders") {
+                    projectEstimator.contractPrice = new Decimal(projectEstimator.contractPrice).plus(salesTax);
                 }
                 return {
                     projectEstimator: {
