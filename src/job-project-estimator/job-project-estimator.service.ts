@@ -3,7 +3,7 @@ import { Prisma, User } from '@prisma/client';
 import { DatabaseService } from 'src/database/database.service';
 import { JobProjectEstimatorHeaderDTO } from './validators/add-header';
 import { PrismaErrorCodes, ResponseMessages, TemplateType, UserTypes } from 'src/core/utils';
-import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
+import { Decimal, PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { JobProjectEstimatorDTO } from './validators/add-project-estimator';
 import { JobProjectEstimatorAccountingDTO } from './validators/add-project-estimator-accounting';
 import { BulkUpdateProjectEstimatorDTO } from './validators/pe-bulk-update';
@@ -426,6 +426,13 @@ export class JobProjectEstimatorService {
                         100
                     ).toFixed(2)
                     );
+                }
+                // Add sales tax to contract price only for "Change Order"
+                let estimatorHeader = await this.databaseService.jobProjectEstimatorHeader.findUniqueOrThrow({
+                    where: { id: projectEstimator.jobProjectEstimatorHeaderId }
+                });
+                if (estimatorHeader.name === "Change Orders") {
+                    projectEstimator.contractPrice = new Decimal(projectEstimator.contractPrice).plus(salesTax);
                 }
                 return {
                     projectEstimator: {
@@ -1101,6 +1108,8 @@ export class JobProjectEstimatorService {
                             grossProfit: estData.grossProfit,
                             contractPrice: estData.contractPrice,
                             isLotCost: estData.isLootCost,
+                            isSalesTaxApplicable: estData.isSalesTaxApplicable,
+                            salesTaxPercentage: estData.salesTaxPercentage,
                             isCourtesyCredit: estData.isCourtesyCredit,
                             petHeaderId: header.id,
                             order: estData.order,
