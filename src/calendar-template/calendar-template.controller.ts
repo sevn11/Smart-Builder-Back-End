@@ -6,6 +6,7 @@ import { User } from '@prisma/client';
 import { TemplateDTO } from './validators/template';
 import { EventDTO } from './validators/event';
 import { ContractorAssignmentDTO } from './validators/contractor-assignment';
+import { EventUpdateDTO } from './validators/update-event';
 
 @UseGuards(JwtGuard)
 @Controller('companies/:companyId/calendar-template')
@@ -47,25 +48,11 @@ export class CalendarTemplateController {
     return this.calendarTemplateService.getTemplateData(user, companyId, templateId);
   }
 
-  // Get the calendar template data grouped acc to phase id
-  @HttpCode(HttpStatus.OK)
-  @Get(':templateId/data/group')
-  getTemplateDataGrouped(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number, @Param('templateId', ParseIntPipe) templateId: number) {
-    return this.calendarTemplateService.getTemplateDataGrouped(user, companyId, templateId)
-  }
-
   // Create event
   @HttpCode(HttpStatus.OK)
   @Post(':templateId/create/event')
   createEvent(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number, @Param('templateId', ParseIntPipe) templateId: number, @Body() body: EventDTO) {
     return this.calendarTemplateService.createEvent(user, companyId, templateId, body);
-  }
-
-  // Update calendar event
-  @HttpCode(HttpStatus.OK)
-  @Patch(':templateId/update/:eventId/event')
-  updateEvent(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number, @Param('templateId', ParseIntPipe) templateId: number, @Param('eventId', ParseIntPipe) eventId: number, @Body() body: EventDTO) {
-    return this.calendarTemplateService.updateEvent(user, companyId, templateId, eventId, body);
   }
 
   // Delete calendar event
@@ -75,10 +62,30 @@ export class CalendarTemplateController {
     return this.calendarTemplateService.deleteEvent(user, companyId, templateId, eventId);
   }
 
+  // Update calendar event
+  @HttpCode(HttpStatus.OK)
+  @Patch(':templateId/update/:eventId/event')
+  updateEvent(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number, @Param('templateId', ParseIntPipe) templateId: number, @Param('eventId', ParseIntPipe) eventId: number, @Body() body: EventUpdateDTO) {
+    return this.calendarTemplateService.updateEvent(user, companyId, templateId, eventId, body);
+  }
+
+  // Get the calendar template data grouped acc to phase id
+  @HttpCode(HttpStatus.OK)
+  @Get(':templateId/data/group')
+  getTemplateDataGrouped(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number, @Param('templateId', ParseIntPipe) templateId: number) {
+    return this.calendarTemplateService.getTemplateDataGrouped(user, companyId, templateId)
+  }
+
   // Apply the calendar event selected
   @HttpCode(HttpStatus.OK)
   @Post(':templateId/job/:jobId/apply')
   applyCalendarTemplate(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number, @Param('templateId', ParseIntPipe) templateId: number, @Param('jobId', ParseIntPipe) jobId: number, @Body() body: ContractorAssignmentDTO) {
     return this.calendarTemplateService.applyCalendarTemplate(user, companyId, templateId, jobId, body);
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Get('contractors')
+  getContractors(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number) {
+    return this.calendarTemplateService.getContractors(user, companyId);
   }
 }

@@ -1,5 +1,5 @@
 import { BadRequestException, ForbiddenException, Injectable, InternalServerErrorException } from '@nestjs/common';
-import { Prisma, PrismaClient, User } from '@prisma/client';
+import { Company, Prisma, PrismaClient, User } from '@prisma/client';
 import { DatabaseService } from 'src/database/database.service';
 import { TemplateDTO } from './validators/template';
 import { PrismaErrorCodes, ResponseMessages, TemplateType, UserTypes } from 'src/core/utils';
@@ -8,6 +8,7 @@ import { EventDTO } from './validators/event';
 import { ContractorAssignmentDTO } from './validators/contractor-assignment';
 import { formatCalendarDate, formatEndDate, resetEventStart } from 'src/core/utils/date';
 import { GoogleService } from 'src/core/services/google.service';
+import { EventUpdateDTO } from './validators/update-event';
 
 @Injectable()
 export class CalendarTemplateService {
@@ -346,41 +347,6 @@ export class CalendarTemplateService {
         }
     }
 
-    async getTemplateDataGrouped(user: User, companyId: number, templateId: number) {
-        try {
-            if (user.userType == UserTypes.ADMIN || ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId === companyId)) {
-
-                const [company, calendarTemplate] = await Promise.all([
-                    this.databaseService.company.findUnique({ where: { id: companyId, isDeleted: false } }),
-                    this.databaseService.calendarTemplate.findMany({ where: { isDeleted: false, companyId } })
-                ]);
-
-                if (!company) throw new ForbiddenException("Action Not Allowed");
-                if (!calendarTemplate) throw new ForbiddenException("Calendar template not found.")
-
-                const calendarTemplateData = await this.calendarTemplateData(companyId, templateId, true);
-
-                return { data: calendarTemplateData }
-            } else {
-                throw new ForbiddenException("Action Not Allowed");
-            }
-        } catch (error) {
-            console.log(error);
-            // Database Exceptions
-            if (error instanceof PrismaClientKnownRequestError) {
-                if (error.code == PrismaErrorCodes.UNIQUE_CONSTRAINT_ERROR)
-                    throw new BadRequestException(ResponseMessages.UNIQUE_EMAIL_ERROR);
-                else {
-                    console.log(error.code);
-                }
-            } else if (error instanceof ForbiddenException) {
-                throw error;
-            } else {
-                throw new InternalServerErrorException();
-            }
-        }
-    }
-
     async createEvent(user: User, companyId: number, templateId: number, body: EventDTO) {
         try {
             if (user.userType == UserTypes.ADMIN || ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId === companyId)) {
@@ -393,57 +359,21 @@ export class CalendarTemplateService {
                 if (!company) throw new ForbiddenException("Action Not Allowed");
                 if (!template) throw new ForbiddenException("Calendar template not found.")
 
-                await this.databaseService.calendarTemplateData.create({
-                    data: {
-                        companyId,
-                        ctId: template.id,
-                        isScheduledOnWeekend: body.isScheduledOnWeekend,
-                        duration: body.duration,
-                        phaseId: body.phaseId,
-                        contractorIds: body.contractorIds
-                    }
-                });
+                const insertData = body.contractorIds.map(contractorId => ({
+                    companyId,
+                    ctId: template.id,
+                    isScheduledOnWeekend: body.isScheduledOnWeekend,
+                    duration: body.duration,
+                    contractorId,
+                    phaseId: body.phaseId
+                }));
+
+                await this.databaseService.calendarTemplateData.createMany({
+                    data: insertData
+                })
 
                 const templateData = await this.calendarTemplateData(companyId, template.id);
                 return { data: templateData }
-            } else {
-                throw new ForbiddenException("Action Not Allowed");
-            }
-        } catch (error) {
-            console.log(error);
-            // Database Exceptions
-            if (error instanceof PrismaClientKnownRequestError) {
-                if (error.code == PrismaErrorCodes.UNIQUE_CONSTRAINT_ERROR)
-                    throw new BadRequestException(ResponseMessages.UNIQUE_EMAIL_ERROR);
-                else {
-                    console.log(error.code);
-                }
-            } else if (error instanceof ForbiddenException) {
-                throw error;
-            } else {
-                throw new InternalServerErrorException();
-            }
-        }
-    }
-
-    async updateEvent(user: User, companyId: number, templateId: number, eventId: number, body: EventDTO) {
-        try {
-            if (user.userType == UserTypes.ADMIN || ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId === companyId)) {
-                const [company, template, event] = await Promise.all([
-                    this.databaseService.company.findFirst({ where: { id: companyId, isDeleted: false } }),
-                    this.databaseService.calendarTemplate.findFirst({ where: { id: templateId, isDeleted: false } }),
-                    this.databaseService.calendarTemplateData.findFirst({ where: { id: eventId, ctId: templateId, isDeleted: false } })
-                ]);
-                if (!company) throw new ForbiddenException("Action not allowed");
-                if (!template) throw new ForbiddenException("Template not found.")
-                if (!event) throw new ForbiddenException("Event not found")
-
-                await this.databaseService.calendarTemplateData.update({
-                    where: { id: event.id, isDeleted: false },
-                    data: { ...body }
-                });
-                const calendarTemplateData = await this.calendarTemplateData(companyId, templateId)
-                return { calendarTemplateData };
             } else {
                 throw new ForbiddenException("Action Not Allowed");
             }
@@ -510,6 +440,86 @@ export class CalendarTemplateService {
         }
     }
 
+    async updateEvent(user: User, companyId: number, templateId: number, eventId: number, body: EventUpdateDTO) {
+        try {
+            if (user.userType == UserTypes.ADMIN || ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId === companyId)) {
+                const [company, template, event] = await Promise.all([
+                    this.databaseService.company.findFirst({ where: { id: companyId, isDeleted: false } }),
+                    this.databaseService.calendarTemplate.findFirst({ where: { id: templateId, isDeleted: false } }),
+                    this.databaseService.calendarTemplateData.findFirst({ where: { id: eventId, ctId: templateId, isDeleted: false } })
+                ]);
+                if (!company) throw new ForbiddenException("Action not allowed");
+                if (!template) throw new ForbiddenException("Template not found.")
+                if (!event) throw new ForbiddenException("Event not found")
+
+                const contractor = await this.databaseService.contractor.findUnique({ where: { id: body.contractor } });
+
+                await this.databaseService.calendarTemplateData.update({
+                    where: { id: event.id, isDeleted: false },
+                    data: {
+                        contractorId: body.contractor,
+                        duration: body.duration,
+                        isScheduledOnWeekend: body.weekendschedule,
+                        phaseId: contractor.phaseId
+                    }
+                });
+                const calendarTemplateData = await this.calendarTemplateData(companyId, templateId)
+
+                return { calendarTemplateData };
+            } else {
+                throw new ForbiddenException("Action Not Allowed");
+            }
+        } catch (error) {
+            console.log(error);
+            // Database Exceptions
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code == PrismaErrorCodes.UNIQUE_CONSTRAINT_ERROR)
+                    throw new BadRequestException(ResponseMessages.UNIQUE_EMAIL_ERROR);
+                else {
+                    console.log(error.code);
+                }
+            } else if (error instanceof ForbiddenException) {
+                throw error;
+            } else {
+                throw new InternalServerErrorException();
+            }
+        }
+    }
+
+    async getTemplateDataGrouped(user: User, companyId: number, templateId: number) {
+        try {
+            if (user.userType == UserTypes.ADMIN || ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId === companyId)) {
+                const [company, calendarTemplate] = await Promise.all([
+                    this.databaseService.company.findUnique({ where: { id: companyId, isDeleted: false } }),
+                    this.databaseService.calendarTemplate.findMany({ where: { isDeleted: false, companyId } })
+                ]);
+
+                if (!company) throw new ForbiddenException("Action Not Allowed");
+                if (!calendarTemplate) throw new ForbiddenException("Calendar template not found.")
+
+                const calendarTemplateData = await this.calendarTemplateData(companyId, templateId, true);
+
+                return { data: calendarTemplateData }
+            } else {
+                throw new ForbiddenException("Action Not Allowed");
+            }
+        } catch (error) {
+            console.log(error);
+            // Database Exceptions
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code == PrismaErrorCodes.UNIQUE_CONSTRAINT_ERROR)
+                    throw new BadRequestException(ResponseMessages.UNIQUE_EMAIL_ERROR);
+                else {
+                    console.log(error.code);
+                }
+            } else if (error instanceof ForbiddenException) {
+                throw error;
+            } else {
+                throw new InternalServerErrorException();
+            }
+        }
+    }
+
     async applyCalendarTemplate(user: User, companyId: number, templateId: number, jobId: number, body: ContractorAssignmentDTO) {
         try {
             if (user.userType == UserTypes.ADMIN || ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId === companyId)) {
@@ -520,16 +530,22 @@ export class CalendarTemplateService {
                 ]);
 
                 if (!company) throw new ForbiddenException("Action Not Allowed");
-
                 if (!template) throw new ForbiddenException("Calendar template not found.");
-
                 if (!job) throw new ForbiddenException("Job not found.");
 
-                // Apply the contractors to the job.
+                body.eventIds.sort((a: number, b: number) => a - b)
+
+                const contractorData = await this.databaseService.calendarTemplateData.findMany({
+                    where: { id: { in: body.eventIds } },
+                    select: { contractorId: true }
+                })
+
+                const contractorIds = contractorData.map(item => item.contractorId);
+
                 await this.databaseService.$transaction(async (tx) => {
-                    await this.applyContractorsToJob(jobId, companyId, body.contractorIds, tx);
-                    await this.createSchedules(user, jobId, companyId, body.startDate, body.contractorIds, tx);
-                });
+                    await this.applyContractorsToJob(jobId, company, contractorIds, tx);
+                    await this.createSchedules(user, jobId, companyId, body.startDate, body.eventIds, tx);
+                })
 
                 return { message: 'Template applied successfully' }
 
@@ -553,174 +569,79 @@ export class CalendarTemplateService {
         }
     }
 
-    private async calendarTemplateData(companyId: number, templateId: number, group: boolean = false) {
-
-        const templateData = await this.databaseService.calendarTemplateData.findMany({
-            where: {
-                companyId,
-                ctId: templateId,
-                isDeleted: false,
-            },
-            include: {
-                phase: {
-                    select: {
-                        id: true,
-                        name: true,
-                    }
-                },
-
-            },
-            omit: {
-                createdAt: true,
-                updatedAt: true
-            },
-            orderBy: {
-                id: 'asc'
-            }
-        });
-
-        const contractorIds = templateData.flatMap(data => data.contractorIds || []);
-
-        const contractors = await this.databaseService.contractor.findMany({
-            where: { id: { in: contractorIds }, companyId, isDeleted: false, },
-            omit: {
-                createdAt: true,
-                updatedAt: true,
-                isDeleted: true,
-            }
-        });
-
-        // Map contractors back to template data
-        const finalData = templateData.map(data => ({
-            ...data,
-            contractors: contractors.filter(c => data.contractorIds.includes(c.id))
-        }));
-
-
-        if (group) {
-
-            let groupedData = {};
-
-            finalData.map((item) => {
-                console.log(item);
-                let phaseId = item.phase.id;
-
-                if (!groupedData[phaseId]) {
-                    groupedData[phaseId] = {
-
-                        ctId: item.ctId,
-                        phase: item.phase,
-                        contractors: []
-                    };
-                }
-
-                // Add duration to each contractor before pushing
-                let contractorsWithDuration = item.contractors.map(contractor => ({
-                    ...contractor,
-                    eventId: item.id,
-                    duration: item.duration,
-                    isScheduledOnWeekend: item.isScheduledOnWeekend
-                }));
-
-                groupedData[phaseId].contractors.push(...contractorsWithDuration);
-            });
-
-
-            let result = Object.values(groupedData);
-
-            return result;
-        }
-
-        return finalData;
-    }
-
-    private async applyContractorsToJob(jobId: number, companyId: number, contractorIds: { eventId: number, contractorGroups: number[] }[], tx: Omit<PrismaClient<Prisma.PrismaClientOptions, never, DefaultArgs>, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">) {
-        for (const data of contractorIds) {
-            for (const contractorId of data.contractorGroups) {
-                const exists = await tx.jobContractor.findFirst({
-                    where: { companyId, jobId, contractorId },
-                });
-
-                if (!exists) {
-                    await tx.jobContractor.create({
-                        data: { companyId, jobId, contractorId },
-                    });
-                }
-            }
-        }
-    }
-
-    private async createSchedules(
-        user: User,
-        jobId: number,
-        companyId: number,
-        startDate: string,
-        contractorIds: { eventId: number, contractorGroups: number[] }[],
-        tx: Prisma.TransactionClient
-    ) {
+    async createSchedules(user: User, jobId: number, companyId: number, startDate: string, eventIds: number[], tx: Omit<PrismaClient<Prisma.PrismaClientOptions, never, DefaultArgs>, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">) {
         let scheduleStartDate = formatCalendarDate(new Date(startDate));
 
-        // Remove the old calendar schedules.
-        await this.removeOldSchedules(user, companyId, jobId);
-
-        for (const data of contractorIds) {
+        await this.removeOldSchedules(user, companyId, jobId, tx);
+        for (const eventId of eventIds) {
             const calendarTemplateData = await tx.calendarTemplateData.findUnique({
-                where: { id: data.eventId, isDeleted: false }
+                where: { id: eventId, isDeleted: false }
             });
 
-            // If calendarTemplateData is not found, skip this iteration
             if (!calendarTemplateData) {
-                console.warn(`No calendar template found for event ID: ${data.eventId}`);
+                console.warn(`No calendar template found for ID: ${eventId}`);
                 continue;
             }
 
-            for (const contractorId of data.contractorGroups) {
-                const scheduleEndDate = formatEndDate(
-                    new Date(scheduleStartDate),
-                    calendarTemplateData.duration,
-                    calendarTemplateData.isScheduledOnWeekend
-                );
+            const scheduleEndDate = formatEndDate(
+                new Date(scheduleStartDate),
+                calendarTemplateData.duration,
+                calendarTemplateData.isScheduledOnWeekend
+            );
 
-                const payload = {
-                    duration: calendarTemplateData.duration,
-                    isScheduledOnWeekend: calendarTemplateData.isScheduledOnWeekend,
-                    contractorId,
-                    startDate: scheduleStartDate,
-                    endDate: scheduleEndDate,
-                    companyId,
-                    jobId
-                };
-                // The start date of the next event will end date of previous + 1
-                scheduleStartDate = resetEventStart(scheduleEndDate)
-                const jobSchedule = await tx.jobSchedule.create({
-                    data: payload
-                });
+            const payload = {
+                duration: calendarTemplateData.duration,
+                isScheduledOnWeekend: calendarTemplateData.isScheduledOnWeekend,
+                contractorId: calendarTemplateData.contractorId,
+                startDate: scheduleStartDate,
+                companyId,
+                jobId,
+                endDate: scheduleEndDate
+            }
+
+            scheduleStartDate = resetEventStart(scheduleEndDate);
+
+            const jobSchedule = await tx.jobSchedule.create({
+                data: payload
+            });
+        }
+
+        return true;
+    }
+
+    async applyContractorsToJob(jobId: number, company: Company, contractorIds: number[], tx: Omit<PrismaClient<Prisma.PrismaClientOptions, never, DefaultArgs>, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">) {
+        for (const contractorId of contractorIds) {
+            const contractor = await tx.jobContractor.findFirst({
+                where: { companyId: company.id, jobId, contractorId },
+            })
+            if (!contractor) {
+                await tx.jobContractor.create({
+                    data: { companyId: company.id, jobId, contractorId }
+                })
             }
         }
+
+        return true;
     }
-    private async removeOldSchedules(
-        user: User,
-        companyId: number,
-        jobId: number,
-    ) {
 
-        const job = await this.databaseService.job.findFirst({ where: { id: jobId } });
-        const jobSchedules = await this.databaseService.jobSchedule.findMany({
+    async removeOldSchedules(user: User, companyId: number, jobId: number, tx: Omit<PrismaClient<Prisma.PrismaClientOptions, never, DefaultArgs>, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">) {
+        const job = await tx.job.findFirst({ where: { id: jobId } });
+        const jobSchedule = await tx.jobSchedule.findMany({
             where: { jobId, isDeleted: false }
-        });
+        })
 
-        jobSchedules.map(async (schedule) => {
-            await this.databaseService.jobSchedule.update({
+        jobSchedule.map(async (schedule) => {
+            await tx.jobSchedule.update({
                 where: { id: schedule.id, jobId: job.id },
                 data: { isDeleted: true }
             });
 
-            await this.databaseService.jobScheduleLink.updateMany({
+            await tx.jobScheduleLink.updateMany({
                 where: { jobId: job.id, sourceId: schedule.id, companyId },
                 data: { isDeleted: true }
-            })
+            });
 
-            const syncExist = await this.databaseService.googleEventId.findFirst({
+            const syncExist = await tx.googleEventId.findFirst({
                 where: {
                     userId: user.id,
                     companyId: companyId,
@@ -745,5 +666,85 @@ export class CalendarTemplateService {
 
             await this.googleService.removeScheduleFromOthers(user.id, companyId, schedule, job);
         })
+    }
+
+    private async calendarTemplateData(companyId: number, templateId: number, group: boolean = false) {
+        let templateData = await this.databaseService.calendarTemplateData.findMany({
+            where: { companyId, ctId: templateId, isDeleted: false },
+            include: {
+                phase: {
+                    select: { id: true, name: true, }
+                },
+                contractor: {
+                    select: { id: true, name: true, email: true }
+                }
+            },
+            omit: { createdAt: true, updatedAt: true },
+            orderBy: { id: 'asc' }
+        })
+
+        if (group) {
+            const groupedTemplateData = Object.values(
+                templateData.reduce((acc, item) => {
+                    const phaseId = item.phaseId;
+
+                    if (!acc[phaseId]) {
+                        acc[phaseId] = {
+                            phase: item.phase,
+                            data: []
+                        };
+                    }
+
+                    acc[phaseId].data.push(item);
+                    return acc;
+                }, {})
+            );
+
+            return groupedTemplateData;
+        }
+        return templateData;
+    }
+
+    async getContractors(user: User, companyId: number) {
+        try {
+            if (user.userType == UserTypes.ADMIN || ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId === companyId)) {
+                const company = await this.databaseService.company.findFirst({
+                    where: { id: companyId, isDeleted: false }
+                })
+
+                if (!company) {
+                    throw new ForbiddenException("Action Not Allowed");
+                }
+
+                const contractors = await this.databaseService.contractor.findMany({
+                    where: {
+                        companyId,
+                        isDeleted: false,
+                    },
+                    omit: { createdAt: true, updatedAt: true },
+                    include: {
+                        phase: true
+                    }
+                });
+
+                return { contractors }
+            } else {
+                throw new ForbiddenException("Action Not Allowed");
+            }
+        } catch (error) {
+            console.log(error);
+            // Database Exceptions
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code == PrismaErrorCodes.UNIQUE_CONSTRAINT_ERROR)
+                    throw new BadRequestException(ResponseMessages.UNIQUE_EMAIL_ERROR);
+                else {
+                    console.log(error.code);
+                }
+            } else if (error instanceof ForbiddenException) {
+                throw error;
+            } else {
+                throw new InternalServerErrorException();
+            }
+        }
     }
 }
