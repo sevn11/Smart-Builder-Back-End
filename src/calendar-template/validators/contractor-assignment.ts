@@ -1,15 +1,5 @@
 import { Type } from "class-transformer";
-import { ArrayMinSize, IsArray, IsDateString, IsInt, IsNotEmpty, ValidateNested } from "class-validator";
-
-class EventContractorDto {
-    @IsInt()
-    eventId: number;
-
-    @IsArray()
-    @ArrayMinSize(1)
-    @IsInt({ each: true })
-    contractorGroups: number[];
-}
+import { IsArray, IsDateString, IsNotEmpty } from "class-validator";
 
 export class ContractorAssignmentDTO {
     @IsNotEmpty()
@@ -17,7 +7,6 @@ export class ContractorAssignmentDTO {
     startDate: string;
 
     @IsArray()
-    @ValidateNested({ each: true })
-    @Type(() => EventContractorDto)
-    contractorIds: EventContractorDto[];
+    @Type(() => Number)
+    eventIds: number[];
 }

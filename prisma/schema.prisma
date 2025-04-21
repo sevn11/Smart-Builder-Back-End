@@ -399,6 +399,8 @@ model Contractor {
   ContractorMailInfo    ContractorMailInfo[]
   contractorOrder   Int?               @map("contractor_order")
 
+  calendarTemplateData  CalendarTemplateData[]
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -1006,7 +1008,8 @@ model CalendarTemplateData {
   duration              Int                 @default(1)
   phaseId               Int                 @map("phase_id")
   phase                 ContractorPhase     @relation(fields: [phaseId], references: [id])
-  contractorIds         Int[] @default([])
+  contractorId          Int?
+  contractor            Contractor?         @relation(fields: [contractorId], references: [id])
   isDeleted             Boolean             @default(false) @map("is_deleted")
   createdAt             DateTime            @default(now()) @map("created_at")
   updatedAt             DateTime            @updatedAt @map("updated_at")
