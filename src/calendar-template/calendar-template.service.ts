@@ -574,7 +574,7 @@ export class CalendarTemplateService {
 
         await this.removeOldSchedules(user, companyId, jobId, tx);
         for (const eventId of eventIds) {
-            const calendarTemplateData = await tx.calendarTemplateData.findUnique({
+            const calendarTemplateData = await this.databaseService.calendarTemplateData.findUnique({
                 where: { id: eventId, isDeleted: false }
             });
 
@@ -629,13 +629,7 @@ export class CalendarTemplateService {
         const jobSchedule = await tx.jobSchedule.findMany({
             where: { jobId, isDeleted: false }
         })
-
-        jobSchedule.map(async (schedule) => {
-            await tx.jobSchedule.update({
-                where: { id: schedule.id, jobId: job.id },
-                data: { isDeleted: true }
-            });
-
+        for (const schedule of jobSchedule) {
             await tx.jobScheduleLink.updateMany({
                 where: { jobId: job.id, sourceId: schedule.id, companyId },
                 data: { isDeleted: true }
@@ -644,7 +638,7 @@ export class CalendarTemplateService {
             const syncExist = await tx.googleEventId.findFirst({
                 where: {
                     userId: user.id,
-                    companyId: companyId,
+                    companyId,
                     jobId: job.id,
                     jobScheduleId: schedule.id,
                     isDeleted: false,
@@ -654,7 +648,11 @@ export class CalendarTemplateService {
             });
 
             if (syncExist && syncExist?.eventId) {
-                let event = await this.googleService.getEventFromGoogleCalendar(user, syncExist);
+                await tx.jobSchedule.update({
+                    where: { id: schedule.id, jobId: job.id, companyId, isDeleted: false },
+                    data: { isDeleted: true }
+                });
+                const event = await this.googleService.getEventFromGoogleCalendar(user, syncExist);
                 if (event) {
                     await this.googleService.deleteCalendarEvent(user, syncExist.eventId);
                     await this.databaseService.googleEventId.update({
@@ -665,7 +663,7 @@ export class CalendarTemplateService {
             }
 
             await this.googleService.removeScheduleFromOthers(user.id, companyId, schedule, job);
-        })
+        }
     }
 
     private async calendarTemplateData(companyId: number, templateId: number, group: boolean = false) {
