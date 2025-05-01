@@ -7,11 +7,18 @@ import { TemplateDTO } from './validators/template';
 import { EventDTO } from './validators/event';
 import { ContractorAssignmentDTO } from './validators/contractor-assignment';
 import { EventUpdateDTO } from './validators/update-event';
+import { CalendarTemplateLinkService } from './calendar-template-link.service';
+
+export type LinkBody = {
+  "source": string;
+  "target": string,
+  "type": "0" | "1" | "2" | "3"
+}
 
 @UseGuards(JwtGuard)
 @Controller('companies/:companyId/calendar-template')
 export class CalendarTemplateController {
-  constructor(private readonly calendarTemplateService: CalendarTemplateService) { }
+  constructor(private readonly calendarTemplateService: CalendarTemplateService, private readonly calendarTemplateLinkService: CalendarTemplateLinkService) { }
 
   // Create calendar template
   @HttpCode(HttpStatus.CREATED)
@@ -87,5 +94,19 @@ export class CalendarTemplateController {
   @Get('contractors')
   getContractors(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number) {
     return this.calendarTemplateService.getContractors(user, companyId);
+  }
+
+  // Create link between events
+  @HttpCode(HttpStatus.OK)
+  @Post(':templateId/link-event')
+  async addLinkToEvent(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number, @Param('templateId', ParseIntPipe) templateId: number, @Body() body: LinkBody) {
+    return this.calendarTemplateLinkService.createLink(user, companyId, templateId, body)
+  }
+
+  // Delete the link
+  @HttpCode(HttpStatus.OK)
+  @Delete(':templateId/link/:linkId/delete')
+  async removeLinkBetweenEvents(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number, @Param('templateId', ParseIntPipe) templateId: number, @Param('linkId', ParseIntPipe) linkId: number) {
+    return this.calendarTemplateLinkService.removeLinkBetweenEvents(user, companyId, templateId, linkId);
   }
 }

@@ -612,6 +612,7 @@ export class GoogleService {
             });
             if (otherUsers.length > 0) {
                 otherUsers.map(async (otherUser) => {
+                    if (otherUser.googleAccessToken) {
                     const syncExist = await this.databaseService.googleEventId.findFirst({
                         where: {
                             userId: otherUser.id,
@@ -649,6 +650,7 @@ export class GoogleService {
                                 data: { eventId: response.eventId, }
                             })
                         }
+                    }
                     }
                 })
             }

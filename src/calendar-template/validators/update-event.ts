@@ -1,5 +1,5 @@
 import { Type } from "class-transformer"
-import { IsBoolean, IsNotEmpty, IsNumber, IsOptional } from "class-validator"
+import { IsBoolean, IsDateString, IsNotEmpty, IsNumber, IsOptional } from "class-validator"
 
 export class EventUpdateDTO {
     @IsNumber()
@@ -20,4 +20,12 @@ export class EventUpdateDTO {
     @IsNumber()
     @IsNotEmpty()
     contractor: number
+
+    @IsNotEmpty()
+    @IsDateString()
+    startDate: string;
+
+    @IsNotEmpty()
+    @IsDateString()
+    endDate: string;
 }

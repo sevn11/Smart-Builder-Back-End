@@ -43,7 +43,8 @@ export class JobsService {
                         descriptionId: body.description,
                         customerId: body.customerId,
                         status: JobStatus.OPEN,
-                        companyId: company.id
+                        companyId: company.id,
+                        calendarTemplateApplied: false,
                     },
                     omit: {
                         isDeleted: true
@@ -938,6 +939,7 @@ export class JobsService {
     }
     private async prepareCustomerTemplateData(templateId: number, companyId: number, jobId: number, customerId: number, oldTemplateId: number) {
         if (oldTemplateId) {
+            await this.databaseService.job.update({ where: { id: jobId }, data: { calendarTemplateApplied: false } })
             await this.clearPreviousTemplateData(oldTemplateId, companyId, jobId, customerId);
         }
 

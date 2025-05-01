@@ -6,7 +6,4 @@ export class ContractorAssignmentDTO {
     @IsDateString()
     startDate: string;
 
-    @IsArray()
-    @Type(() => Number)
-    eventIds: number[];
 }

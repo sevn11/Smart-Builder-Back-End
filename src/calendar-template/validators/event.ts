@@ -21,4 +21,7 @@ export class EventDTO {
     @IsNumber({}, { each: true })
     @IsNotEmpty()
     contractorIds: number[]
+
+    @IsNotEmpty()
+    startDate: Date
 }
