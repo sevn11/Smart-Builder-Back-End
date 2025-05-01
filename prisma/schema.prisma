@@ -242,6 +242,8 @@ model Job {
 
   eventId           String?   @map("event_id")
 
+  calendarTemplateApplied Boolean @default(true) @map("calendar_template_applied")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
   ClientTemplate         ClientTemplate[]
@@ -994,6 +996,7 @@ model CalendarTemplate {
 
   questionnaireTemplate QuestionnaireTemplate[]
   calendarTemplateData  CalendarTemplateData[]
+  calendarTemplateDataLink CalendarTemplateDataLink[]
 
   @@map("calendar_template")
 }
@@ -1006,6 +1009,8 @@ model CalendarTemplateData {
   company               Company?            @relation(fields: [companyId], references: [id], onDelete: Cascade)               
   isScheduledOnWeekend  Boolean             @default(false) @map("is_scheduled_on_weekend")
   duration              Int                 @default(1)
+  startDate             DateTime?           @map("start_date")
+  endDate               DateTime?           @map("end_date")
   phaseId               Int                 @map("phase_id")
   phase                 ContractorPhase     @relation(fields: [phaseId], references: [id])
   contractorId          Int?
@@ -1013,6 +1018,22 @@ model CalendarTemplateData {
   isDeleted             Boolean             @default(false) @map("is_deleted")
   createdAt             DateTime            @default(now()) @map("created_at")
   updatedAt             DateTime            @updatedAt @map("updated_at")
-
+  sourceEventLink       CalendarTemplateDataLink[] @relation("SourceEvent")
+  targetEventLink       CalendarTemplateDataLink[] @relation("TargetEvent")
   @@map("calendar_template_data")
+}
+
+model CalendarTemplateDataLink {
+  id                Int           @id @default(autoincrement())
+  templateId        Int?          @map("ct_id")
+  template          CalendarTemplate? @relation(fields: [templateId], references: [id])
+  sourceId          Int           @map("source_id")
+  source            CalendarTemplateData   @relation("SourceEvent", fields: [sourceId], references: [id], onDelete: Cascade)
+  targetId          Int           @map("target_id")
+  target            CalendarTemplateData   @relation("TargetEvent", fields: [targetId], references: [id], onDelete: Cascade)
+  type              TypeEnum
+  isDeleted         Boolean?     @default(false) @map("is_deleted")
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  @@map("calendar_template_data_link")
 }

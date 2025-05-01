@@ -1,5 +1,5 @@
 import { BadRequestException, ForbiddenException, Injectable, InternalServerErrorException } from '@nestjs/common';
-import { Company, Prisma, PrismaClient, User } from '@prisma/client';
+import { Company, Job, JobSchedule, JobScheduleLink, Prisma, PrismaClient, User } from '@prisma/client';
 import { DatabaseService } from 'src/database/database.service';
 import { TemplateDTO } from './validators/template';
 import { PrismaErrorCodes, ResponseMessages, TemplateType, UserTypes } from 'src/core/utils';
@@ -83,7 +83,6 @@ export class CalendarTemplateService {
     async updateTemplate(user: User, companyId: number, templateId: number, body: TemplateDTO) {
         try {
             if (user.userType == UserTypes.ADMIN || ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId === companyId)) {
-
                 const [company, template] = await Promise.all([
                     this.databaseService.company.findUnique({ where: { id: companyId, isDeleted: false } }),
                     this.databaseService.calendarTemplate.findUnique({ where: { id: templateId, isDeleted: false } })
@@ -359,14 +358,22 @@ export class CalendarTemplateService {
                 if (!company) throw new ForbiddenException("Action Not Allowed");
                 if (!template) throw new ForbiddenException("Calendar template not found.")
 
-                const insertData = body.contractorIds.map(contractorId => ({
-                    companyId,
-                    ctId: template.id,
-                    isScheduledOnWeekend: body.isScheduledOnWeekend,
-                    duration: body.duration,
-                    contractorId,
-                    phaseId: body.phaseId
-                }));
+                let startDate = body.startDate;
+                const insertData = body.contractorIds.map(contractorId => {
+                    const endDate = formatEndDate(startDate, body.duration, body.isScheduledOnWeekend)
+                    let data = {
+                        companyId,
+                        ctId: template.id,
+                        isScheduledOnWeekend: body.isScheduledOnWeekend,
+                        duration: body.duration,
+                        contractorId,
+                        phaseId: body.phaseId,
+                        startDate: startDate,
+                        endDate: endDate
+                    };
+                    startDate = resetEventStart(endDate)
+                    return data;
+                });
 
                 await this.databaseService.calendarTemplateData.createMany({
                     data: insertData
@@ -453,6 +460,8 @@ export class CalendarTemplateService {
                 if (!event) throw new ForbiddenException("Event not found")
 
                 const contractor = await this.databaseService.contractor.findUnique({ where: { id: body.contractor } });
+                body.startDate = `${body.startDate}Z`;
+                body.endDate = `${body.endDate}Z`;
 
                 await this.databaseService.calendarTemplateData.update({
                     where: { id: event.id, isDeleted: false },
@@ -460,12 +469,14 @@ export class CalendarTemplateService {
                         contractorId: body.contractor,
                         duration: body.duration,
                         isScheduledOnWeekend: body.weekendschedule,
-                        phaseId: contractor.phaseId
+                        phaseId: contractor.phaseId,
+                        startDate: body.startDate,
+                        endDate: body.endDate
                     }
                 });
                 const calendarTemplateData = await this.calendarTemplateData(companyId, templateId)
 
-                return { calendarTemplateData };
+                return { calendarTemplateData }
             } else {
                 throw new ForbiddenException("Action Not Allowed");
             }
@@ -520,153 +531,7 @@ export class CalendarTemplateService {
         }
     }
 
-    async applyCalendarTemplate(user: User, companyId: number, templateId: number, jobId: number, body: ContractorAssignmentDTO) {
-        try {
-            if (user.userType == UserTypes.ADMIN || ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId === companyId)) {
-                const [company, template, job] = await Promise.all([
-                    this.databaseService.company.findFirst({ where: { id: companyId, isDeleted: false } }),
-                    this.databaseService.calendarTemplate.findFirst({ where: { id: templateId, isDeleted: false } }),
-                    this.databaseService.job.findFirst({ where: { id: jobId, isDeleted: false, companyId } }),
-                ]);
-
-                if (!company) throw new ForbiddenException("Action Not Allowed");
-                if (!template) throw new ForbiddenException("Calendar template not found.");
-                if (!job) throw new ForbiddenException("Job not found.");
-
-                body.eventIds.sort((a: number, b: number) => a - b)
-
-                const contractorData = await this.databaseService.calendarTemplateData.findMany({
-                    where: { id: { in: body.eventIds } },
-                    select: { contractorId: true }
-                })
-
-                const contractorIds = contractorData.map(item => item.contractorId);
-
-                await this.databaseService.$transaction(async (tx) => {
-                    await this.applyContractorsToJob(jobId, company, contractorIds, tx);
-                    await this.createSchedules(user, jobId, companyId, body.startDate, body.eventIds, tx);
-                })
-
-                return { message: 'Template applied successfully' }
-
-            } else {
-                throw new ForbiddenException("Action Not Allowed");
-            }
-        } catch (error) {
-            console.log(error);
-            // Database Exceptions
-            if (error instanceof PrismaClientKnownRequestError) {
-                if (error.code == PrismaErrorCodes.UNIQUE_CONSTRAINT_ERROR)
-                    throw new BadRequestException(ResponseMessages.UNIQUE_EMAIL_ERROR);
-                else {
-                    console.log(error.code);
-                }
-            } else if (error instanceof ForbiddenException) {
-                throw error;
-            } else {
-                throw new InternalServerErrorException();
-            }
-        }
-    }
-
-    async createSchedules(user: User, jobId: number, companyId: number, startDate: string, eventIds: number[], tx: Omit<PrismaClient<Prisma.PrismaClientOptions, never, DefaultArgs>, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">) {
-        let scheduleStartDate = formatCalendarDate(new Date(startDate));
-
-        await this.removeOldSchedules(user, companyId, jobId, tx);
-        for (const eventId of eventIds) {
-            const calendarTemplateData = await this.databaseService.calendarTemplateData.findUnique({
-                where: { id: eventId, isDeleted: false }
-            });
-
-            if (!calendarTemplateData) {
-                console.warn(`No calendar template found for ID: ${eventId}`);
-                continue;
-            }
-
-            const scheduleEndDate = formatEndDate(
-                new Date(scheduleStartDate),
-                calendarTemplateData.duration,
-                calendarTemplateData.isScheduledOnWeekend
-            );
-
-            const payload = {
-                duration: calendarTemplateData.duration,
-                isScheduledOnWeekend: calendarTemplateData.isScheduledOnWeekend,
-                contractorId: calendarTemplateData.contractorId,
-                startDate: scheduleStartDate,
-                companyId,
-                jobId,
-                endDate: scheduleEndDate
-            }
-
-            scheduleStartDate = resetEventStart(scheduleEndDate);
-
-            const jobSchedule = await tx.jobSchedule.create({
-                data: payload
-            });
-        }
-
-        return true;
-    }
-
-    async applyContractorsToJob(jobId: number, company: Company, contractorIds: number[], tx: Omit<PrismaClient<Prisma.PrismaClientOptions, never, DefaultArgs>, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">) {
-        for (const contractorId of contractorIds) {
-            const contractor = await tx.jobContractor.findFirst({
-                where: { companyId: company.id, jobId, contractorId },
-            })
-            if (!contractor) {
-                await tx.jobContractor.create({
-                    data: { companyId: company.id, jobId, contractorId }
-                })
-            }
-        }
-
-        return true;
-    }
-
-    async removeOldSchedules(user: User, companyId: number, jobId: number, tx: Omit<PrismaClient<Prisma.PrismaClientOptions, never, DefaultArgs>, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">) {
-        const job = await tx.job.findFirst({ where: { id: jobId } });
-        const jobSchedule = await tx.jobSchedule.findMany({
-            where: { jobId, isDeleted: false }
-        })
-        for (const schedule of jobSchedule) {
-            await tx.jobScheduleLink.updateMany({
-                where: { jobId: job.id, sourceId: schedule.id, companyId },
-                data: { isDeleted: true }
-            });
-
-            const syncExist = await tx.googleEventId.findFirst({
-                where: {
-                    userId: user.id,
-                    companyId,
-                    jobId: job.id,
-                    jobScheduleId: schedule.id,
-                    isDeleted: false,
-                },
-                orderBy: { id: 'desc' },
-                take: 1
-            });
-
-            if (syncExist && syncExist?.eventId) {
-                await tx.jobSchedule.update({
-                    where: { id: schedule.id, jobId: job.id, companyId, isDeleted: false },
-                    data: { isDeleted: true }
-                });
-                const event = await this.googleService.getEventFromGoogleCalendar(user, syncExist);
-                if (event) {
-                    await this.googleService.deleteCalendarEvent(user, syncExist.eventId);
-                    await this.databaseService.googleEventId.update({
-                        where: { id: syncExist.id },
-                        data: { isDeleted: true }
-                    })
-                }
-            }
-
-            await this.googleService.removeScheduleFromOthers(user.id, companyId, schedule, job);
-        }
-    }
-
-    private async calendarTemplateData(companyId: number, templateId: number, group: boolean = false) {
+    public async calendarTemplateData(companyId: number, templateId: number, group: boolean = false) {
         let templateData = await this.databaseService.calendarTemplateData.findMany({
             where: { companyId, ctId: templateId, isDeleted: false },
             include: {
@@ -700,7 +565,20 @@ export class CalendarTemplateService {
 
             return groupedTemplateData;
         }
-        return templateData;
+        const links = await this.databaseService.calendarTemplateDataLink.findMany({
+            where: {
+                templateId,
+                isDeleted: false,
+            },
+            select: {
+                id: true,
+                sourceId: true,
+                targetId: true,
+                type: true,
+            }
+        })
+        const ganttData = { tasks: templateData, links: links }
+        return ganttData;
     }
 
     async getContractors(user: User, companyId: number) {
@@ -743,6 +621,191 @@ export class CalendarTemplateService {
             } else {
                 throw new InternalServerErrorException();
             }
+        }
+    }
+
+    async applyCalendarTemplate(user: User, companyId: number, templateId: number, jobId: number, body: ContractorAssignmentDTO) {
+        try {
+            if (user.userType == UserTypes.ADMIN || ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId === companyId)) {
+
+                const [company, template, job] = await Promise.all([
+                    this.databaseService.company.findFirst({ where: { id: companyId, isDeleted: false } }),
+                    this.databaseService.calendarTemplate.findFirst({ where: { id: templateId, isDeleted: false } }),
+                    this.databaseService.job.findFirst({ where: { id: jobId, isDeleted: false, companyId } }),
+                ]);
+
+                if (!company) throw new ForbiddenException("Action Not Allowed");
+                if (!template) throw new ForbiddenException("Calendar template not found.");
+                if (!job) throw new ForbiddenException("Job not found.");
+
+                const templateData = await this.databaseService.calendarTemplateData.findMany({
+                    where: { ctId: template.id },
+                    select: { contractorId: true }
+                })
+
+                const contractorIds = templateData.map(item => item.contractorId);
+                const oldSchedules = await this.getOldSchedulesForCleanup(user, companyId, jobId);
+
+                await this.databaseService.$transaction(async (tx) => {
+                    await this.softDeleteOldSchedules(oldSchedules, tx);
+                    await this.applyContractorsToJob(jobId, company, contractorIds, tx);
+                    await this.createScheduleWithLink(user, jobId, template.id, companyId, body.startDate, tx);
+                    await tx.job.update({ where: { id: jobId }, data: { calendarTemplateApplied: true } })
+                });
+                await this.cleanupGoogleEvents(user, companyId, jobId, oldSchedules);
+
+                return { message: 'Template applied successfully' }
+            } else {
+                throw new ForbiddenException("Action Not Allowed");
+            }
+        } catch (error) {
+            console.log(error);
+            // Database Exceptions
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code == PrismaErrorCodes.UNIQUE_CONSTRAINT_ERROR)
+                    throw new BadRequestException(ResponseMessages.UNIQUE_EMAIL_ERROR);
+                else {
+                    console.log(error.code);
+                }
+            } else if (error instanceof ForbiddenException) {
+                throw error;
+            } else {
+                throw new InternalServerErrorException();
+            }
+        }
+    }
+
+    // Returns the old schedules when applying the templates.
+    private async getOldSchedulesForCleanup(user: User, companyId: number, jobId: number) {
+        const [job, jobSchedule, jobScheduleLink] = await Promise.all([
+            await this.databaseService.job.findFirst({ where: { id: jobId, isDeleted: false, companyId } }),
+            await this.databaseService.jobSchedule.findMany({ where: { jobId: jobId, isDeleted: false, companyId } }),
+            await this.databaseService.jobScheduleLink.findMany({ where: { jobId: jobId, isDeleted: false, companyId } })
+        ]);
+
+        return { job, jobSchedule, jobScheduleLink }
+    }
+
+    // Update the isDeleted field
+    private async softDeleteOldSchedules(
+        oldSchedules: { job: Job, jobSchedule: JobSchedule[], jobScheduleLink: JobScheduleLink[] },
+        tx: Omit<PrismaClient<Prisma.PrismaClientOptions, never, DefaultArgs>, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">
+    ) {
+        const { job, jobSchedule, jobScheduleLink } = oldSchedules;
+
+        for (const schedule of jobSchedule) {
+            // Remove the jobSchedule links
+            await tx.jobScheduleLink.updateMany({
+                where: { jobId: job.id, sourceId: schedule.id, companyId: job.companyId },
+                data: { isDeleted: true }
+            });
+            // Remove the jobSchedules
+            await tx.jobSchedule.update({
+                where: { id: schedule.id },
+                data: { isDeleted: true }
+            })
+        }
+    }
+
+    // Apply contractors to the job
+    private async applyContractorsToJob(jobId: number, company: Company, contractorIds: number[], tx: Omit<PrismaClient<Prisma.PrismaClientOptions, never, DefaultArgs>, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">) {
+        for (const contractorId of contractorIds) {
+            const exist = await tx.jobContractor.findFirst({ where: { companyId: company.id, jobId, contractorId } })
+            if (!exist) {
+                await tx.jobContractor.create({ data: { companyId: company.id, jobId, contractorId } })
+            }
+        }
+    }
+
+    // Create schedule and links for the job from the applied template
+    private async createScheduleWithLink(
+        user: User, jobId: number, templateId: number, companyId: number, startDate: string,
+        tx: Omit<PrismaClient<Prisma.PrismaClientOptions, never, DefaultArgs>, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">
+    ) {
+        let userChosenStartDate = formatCalendarDate(new Date(startDate))
+        const templateData = await tx.calendarTemplateData.findMany({
+            where: { companyId, ctId: templateId, isDeleted: false },
+            orderBy: { id: 'asc' }
+        });
+
+        const templateDataLink = await tx.calendarTemplateDataLink.findMany({
+            where: { templateId, isDeleted: false },
+            orderBy: { id: 'asc' }
+        });
+
+        // Find the earliest start date in the template
+        const baseTemplateStartDate = new Date(
+            Math.min(...templateData.map(data => new Date(data.startDate).getTime()))
+        );
+
+        // Helper: Days between two dates
+        const getDayOffset = (from: Date, to: Date): number => {
+            const msPerDay = 1000 * 60 * 60 * 24;
+            return Math.round((to.getTime() - from.getTime()) / msPerDay);
+        };
+        const templateIdToJobScheduleIdMap: Record<number, number> = {};
+
+        for (const data of templateData) {
+            const originalStart = new Date(data.startDate);
+            const offsetDays = getDayOffset(baseTemplateStartDate, originalStart);
+            const adjustedStartDate = new Date(userChosenStartDate.getTime() + offsetDays * 86400000);
+            const scheduleStartDate = formatCalendarDate(adjustedStartDate);
+            const scheduleEndDate = formatEndDate(scheduleStartDate, data.duration, data.isScheduledOnWeekend);
+            const payload = {
+                duration: data.duration,
+                isScheduledOnWeekend: data.isScheduledOnWeekend,
+                contractorId: data.contractorId,
+                startDate: scheduleStartDate,
+                companyId,
+                jobId,
+                endDate: scheduleEndDate
+            }
+
+            const jobSchedule = await tx.jobSchedule.create({ data: payload });
+
+            templateIdToJobScheduleIdMap[data.id] = jobSchedule.id;
+        }
+        // insert the links
+        for (const link of templateDataLink) {
+            const sourceJobScheduleId = templateIdToJobScheduleIdMap[link.sourceId];
+            const targetJobScheduleId = templateIdToJobScheduleIdMap[link.targetId];
+
+            if (sourceJobScheduleId && targetJobScheduleId) {
+                await tx.jobScheduleLink.create({
+                    data: {
+                        sourceId: sourceJobScheduleId,
+                        targetId: targetJobScheduleId,
+                        companyId,
+                        jobId,
+                        type: link.type
+                    }
+                })
+            }
+        }
+    }
+
+    // Remove the google events
+    private async cleanupGoogleEvents(user: User, companyId: number, jobId: number, oldSchedules: { job: Job, jobSchedule: JobSchedule[], jobScheduleLink: JobScheduleLink[] }) {
+        const { job, jobSchedule, jobScheduleLink } = oldSchedules;
+
+        for (const schedule of jobSchedule) {
+            const syncExist = await this.databaseService.googleEventId.findFirst({
+                where: { userId: user.id, companyId, jobId, jobScheduleId: schedule.id },
+                orderBy: { id: 'desc' },
+                take: 1,
+            });
+
+            if (syncExist && syncExist?.eventId) {
+                const event = await this.googleService.getEventFromGoogleCalendar(user, syncExist);
+                if (event) {
+                    await this.googleService.deleteCalendarEvent(user, syncExist.eventId);
+                    await this.databaseService.googleEventId.update({
+                        where: { id: syncExist.id },
+                        data: { isDeleted: true }
+                    })
+                }
+            }
+            await this.googleService.removeScheduleFromOthers(user.id, companyId, schedule, oldSchedules.job);
         }
     }
 }
