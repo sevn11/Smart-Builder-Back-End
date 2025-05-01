@@ -808,4 +808,44 @@ export class CalendarTemplateService {
             await this.googleService.removeScheduleFromOthers(user.id, companyId, schedule, oldSchedules.job);
         }
     }
+
+    async updateCalendarTemplateFlag(user: User, companyId: number, templateId: number, jobId: number) {
+        try {
+            if (user.userType == UserTypes.ADMIN || ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId === companyId)) {
+                const [company, template, job] = await Promise.all([
+                    this.databaseService.company.findFirst({ where: { id: companyId, isDeleted: false } }),
+                    this.databaseService.calendarTemplate.findFirst({ where: { id: templateId, isDeleted: false } }),
+                    this.databaseService.job.findFirst({ where: { id: jobId, isDeleted: false, companyId } }),
+                ]);
+
+                if (!company) throw new ForbiddenException("Action Not Allowed");
+                if (!template) throw new ForbiddenException("Calendar template not found.");
+                if (!job) throw new ForbiddenException("Job not found.");
+
+
+                const jobData = await this.databaseService.job.update({
+                    where: { id: job.id },
+                    data: { calendarTemplateApplied: true }
+                });
+
+                return { success: true };
+            } else {
+                throw new ForbiddenException("Action Not Allowed");
+            }
+        } catch (error) {
+            console.log(error);
+            // Database Exceptions
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code == PrismaErrorCodes.UNIQUE_CONSTRAINT_ERROR)
+                    throw new BadRequestException(ResponseMessages.UNIQUE_EMAIL_ERROR);
+                else {
+                    console.log(error.code);
+                }
+            } else if (error instanceof ForbiddenException) {
+                throw error;
+            } else {
+                throw new InternalServerErrorException();
+            }
+        }
+    }
 }
