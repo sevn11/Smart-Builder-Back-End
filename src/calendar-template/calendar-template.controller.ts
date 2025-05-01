@@ -91,6 +91,12 @@ export class CalendarTemplateController {
   }
 
   @HttpCode(HttpStatus.OK)
+  @Patch(':templateId/job/:jobId/update-calendar-apply')
+  updateCalendarTemplateFlag(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number, @Param('templateId', ParseIntPipe) templateId: number, @Param('jobId', ParseIntPipe) jobId: number) {
+    return this.calendarTemplateService.updateCalendarTemplateFlag(user, companyId, templateId, jobId);
+  }
+
+  @HttpCode(HttpStatus.OK)
   @Get('contractors')
   getContractors(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number) {
     return this.calendarTemplateService.getContractors(user, companyId);
