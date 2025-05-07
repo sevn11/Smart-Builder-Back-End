@@ -108,10 +108,10 @@ export class CashFlowService {
                 });
 
                 return {
-                    salesDeduction: Number(cashFlowData?.salesDeduction).toFixed(2) ?? "0.00",
-                    deduction: Number(cashFlowData?.deduction).toFixed(2) ?? "0.00",
-                    depreciation: Number(cashFlowData?.depreciation).toFixed(2) ?? "0.00",
-                    expenses: Number(cashFlowData?.expense).toFixed(2) ?? "0.00",
+                    salesDeduction: Number(cashFlowData?.salesDeduction ?? "0").toFixed(2) ?? "0.00",
+                    deduction: Number(cashFlowData?.deduction ?? "0").toFixed(2) ?? "0.00",
+                    depreciation: Number(cashFlowData?.depreciation ?? "0").toFixed(2) ?? "0.00",
+                    expenses: Number(cashFlowData?.expense ?? "0").toFixed(2) ?? "0.00",
                     projects: formattedProjects
                 };
             } else {
