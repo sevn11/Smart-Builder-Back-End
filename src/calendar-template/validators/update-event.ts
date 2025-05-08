@@ -14,12 +14,7 @@ export class EventUpdateDTO {
     @IsNumber()
     @Type(() => Number)
     @IsNotEmpty()
-    phaseId: number
-
-    @Type(() => Number)
-    @IsNumber()
-    @IsNotEmpty()
-    contractor: number
+    phase: number
 
     @IsNotEmpty()
     @IsDateString()

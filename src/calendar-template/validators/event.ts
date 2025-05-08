@@ -17,11 +17,6 @@ export class EventDTO {
     @IsNotEmpty()
     phaseId: number
 
-    @IsArray()
-    @IsNumber({}, { each: true })
-    @IsNotEmpty()
-    contractorIds: number[]
-
     @IsNotEmpty()
     startDate: Date
 }
