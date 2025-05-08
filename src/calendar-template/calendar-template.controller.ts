@@ -78,9 +78,9 @@ export class CalendarTemplateController {
 
   // Get the calendar template data grouped acc to phase id
   @HttpCode(HttpStatus.OK)
-  @Get(':templateId/data/group')
-  getTemplateDataGrouped(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number, @Param('templateId', ParseIntPipe) templateId: number) {
-    return this.calendarTemplateService.getTemplateDataGrouped(user, companyId, templateId)
+  @Get(':templateId/data/job/:jobId/group')
+  getTemplateDataGrouped(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number, @Param('templateId', ParseIntPipe) templateId: number, @Param('jobId', ParseIntPipe) jobId: number) {
+    return this.calendarTemplateService.getTemplateDataGrouped(user, companyId, templateId, jobId)
   }
 
   // Apply the calendar event selected
@@ -96,11 +96,6 @@ export class CalendarTemplateController {
     return this.calendarTemplateService.updateCalendarTemplateFlag(user, companyId, templateId, jobId);
   }
 
-  @HttpCode(HttpStatus.OK)
-  @Get('contractors')
-  getContractors(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number) {
-    return this.calendarTemplateService.getContractors(user, companyId);
-  }
 
   // Create link between events
   @HttpCode(HttpStatus.OK)
