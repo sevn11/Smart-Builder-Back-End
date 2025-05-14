@@ -917,36 +917,38 @@ export class JobsService {
         }
     }
     private async prepareCustomerTemplateData(templateId: number, companyId: number, jobId: number, customerId: number, oldTemplateId: number) {
-        if (oldTemplateId) {
-            await this.databaseService.job.update({ where: { id: jobId }, data: { calendarTemplateApplied: false } })
-            await this.clearPreviousTemplateData(oldTemplateId, companyId, jobId, customerId);
-        }
-
-        const template = await this.databaseService.questionnaireTemplate.findUnique({
-            where: { id: templateId, isDeleted: false },
-            select: { id: true, projectEstimatorTemplateId: true }
-        });
-
-        if (!template) return;
-
-        const customerTemplate = await this.databaseService.clientTemplate.create({
-            data: {
-                questionnaireTemplateId: template.id,
-                projectEstimatorTemplateId: template.projectEstimatorTemplateId,
-                isDeleted: false,
-                jobId,
-                customerId,
-                companyId
+        if (templateId) {
+            if (oldTemplateId) {
+                await this.databaseService.job.update({ where: { id: jobId }, data: { calendarTemplateApplied: false } })
+                await this.clearPreviousTemplateData(oldTemplateId, companyId, jobId, customerId);
             }
-        })
 
-        if (template.id && customerTemplate.id) {
-            // Handle Questionnaire Template & Selction templates.
-            await this.handleQuestionnaireTemplate(template.id, companyId, jobId, customerId, customerTemplate.id);
-        }
+            const template = await this.databaseService.questionnaireTemplate.findUnique({
+                where: { id: templateId, isDeleted: false },
+                select: { id: true, projectEstimatorTemplateId: true }
+            });
 
-        if (template.projectEstimatorTemplateId && customerTemplate.id) {
-            await this.handleProjectEstimatorTemplate(template.projectEstimatorTemplateId, companyId, jobId, customerId, customerTemplate.id);
+            if (!template) return;
+
+            const customerTemplate = await this.databaseService.clientTemplate.create({
+                data: {
+                    questionnaireTemplateId: template.id,
+                    projectEstimatorTemplateId: template.projectEstimatorTemplateId,
+                    isDeleted: false,
+                    jobId,
+                    customerId,
+                    companyId
+                }
+            })
+
+            if (template.id && customerTemplate.id) {
+                // Handle Questionnaire Template & Selction templates.
+                await this.handleQuestionnaireTemplate(template.id, companyId, jobId, customerId, customerTemplate.id);
+            }
+
+            if (template.projectEstimatorTemplateId && customerTemplate.id) {
+                await this.handleProjectEstimatorTemplate(template.projectEstimatorTemplateId, companyId, jobId, customerId, customerTemplate.id);
+            }
         }
     }
 
