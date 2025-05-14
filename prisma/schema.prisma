@@ -45,6 +45,7 @@ model User {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   PaymentLog      PaymentLog[]
+  Job            Job[]
   EmployeeDetails EmployeeDetails?
   GoogleEventId   GoogleEventId[]
   
@@ -145,6 +146,7 @@ model PermissionSet {
   contractorAndFiles      Boolean  @default(false) @map("contractor_and_files")
   settings       Boolean  @default(false)
   ytdReport      Boolean  @default(false) @map("ytd_report")
+  projectAccess  Boolean  @default(false) @map("project_access")
   viewOnly       Boolean  @default(true) @map("view_only")
   isDeleted      Boolean? @default(false) @map("is_deleted")
 
@@ -228,6 +230,9 @@ model Job {
 
   companyId Int     @map("company_id")
   company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  userId    Int?      @map("user_id")
+  user      User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   customerId Int      @map("customer_id")
   customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
@@ -488,6 +493,8 @@ model JobProjectEstimator {
   invoiceId         Int?               @map("invoice_id")
   isLootCost        Boolean?           @default(false) @map("is_loot_cost")
   isCourtesyCredit  Boolean?           @default(false) @map("is_courtesy_credit")
+  isSalesTaxApplicable  Boolean?       @default(false) @map("is_sales_tax_applicable")
+  salesTaxPercentage    Decimal?       @map("sales_tax_percentage") @db.Decimal(10, 2) @default(0.00)
   isDeleted         Boolean?           @default(false) @map("is_deleted")
   order             Int?               @default(0) @map("order")
   jobProjectEstimatorHeaderId          Int? @map("job_project_estimator_header_id")
@@ -539,7 +546,7 @@ model PaymentSchedule {
 model PaymentScheduleDraw {
   id                  Int             @id @default(autoincrement())
   paymentDate         DateTime        @map("payment_date")
-  amount              Float           @default(0)
+  amount              Decimal?        @map("amount") @db.Decimal(10, 2) @default(0.00)
   drawPercentage      Float           @map("draw_percentage") @default(0)
   bankFees            Decimal?        @map("bank_fees") @db.Decimal(10, 2) @default(0.00)
   received            Boolean         @default(false)
@@ -619,6 +626,8 @@ model ProjectEstimatorTemplateData {
   grossProfit       Decimal            @map("gross_profit") @db.Decimal(10, 2) @default(0.00)
   contractPrice     Decimal            @map("contract_price") @db.Decimal(10, 2) @default(0.00)
   isLotCost         Boolean?           @default(false) @map("is_lot_cost")
+  isSalesTaxApplicable  Boolean?       @default(false) @map("is_sales_tax_applicable")
+  salesTaxPercentage    Decimal?       @map("sales_tax_percentage") @db.Decimal(10, 2) @default(0.00)
   isCourtesyCredit  Boolean?           @default(false) @map("is_courtesy_credit")
   isDeleted         Boolean?           @default(false) @map("is_deleted")
 

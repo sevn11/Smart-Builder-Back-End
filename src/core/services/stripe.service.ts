@@ -70,7 +70,7 @@ export class StripeService {
                 customer: customer.id,
                 items: [{ price: price.id }],
                 proration_behavior: 'none',
-                default_tax_rates: [this.stripeTaxRateId],
+                automatic_tax: { enabled: true },
             };
             if (builderSubscription.trial_end > now) {
                 // Adding employee subscription within builder's trial period
@@ -254,7 +254,7 @@ export class StripeService {
                 customer: user.stripeCustomerId,
                 items: [{ price: activePriceId }],
                 default_payment_method: paymentMethodId,
-                default_tax_rates: [this.stripeTaxRateId],
+                automatic_tax: { enabled: true },
             };
             let coupon: string;
             let subscription: Stripe.Subscription;
@@ -286,6 +286,9 @@ export class StripeService {
                     line1: body.address,
                     country: 'US',
                     postal_code: body.zipcode
+                },
+                tax: {
+                    validate_location: 'immediately',
                 },
             });
             // Attach payment method to customer
@@ -320,7 +323,7 @@ export class StripeService {
                 default_payment_method: body.paymentMethodId,
                 trial_end: trialEndDate,
                 proration_behavior: 'none',
-                default_tax_rates: [this.stripeTaxRateId],
+                automatic_tax: { enabled: true },
             }
             if (promoCode) {
                 subscriptionPayload.promotion_code = promoCode;
@@ -367,7 +370,7 @@ export class StripeService {
                 items: [{ price: price.id }],
                 trial_end: trialEndDate,
                 proration_behavior: 'none',
-                default_tax_rates: [this.stripeTaxRateId],
+                automatic_tax: { enabled: true },
             };
 
             // Apply coupon for demo builders
@@ -397,6 +400,7 @@ export class StripeService {
 
     // Function to get sign now subscription status
     async getSignNowPlanStatus (subscriptionId: string) {
+        try {
         let subInfo = await this.StripeClient.subscriptions.retrieve(subscriptionId);
         const currentDate = Math.floor(Date.now() / 1000);
         if(subInfo.current_period_end > currentDate) {
@@ -404,13 +408,20 @@ export class StripeService {
         } else {
             return { status: false };
         }
+        } catch (error) {
+            return { status: false };
+        }
     }
 
     async isSignNowCancelled (subscriptionId: string) {
-        let subInfo = await this.StripeClient.subscriptions.retrieve(subscriptionId);
-        if(subInfo.status != 'canceled') {
-            return { status: true };
-        } else {
+        try {
+            let subInfo = await this.StripeClient.subscriptions.retrieve(subscriptionId);
+            if(subInfo.status != 'canceled') {
+                return { status: true };
+            } else {
+                return { status: false };
+            }
+        } catch (error) {
             return { status: false };
         }
     }
@@ -418,9 +429,15 @@ export class StripeService {
     // Function re create sign-now subscription
     async createBuilderSignNowSubscriptionAfterSignup(company: any, builder: any, signNowPlanAmount: number) {
         try {
-            let existingSignNowSubscription = company.signNowSubscriptionId
-                ? await this.StripeClient.subscriptions.retrieve(company.signNowSubscriptionId)
-                : null;
+            let existingSignNowSubscription = null;
+            try {
+                if (company.signNowSubscriptionId) {
+                    existingSignNowSubscription = await this.StripeClient.subscriptions.retrieve(company.signNowSubscriptionId);
+                }
+            } catch (error) {
+                console.warn(`Unable to retrieve existing SignNow subscription for company ${company.id}: ${error}`);
+                existingSignNowSubscription = null;
+            }
             
             const planType = company.planType == BuilderPlanTypes.MONTHLY ? 'month' : 'year';
             
@@ -448,7 +465,7 @@ export class StripeService {
                     customer: customer.id,
                     items: [{ price: price.id }],
                     proration_behavior: 'none',
-                    default_tax_rates: [this.stripeTaxRateId],
+                    automatic_tax: { enabled: true },
                 };
                 if (builderSubscription.trial_end > now) {
                     // Adding signnow subscription within builder's trial period
@@ -494,7 +511,7 @@ export class StripeService {
                 items: [{ price: price.id }],
                 billing_cycle_anchor: billingCycleAnchor,
                 proration_behavior: prorationBehavious,
-                default_tax_rates: [this.stripeTaxRateId],
+                automatic_tax: { enabled: true },
             };
     
             if (trialEnd) {

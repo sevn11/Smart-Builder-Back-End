@@ -425,7 +425,7 @@ export class GoogleService {
             // create new calendar
             let calendarResponse = await this.calendar.calendars.insert({
                 requestBody: {
-                    summary: "Aurora Custom Homes"
+                    summary: user.name
                 }
             });
             const newCalendarId = calendarResponse.data.id;

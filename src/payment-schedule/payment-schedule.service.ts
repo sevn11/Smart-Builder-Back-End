@@ -45,9 +45,11 @@ export class PaymentScheduleService {
                     addtFundDisbursed: Number(paymentSchedules.addtFundDisbursed).toFixed(2),
                     draws: paymentSchedules.draws.map(draw => ({
                         ...draw,
-                        bankFees: Number(draw.bankFees).toFixed(2)
+                        amount: Number(draw.amount).toFixed(2),
+                        bankFees: Number(draw.bankFees).toFixed(2),
+                        drawPercentage: Number(draw.drawPercentage).toFixed(2),
                     }))
-                  };
+                };
                 return { formattedPaymentSchedule }
             } else {
                 throw new ForbiddenException("Action Not Allowed");
@@ -225,7 +227,7 @@ export class PaymentScheduleService {
                     }
                 });
 
-                let updatedDraw = await this.databaseService.paymentScheduleDraw.update({
+                await this.databaseService.paymentScheduleDraw.update({
                     where: {
                         paymentScheduleId: depoId,
                         id: drawId,
@@ -236,7 +238,7 @@ export class PaymentScheduleService {
                     }
                 });
 
-                return { updatedDraw };
+                return { message: ResponseMessages.SUCCESSFUL }
 
             } else {
                 throw new ForbiddenException("Action Not Allowed");

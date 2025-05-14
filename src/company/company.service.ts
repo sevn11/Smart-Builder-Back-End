@@ -132,6 +132,7 @@ export class CompanyService {
                                 contractorAndFiles: body.PermissionSet.contractorAndFiles,
                                 settings: body.PermissionSet.settings,
                                 ytdReport: body.PermissionSet.ytdReport,
+                                projectAccess: body.PermissionSet.projectAccess,
                                 viewOnly: body.PermissionSet.viewOnly
                             }
                         }
@@ -310,6 +311,7 @@ export class CompanyService {
                                     contractorAndFiles: body.PermissionSet.contractorAndFiles,
                                     settings: body.PermissionSet.settings,
                                     ytdReport: body.PermissionSet.ytdReport,
+                                    projectAccess: body.PermissionSet.projectAccess,
                                     viewOnly: body.PermissionSet.viewOnly
                                 }
                             },
@@ -924,6 +926,31 @@ export class CompanyService {
             });
     
             await Promise.all(emailPromises);
+        }
+    }
+
+    async updateCompanySalesTaxRate(user: User, companyId: number, body: { salesTaxRate: number }) {
+        try {
+            // Check company exist or not
+            await this.databaseService.company.findUniqueOrThrow({
+                where: { id: companyId, isDeleted: false }
+            });
+
+            // Update company sales tax rate
+            await this.databaseService.company.update({
+                where: { id: companyId },
+                data: {
+                    saleTaxRate: body.salesTaxRate
+                }
+            });
+            return { message: ResponseMessages.SUCCESSFUL }
+
+        } catch (error) {
+            console.log(error);
+            throw new InternalServerErrorException({
+                error: "An unexpected error occured.",
+                errorDetails: error.message
+            })
         }
     }
 }

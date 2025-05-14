@@ -44,6 +44,7 @@ export class JobsService {
                         customerId: body.customerId,
                         status: JobStatus.OPEN,
                         companyId: company.id,
+                        userId: user.id,
                         calendarTemplateApplied: false,
                     },
                     omit: {
@@ -102,12 +103,20 @@ export class JobsService {
                 if (!company) {
                     throw new ForbiddenException("Action Not Allowed");
                 }
+                // Check user project permission
+                let userProjectPermission = await this.databaseService.permissionSet.findUnique({
+                    where: { userId: user.id },
+                    select: { projectAccess: true }
+                });
+                
+                const hasProjectAccess = userProjectPermission?.projectAccess ?? false;
                 query.page = query.page === 0 ? 0 : query.page - 1
                 let jobdata = await this.databaseService.job.findMany({
                     where: {
                         companyId,
                         isClosed: query.closed || false,
                         isDeleted: false,
+                        userId: hasProjectAccess ? user.id : undefined,
                         customer: {
                             name: {
                                 contains: query.search,
@@ -152,6 +161,7 @@ export class JobsService {
                         companyId,
                         isClosed: query.closed || false,
                         isDeleted: false,
+                        userId: hasProjectAccess ? user.id : undefined,
                         customer: {
                             name: {
                                 contains: query.search,
@@ -842,38 +852,8 @@ export class JobsService {
                     return { error: 'Job not found' };
                 }
 
-                let isSynced = false;
-
-                const jobSyncExist = await this.databaseService.googleEventId.findFirst({
-                    where: {
-                        companyId,
-                        userId: user.id,
-                        jobId: jobId,
-                        jobScheduleId: null,
-                        isDeleted: false,
-                    },
-                    orderBy: { id: 'desc' },
-                    take: 1
-                })
-                if (jobSyncExist && jobSyncExist?.eventId) {
-                    let event = await this.googleService.getEventFromGoogleCalendar(user, jobSyncExist);
-                    if (event) {
-                        isSynced = true;
-                    }
-                }
                 let uniqueId = 1;
-                const openJob = {
-                    id: uniqueId,
-                    jobId: job.id,
-                    title: `${job.customer?.name}: ${job.description.name ?? ""}`,
-                    start: job.startDate,
-                    end: job.endDate,
-                    customerId: job.customer?.id,
-                    color: job.calendarColor,
-                    isSynced,
-                    type: "project"
-                };
-
+                                
                 // Check sync status for each schedule
                 const schedulesWithSyncStatus = await Promise.all(
                     job.JobSchedule.map(async (schedule, index) => {
@@ -914,9 +894,8 @@ export class JobsService {
                     })
                 );
 
-                const result = [openJob, ...schedulesWithSyncStatus];
 
-                return { jobAndSchedules: result };
+                return { jobAndSchedules: schedulesWithSyncStatus };
 
             } else {
                 throw new ForbiddenException("Action Not Allowed");
@@ -1169,6 +1148,8 @@ export class JobsService {
                             contractPrice: x.contractPrice,
                             order: x.order,
                             invoiceId: currentInvoiceId,
+                            isSalesTaxApplicable: x.isSalesTaxApplicable,
+                            salesTaxPercentage: x.salesTaxPercentage,
                             isLootCost: x.isLotCost
                         }
                     })

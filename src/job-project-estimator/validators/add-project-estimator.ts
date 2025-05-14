@@ -46,4 +46,11 @@ export class JobProjectEstimatorDTO {
     @IsBoolean()
     @IsOptional()
     isLootCost: boolean
+
+    @IsBoolean()
+    @IsOptional()
+    isSalesTaxApplicable: boolean
+
+    @IsNumber()
+    salesTaxPercentage: number
 }
