@@ -112,6 +112,8 @@ model Company {
   JobScheduleLink        JobScheduleLink[]
   GoogleEventId          GoogleEventId[]
   ContractorMailInfo    ContractorMailInfo[]
+  calendarTemplate       CalendarTemplate[]
+  calendarTemplateData   CalendarTemplateData[]
   @@map("companies")
 }
 
@@ -240,6 +242,8 @@ model Job {
 
   eventId           String?   @map("event_id")
 
+  calendarTemplateApplied Boolean @default(true) @map("calendar_template_applied")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
   ClientTemplate         ClientTemplate[]
@@ -335,6 +339,9 @@ model QuestionnaireTemplate {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
   clientTemplate          ClientTemplate[]
+
+  calendarTemplateId    Int?  @map("ct_id")
+  calendarTemplate      CalendarTemplate? @relation(fields: [calendarTemplateId], references: [id])
   @@map("questionnaire_template")
 }
 
@@ -449,6 +456,7 @@ model ContractorPhase {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
   ClientTemplateQuestion ClientTemplateQuestion[]
+  calendarTemplateData  CalendarTemplateData[]
   @@map("contractor_phase")
 }
 
@@ -974,4 +982,54 @@ model ContractorMailInfo {
   updatedAt          DateTime     @updatedAt @map("updated_at")
 
   @@map("contractor_mail_info")
+}
+
+model CalendarTemplate {
+  id                Int                @id @default(autoincrement())
+  name              String
+  isDeleted         Boolean            @default(false) @map("is_deleted")
+  isCompanyTemplate Boolean            @default(true) @map("is_company_template")
+  companyId         Int?               @map("company_id")
+  company           Company?           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  questionnaireTemplate QuestionnaireTemplate[]
+  calendarTemplateData  CalendarTemplateData[]
+  calendarTemplateDataLink CalendarTemplateDataLink[]
+
+  @@map("calendar_template")
+}
+
+model CalendarTemplateData {
+  id                    Int                 @id @default(autoincrement())
+  ctId                  Int                 @map("calendar_template_id")
+  ct                    CalendarTemplate    @relation(fields: [ctId], references: [id], onDelete: Cascade)
+  companyId             Int?                @map("company_id")
+  company               Company?            @relation(fields: [companyId], references: [id], onDelete: Cascade)               
+  isScheduledOnWeekend  Boolean             @default(false) @map("is_scheduled_on_weekend")
+  duration              Int                 @default(1)
+  startDate             DateTime?           @map("start_date")
+  endDate               DateTime?           @map("end_date")
+  phaseId               Int                 @map("phase_id")
+  phase                 ContractorPhase     @relation(fields: [phaseId], references: [id])
+  isDeleted             Boolean             @default(false) @map("is_deleted")
+  createdAt             DateTime            @default(now()) @map("created_at")
+  updatedAt             DateTime            @updatedAt @map("updated_at")
+  sourceEventLink       CalendarTemplateDataLink[] @relation("SourceEvent")
+  targetEventLink       CalendarTemplateDataLink[] @relation("TargetEvent")
+  @@map("calendar_template_data")
+}
+
+model CalendarTemplateDataLink {
+  id                Int           @id @default(autoincrement())
+  templateId        Int?          @map("ct_id")
+  template          CalendarTemplate? @relation(fields: [templateId], references: [id])
+  sourceId          Int           @map("source_id")
+  source            CalendarTemplateData   @relation("SourceEvent", fields: [sourceId], references: [id], onDelete: Cascade)
+  targetId          Int           @map("target_id")
+  target            CalendarTemplateData   @relation("TargetEvent", fields: [targetId], references: [id], onDelete: Cascade)
+  type              TypeEnum
+  isDeleted         Boolean?     @default(false) @map("is_deleted")
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  @@map("calendar_template_data_link")
 }

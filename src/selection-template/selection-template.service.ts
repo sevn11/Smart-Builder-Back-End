@@ -24,7 +24,7 @@ export class SelectionTemplateService {
     async getSelectionTemplate(user: User, companyId: number, type: string) {
         try {
             // Check if User is Admin of the Company.
-            if (user.userType !== UserTypes.ADMIN && 
+            if (user.userType !== UserTypes.ADMIN &&
                 (user.userType !== UserTypes.BUILDER && user.userType !== UserTypes.EMPLOYEE || user.companyId !== companyId)) {
                 throw new ForbiddenException("Action Not Allowed");
             }
@@ -69,7 +69,7 @@ export class SelectionTemplateService {
     async getSelectionTemplateContent(user: User, companyId: number, type: string, templateId: number) {
         try {
             // Validate User Permissions
-            if (user.userType !== UserTypes.ADMIN && 
+            if (user.userType !== UserTypes.ADMIN &&
                 (user.userType !== UserTypes.BUILDER && user.userType !== UserTypes.EMPLOYEE || user.companyId !== companyId)) {
                 throw new ForbiddenException("Action Not Allowed");
             }
@@ -154,7 +154,7 @@ export class SelectionTemplateService {
     async createSelectionTemplateCategory(user: User, type: string, companyId: number, templateId: number, body: CreateCategoryDTO) {
         try {
             // Validate User Permissions
-            if (user.userType !== UserTypes.ADMIN && 
+            if (user.userType !== UserTypes.ADMIN &&
                 (user.userType !== UserTypes.BUILDER && user.userType !== UserTypes.EMPLOYEE || user.companyId !== companyId)) {
                 throw new ForbiddenException("Action Not Allowed");
             }
@@ -233,7 +233,7 @@ export class SelectionTemplateService {
     async updateSelectionCategory(user: User, type: string, companyId: number, templateId: number, categoryId: number, body: CreateCategoryDTO) {
         try {
             // Validate user permissions
-            if (user.userType !== UserTypes.ADMIN && 
+            if (user.userType !== UserTypes.ADMIN &&
                 (user.userType !== UserTypes.BUILDER && user.userType !== UserTypes.EMPLOYEE || user.companyId !== companyId)) {
                 throw new ForbiddenException("Action Not Allowed");
             }
@@ -304,7 +304,7 @@ export class SelectionTemplateService {
     async deleteCategory(user: User, type: string, companyId: number, templateId: number, categoryId: number) {
         try {
             // Validate user permissions
-            if (user.userType !== UserTypes.ADMIN && 
+            if (user.userType !== UserTypes.ADMIN &&
                 (user.userType !== UserTypes.BUILDER && user.userType !== UserTypes.EMPLOYEE || user.companyId !== companyId)) {
                 throw new ForbiddenException("Action Not Allowed");
             }
@@ -408,7 +408,7 @@ export class SelectionTemplateService {
     async createLabel(user: User, type: string, companyId: number, templateId: number, categoryId: number, body: QuestionDTO) {
         try {
             // Check if User is Admin of the Company.
-            if (user.userType !== UserTypes.ADMIN && 
+            if (user.userType !== UserTypes.ADMIN &&
                 (user.userType !== UserTypes.BUILDER && user.userType !== UserTypes.EMPLOYEE || user.companyId !== companyId)) {
                 throw new ForbiddenException("Action Not Allowed");
             }
@@ -502,7 +502,7 @@ export class SelectionTemplateService {
     // Update the label
     async updateLabel(user: User, type: string, companyId: number, templateId: number, categoryId: number, labelId: number, body: QuestionDTO) {
         try {
-            if (user.userType !== UserTypes.ADMIN && 
+            if (user.userType !== UserTypes.ADMIN &&
                 (user.userType !== UserTypes.BUILDER && user.userType !== UserTypes.EMPLOYEE || user.companyId !== companyId)) {
                 throw new ForbiddenException("Action Not Allowed");
             }
@@ -590,7 +590,7 @@ export class SelectionTemplateService {
     async deleteLabel(user: User, type: string, companyId: number, templateId: number, categoryId: number, labelId: number) {
         try {
             // Validate user permissions
-            if (user.userType !== UserTypes.ADMIN && 
+            if (user.userType !== UserTypes.ADMIN &&
                 (user.userType !== UserTypes.BUILDER && user.userType !== UserTypes.EMPLOYEE || user.companyId !== companyId)) {
                 throw new ForbiddenException("Action Not Allowed");
             }
@@ -677,7 +677,7 @@ export class SelectionTemplateService {
     async changeCategoryOrder(user: User, companyId: number, type: string, templateId: number, body: CategoryOrderDTO) {
         try {
             // Check if User is Admin of the Company.
-            if (user.userType !== UserTypes.ADMIN && 
+            if (user.userType !== UserTypes.ADMIN &&
                 (user.userType !== UserTypes.BUILDER && user.userType !== UserTypes.EMPLOYEE || user.companyId !== companyId)) {
                 throw new ForbiddenException("Action Not Allowed");
             }
@@ -817,6 +817,13 @@ export class SelectionTemplateService {
                         where: { id: templateId, isDeleted: false, isCompanyTemplate: true, companyId },
                         data: { name: body.name }
                     });
+
+                    if (template.calendarTemplateId) {
+                        await tx.calendarTemplate.update({
+                            where: { id: template.calendarTemplateId },
+                            data: { name: body.name }
+                        })
+                    }
                 });
 
                 let templates = await this.databaseService.questionnaireTemplate.findMany({
@@ -847,7 +854,7 @@ export class SelectionTemplateService {
     async changeQuestionOrder(user: User, companyId: number, type: string, templateId: number, questionId: number, categoryId: number, body: QuestionOrderDTO) {
         try {
             // Check if User is Admin of the Company.
-            if (user.userType !== UserTypes.ADMIN && 
+            if (user.userType !== UserTypes.ADMIN &&
                 (user.userType !== UserTypes.BUILDER && user.userType !== UserTypes.EMPLOYEE || user.companyId !== companyId)) {
                 throw new ForbiddenException("Action Not Allowed");
             }
@@ -976,13 +983,18 @@ export class SelectionTemplateService {
                         data: { templateName: body.name, companyId, }
                     });
 
+                    const calendarTemplate = await tx.calendarTemplate.create({
+                        data: { name: body.name, companyId, isCompanyTemplate: true }
+                    });
+
                     const questionnaire = await tx.questionnaireTemplate.create({
                         data: {
                             name: body.name,
                             templateType: TemplateType.SELECTION_INITIAL,
                             isCompanyTemplate: true,
                             companyId,
-                            projectEstimatorTemplateId: projectEstimator.id
+                            projectEstimatorTemplateId: projectEstimator.id,
+                            calendarTemplateId: calendarTemplate.id
                         },
                         omit: {
                             isDeleted: false,
@@ -1064,6 +1076,18 @@ export class SelectionTemplateService {
                         })
                     }
                     // if project estimator template exist , delete template, headers and data ends.
+
+                    if (tempToDelete.calendarTemplateId) {
+                        const clTemplate = await tx.calendarTemplate.update({
+                            where: { id: tempToDelete.calendarTemplateId },
+                            data: { isDeleted: true }
+                        })
+
+                        await tx.calendarTemplateData.updateMany({
+                            where: { ctId: clTemplate.id },
+                            data: { isDeleted: true }
+                        })
+                    }
 
                     await tx.questionnaireTemplate.update({
                         where: { id: templateId, },
