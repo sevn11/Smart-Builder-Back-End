@@ -175,8 +175,9 @@ export class JobContractorService {
                 }
 
                 const jobContractors = body.jobContractors;
+                const sendCC = body.sendCC;
+                const ccMail = body.ccMail;
                 const subject = body.subject
-                let ccMail = null;
 
                 // get user company information
                 let company = await this.databaseService.company.findUniqueOrThrow({
@@ -186,11 +187,7 @@ export class JobContractorService {
                         isDeleted: false
                     }
                 });
-                let replyTo = null;
-                if (!company.email) {
-                    throw new ForbiddenException("Company email not found");
-                }
-                replyTo = ccMail = company.email;
+                let replyTo = ccMail;
 
                 await Promise.all(jobContractors.map(async (jobContractor) => {
                     // Prepare attachments array
@@ -480,6 +477,8 @@ export class JobContractorService {
                         templateData,
                         attachments,
                         replyTo,
+                        sendCC,
+                        ccMail,
                     );
                     // Create an entry in the mail info table after the email has been sent successfully.
                     await this.databaseService.contractorMailInfo.create({
