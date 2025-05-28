@@ -1159,4 +1159,74 @@ export class JobsService {
             }))
         })
     }
+
+    async getJobInfo(user: User, companyId: number, jobId: number) {
+        try {
+            if (user.userType == UserTypes.ADMIN || (user.userType == UserTypes.BUILDER && user.companyId === companyId) || user.userType == UserTypes.EMPLOYEE) {
+                await this.databaseService.company.findUniqueOrThrow({
+                    where: {
+                        id: companyId,
+                        isDeleted: false,
+                    },
+                });
+
+                const jobsData = await this.databaseService.job.findUniqueOrThrow({
+                    where: {
+                        id: jobId,
+                        companyId,
+                        isDeleted: false,
+                    },
+                    select: {
+                        id: true,
+                        projectAddress: true,
+                        projectCity: true,
+                        projectState: true,
+                        projectZip: true,
+                        sizeOfHouse: true,
+                        customer: {
+                            select: {
+                                id: true,
+                                name: true,
+                                address: true,
+                                city: true,
+                                state: true,
+                                zip: true,
+                            },
+                        },
+                        description: {
+                            select: {
+                                id: true,
+                                name: true,
+                            },
+                        },
+                    },
+                });
+
+
+                const jobs = {
+                    ...jobsData,
+                    descriptionId: jobsData.description ? jobsData.description.id : null,
+                    description: jobsData.description ? jobsData.description.name : null,
+                };
+
+                return { jobs };
+            } else {
+                throw new ForbiddenException("Action Not Allowed");
+            }
+        } catch (error) {
+            console.log(error);
+            // Database Exceptions
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code == PrismaErrorCodes.UNIQUE_CONSTRAINT_ERROR)
+                    throw new BadRequestException(ResponseMessages.UNIQUE_EMAIL_ERROR);
+                else {
+                    console.log(error.code);
+                }
+            } else if (error instanceof ForbiddenException) {
+                throw error;
+            } else {
+                throw new InternalServerErrorException();
+            }
+        }
+    }
 }
