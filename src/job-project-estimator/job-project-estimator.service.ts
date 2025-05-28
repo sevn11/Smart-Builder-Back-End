@@ -16,7 +16,7 @@ export class JobProjectEstimatorService {
 
     constructor(private databaseService: DatabaseService) { }
 
-    // get all headers and project estimator data
+    // Get all headers and project estimator data
     async getProjectEstimatorData(user: User, companyId: number, jobId: number) {
         try {
             // Check if User is Admin of the Company.
