@@ -1160,6 +1160,7 @@ export class JobsService {
         })
     }
 
+    // Get job details (limited info)
     async getJobInfo(user: User, companyId: number, jobId: number) {
         try {
             if (user.userType == UserTypes.ADMIN || (user.userType == UserTypes.BUILDER && user.companyId === companyId) || user.userType == UserTypes.EMPLOYEE) {
