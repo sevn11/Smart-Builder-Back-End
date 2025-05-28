@@ -83,4 +83,10 @@ export class JobsController {
     getJobAndSchedules(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number, @Param('jobId', ParseIntPipe) jobId: number) {
         return this.jobService.getJobAndSchedules(user, companyId, jobId);
     }
+
+    @HttpCode(HttpStatus.OK)
+    @Get(':jobId/info')
+    getJobInfo(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number, @Param('jobId', ParseIntPipe) jobId: number) {
+        return this.jobService.getJobInfo(user, companyId, jobId);
+    }
 }
