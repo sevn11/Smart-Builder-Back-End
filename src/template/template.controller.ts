@@ -37,4 +37,10 @@ export class TemplateController {
     ) {
         return this.templateService.createAnswer(user, companyId, templateId, questionId, categoryId, body, type);
     }
+
+    @HttpCode(HttpStatus.OK)
+    @Get('/:type/job/:jobId/getProfitCalculation')
+    getprofitCalculationType(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number, @Param('type', TypeValidationPipe) type: string, @Param('jobId', ParseIntPipe) jobId: number) {
+        return this.templateService.getprofitCalculationType(user, companyId, type, jobId);
+    }
 }

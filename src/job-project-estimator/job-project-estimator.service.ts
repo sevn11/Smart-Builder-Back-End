@@ -28,14 +28,14 @@ export class JobProjectEstimatorService {
                     where: {
                         companyId,
                         jobId,
-                        isDeleted: false
+                        isDeleted: false,
+                        name: { not: 'Statements' } // Filter out headers named 'Statements'
                     },
                     select: {
                         id: true,
                         name: true,
                         companyId: true,
                         jobId: true,
-                        isDeleted: true,
                         JobProjectEstimator: {
                             where: {
                                 isDeleted: false
@@ -67,36 +67,39 @@ export class JobProjectEstimatorService {
                         headerOrder: 'asc'
                     }
                 });
-                // Filter out headers named 'Statements'
-                prData = prData.filter(header => header.name !== 'Statements');
-                const projectEstimatorData = prData.map(item => ({
-                    ...item,
-                    JobProjectEstimator: item.JobProjectEstimator.map(estimator => {
-                        const unitCost = Number(estimator.unitCost);
-                        const actualCost = Number(estimator.actualCost);
-                        const grossProfit = Number(estimator.grossProfit);
-                        let contractPrice = Number(estimator.contractPrice);
-                        const isSalesTaxApplicable = estimator.isSalesTaxApplicable;
-                        const salesTaxPercentage = Number(estimator.salesTaxPercentage);
-                
-                        const salesTax = isSalesTaxApplicable
-                            ? Number(((contractPrice * salesTaxPercentage) / 100).toFixed(2))
-                            : 0;
-                
-                        // Add sales tax to contract price only for "Change Order"
-                        if (item.name === "Change Orders") {
-                            contractPrice += salesTax;
-                        }
-                        return {
-                            ...estimator,
-                            unitCost: unitCost.toFixed(2),
-                            actualCost: actualCost.toFixed(2),
-                            grossProfit: grossProfit.toFixed(2),
-                            contractPrice: contractPrice.toFixed(2),
-                            salesTax: salesTax
-                        };
-                    })
-                }));
+
+                const projectEstimatorData = prData.map(item => {
+                    const isChangeOrder = item.name === "Change Orders";
+
+                    return {
+                        ...item,
+                        JobProjectEstimator: item.JobProjectEstimator.map(estimator => {
+                            const unitCost = +estimator.unitCost;
+                            const actualCost = +estimator.actualCost;
+                            const grossProfit = +estimator.grossProfit;
+                            let contractPrice = +estimator.contractPrice;
+                            const isSalesTaxApplicable = estimator.isSalesTaxApplicable;
+                            const salesTaxPercentage = +estimator.salesTaxPercentage;
+
+                            const salesTax = isSalesTaxApplicable
+                                ? +((contractPrice * salesTaxPercentage) / 100).toFixed(2)
+                                : 0;
+
+                            // Add sales tax to contract price only for "Change Order"
+                            if (isChangeOrder) {
+                                contractPrice += salesTax;
+                            }
+                            return {
+                                ...estimator,
+                                unitCost: unitCost.toFixed(2),
+                                actualCost: actualCost.toFixed(2),
+                                grossProfit: grossProfit.toFixed(2),
+                                contractPrice: contractPrice.toFixed(2),
+                                salesTax: salesTax
+                            };
+                        })
+                    }
+                });
 
                 return { projectEstimatorData }
             } else {
