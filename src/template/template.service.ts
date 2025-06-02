@@ -430,4 +430,61 @@ export class TemplateService {
         }));
         return { projectEstimatorData };
     }
+
+    async getprofitCalculationType(user: User, companyId: number, type: string, jobId: number) {
+        try {
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) {
+                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
+                    throw new ForbiddenException("Action Not Allowed");
+                }
+
+                const job = await this.databaseService.job.findUnique({
+                    where: { id: jobId, companyId, isDeleted: false },
+                    select: { id: true, templateId: true, customerId: true }
+                });
+
+                if (!job || !job.templateId) {
+                    throw new ForbiddenException('Please select a template in the customer information page.')
+                }
+                const template = await this.databaseService.questionnaireTemplate.findUnique({
+                    where: { id: job.templateId },
+                    select: { id: true, projectEstimatorTemplateId: true, }
+                });
+
+                if (!template) {
+                    throw new ForbiddenException('Template not found.');
+                }
+
+                const profitCalculationType = await this.databaseService.clientTemplate.findFirst({
+                    where: {
+                        questionnaireTemplateId: template.id,
+                        projectEstimatorTemplateId: template.projectEstimatorTemplateId,
+                        isDeleted: false,
+                        companyId,
+                        customerId: job.customerId,
+                        jobId
+                    },
+                    select: { accProfitCalculationType: true },
+                    orderBy: { id: 'desc' },
+                    take: 1,
+                });
+                return profitCalculationType;
+            } else {
+                throw new ForbiddenException("Action Not Allowed");
+            }
+        } catch (error) {
+            console.log(error);
+            // Database Exceptions
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code == PrismaErrorCodes.NOT_FOUND)
+                    throw new BadRequestException(ResponseMessages.QUESTION_NOT_FOUND);
+                else {
+                    console.log(error.code)
+                }
+            } else if (error instanceof ForbiddenException) {
+                throw error;
+            }
+            throw new InternalServerErrorException();
+        }
+    }
 }
