@@ -157,7 +157,7 @@ export class ContractorPhaseService {
                 });
 
                 // deleting the phase
-                await this.databaseService.contractorPhase.update({
+                let deletedPhase = await this.databaseService.contractorPhase.update({
                     where: {
                         id: phaseId,
                         companyId,
@@ -177,6 +177,34 @@ export class ContractorPhaseService {
                         phaseId: null
                     }
                 })
+
+                // Remove calendar template events linked to the phase
+                const calendarTemplates = await this.databaseService.calendarTemplate.findMany({
+                    where: {
+                        isDeleted: false,
+                        companyId
+                    },
+                    select: {
+                        id: true
+                    }
+                });
+
+                // Template IDs
+                const templateIds = calendarTemplates.map((template) => template.id);
+
+                // Soft-delete all calendarTemplateData entries that are linked to this phase
+                await this.databaseService.calendarTemplateData.updateMany({
+                    where: {
+                        phaseId: deletedPhase.id,
+                        isDeleted: false,
+                        ctId: {
+                            in: templateIds
+                        }
+                    },
+                    data: {
+                        isDeleted: true
+                    }
+                });
 
                 return { message: ResponseMessages.SUCCESSFUL }
             } else {
