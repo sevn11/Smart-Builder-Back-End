@@ -22,10 +22,11 @@ export interface QuestionDetails {
     question: string,
     question_type: string,
     question_linked_to_contractor_phase: string,
-    question_linked_to_initial_selection: string,
+    question_linked_to_final_selection: string,
     question_linked_to_paint_selection: string,
     question_linked_to_questionnaire: string,
-    phases_attached_in_questions: string;
+    question_linked_to_phase: string;
+    question_linked_phase_ids: string | number; // This is a list of IDs, so we use an array of numbers
     multiple_options: string;
     question_order: number;
     initial_question_order: number;
@@ -36,19 +37,20 @@ export interface QuestionDetails {
 // ImportData now combines CategoryDetails and the questions array
 export interface ImportData extends CategoryDetails {
     category: string | number | undefined;
-    category_linked_to_initial_selection: string;
+    category_linked_to_final_selection: string;
     category_linked_to_paint_selection: string;
-    category_linked_to_contractor_phase: string;
-    linked_phases_id: string | number; // This is a list of IDs, so we use an array of numbers
+    category_linked_to_phase: string;
+    category_linked_phase_ids: string | number; // This is a list of IDs, so we use an array of numbers
     category_linked_to_questionnaire: string;
     company_category: boolean;
     question: string,
     question_type: string,
     question_linked_to_contractor_phase: string,
-    question_linked_to_initial_selection: string,
+    question_linked_to_final_selection: string,
     question_linked_to_paint_selection: string,
     question_linked_to_questionnaire: string,
-    phases_attached_in_questions: string;
+    question_linked_to_phase: string;
+    question_linked_phase_ids: string | number;
     multiple_options: string;
     category_order: number;
     initial_selection_order: number;
@@ -75,6 +77,10 @@ export class QuestionnaireImportService {
                 groupedData[current.category] = {
                     category: current.category?.toString(),
                     category_linked_to_questionnaire: current.category_linked_to_questionnaire,
+                    category_linked_to_final_selection: current.category_linked_to_final_selection,
+                    category_linked_to_paint_selection: current.category_linked_to_paint_selection,
+                    category_linked_to_phase: current.category_linked_to_phase,
+                    category_linked_phase_ids: current.category_linked_phase_ids,
                     company_category: current.company_category,
                     category_order: current.category_order,
                     questions: [],
@@ -86,6 +92,10 @@ export class QuestionnaireImportService {
                     question: current.question?.toString(),
                     question_type: current.question_type,
                     question_linked_to_questionnaire: current.question_linked_to_questionnaire,
+                    question_linked_to_final_selection: current.question_linked_to_final_selection,
+                    question_linked_to_paint_selection: current.question_linked_to_paint_selection,
+                    question_linked_to_phase: current.question_linked_to_phase,
+                    question_linked_phase_ids: current.question_linked_phase_ids,
                     multiple_options: current.multiple_options,
                     question_order: current.question_order,
                 });
@@ -108,6 +118,12 @@ export class QuestionnaireImportService {
                 data: {
                     name: categoryName,
                     isCompanyCategory: importData.company_category ? true : false,
+                    linkToInitalSelection: importData.category_linked_to_final_selection === 'true',
+                    linkToPaintSelection: importData.category_linked_to_paint_selection === 'true',
+                    linkToPhase: importData.category_linked_to_phase === 'true',
+                    phaseIds: importData.category_linked_phase_ids
+                        ? String(importData.category_linked_phase_ids).split(',').map((id: string) => Number(id.trim()))
+                        : [],
                     companyId: companyId,
                     questionnaireOrder: Number(importData.category_order),
                     questionnaireTemplateId: templateId,
@@ -132,6 +148,12 @@ export class QuestionnaireImportService {
                             questionType: que.question_type,
                             multipleOptions: options,
                             linkToQuestionnaire: true,
+                            linkToInitalSelection: que.question_linked_to_final_selection === 'true',
+                            linkToPaintSelection: que.question_linked_to_paint_selection === 'true',
+                            linkToPhase: que.question_linked_to_phase === 'true',
+                            phaseIds: que.question_linked_phase_ids
+                                ? String(que.question_linked_phase_ids).split(',').map((id: string) => Number(id.trim()))
+                                : [],
                             questionOrder: Number(que.question_order),
                             questionnaireTemplateId: templateId,
                             categoryId: categoryId,
