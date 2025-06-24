@@ -106,17 +106,17 @@ export class JobsService {
                 // Check user project permission
                 let userProjectPermission = await this.databaseService.permissionSet.findUnique({
                     where: { userId: user.id },
-                    select: { projectAccess: true }
+                    select: { projectAccess: true, fullAccess: true }
                 });
-                
                 const hasProjectAccess = userProjectPermission?.projectAccess ?? false;
+                const checkUserId = userProjectPermission?.fullAccess ? true : (hasProjectAccess ? true : false)
                 query.page = query.page === 0 ? 0 : query.page - 1
                 let jobdata = await this.databaseService.job.findMany({
                     where: {
                         companyId,
                         isClosed: query.closed || false,
                         isDeleted: false,
-                        userId: hasProjectAccess ? user.id : undefined,
+                        ...(checkUserId ? {} : { userId: user.id }),
                         customer: {
                             name: {
                                 contains: query.search,
@@ -161,7 +161,7 @@ export class JobsService {
                         companyId,
                         isClosed: query.closed || false,
                         isDeleted: false,
-                        userId: hasProjectAccess ? user.id : undefined,
+                        ...(checkUserId ? {} : { userId: user.id }),
                         customer: {
                             name: {
                                 contains: query.search,
@@ -853,7 +853,7 @@ export class JobsService {
                 }
 
                 let uniqueId = 1;
-                                
+
                 // Check sync status for each schedule
                 const schedulesWithSyncStatus = await Promise.all(
                     job.JobSchedule.map(async (schedule, index) => {
