@@ -116,7 +116,7 @@ export class JobsService {
                         companyId,
                         isClosed: query.closed || false,
                         isDeleted: false,
-                        userId: hasProjectAccess ? user.id : undefined,
+                        ...(hasProjectAccess ? {} : { userId: user.id }),
                         customer: {
                             name: {
                                 contains: query.search,
@@ -161,7 +161,7 @@ export class JobsService {
                         companyId,
                         isClosed: query.closed || false,
                         isDeleted: false,
-                        userId: hasProjectAccess ? user.id : undefined,
+                        ...(hasProjectAccess ? {} : { userId: user.id }),
                         customer: {
                             name: {
                                 contains: query.search,
