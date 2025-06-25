@@ -180,6 +180,7 @@ export class UserService {
             }
     
             if (!userProjectPermission.projectAccess) {
+            if (userProjectPermission.projectAccess) {
                 // If user has global project access, no need to check project
                 return { hasProjectAccess: true };
             }
