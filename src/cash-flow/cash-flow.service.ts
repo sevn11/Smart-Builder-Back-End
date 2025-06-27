@@ -24,11 +24,19 @@ export class CashFlowService {
                         isDeleted: false
                     }
                 });
+                // Check user project permission
+                let userProjectPermission = await this.databaseService.permissionSet.findUnique({
+                    where: { userId: user.id },
+                    select: { projectAccess: true, fullAccess: true }
+                });
+                const hasProjectAccess = userProjectPermission?.projectAccess ?? false;
+                const checkUserId = userProjectPermission?.fullAccess ? true : (hasProjectAccess ? true : false)
 
                 const [projects, cashFlowData] = await Promise.all([
                     this.databaseService.job.findMany({
                         where: {
                             companyId,
+                            ...(checkUserId ? {} : { userId: user.id }),
                             isClosed: false,
                             isDeleted: false
                         },
