@@ -172,13 +172,16 @@ export class UserService {
         try {
             const userProjectPermission = await this.databaseService.permissionSet.findUnique({
                 where: { userId: user.id },
-                select: { projectAccess: true }
+                select: { fullAccess: true, projectAccess: true }
             });
     
             if (!userProjectPermission) {
                 return { hasProjectAccess: false };
             }
     
+            if (userProjectPermission.fullAccess) {
+                return { hasProjectAccess: true };
+            }
             if (userProjectPermission.projectAccess) {
                 // If user has global project access, no need to check project
                 return { hasProjectAccess: true };
