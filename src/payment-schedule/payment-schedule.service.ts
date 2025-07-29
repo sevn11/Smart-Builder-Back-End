@@ -31,7 +31,7 @@ export class PaymentScheduleService {
                                 isDeleted: false
                             },
                             orderBy: {
-                                paymentDate: "asc"
+                                id: 'asc'
                             }
                         },
                     },
