@@ -121,8 +121,11 @@ export class MasterQuestionnaireImportService {
             const categoryId = category.id;
             if (importData.questions && importData.questions.length) {
                 importData.questions.map(async (que) => {
-                    let options = !que.multiple_options ? [] : que.multiple_options.split(', ').map((ques) => ({ text: ques }))
-
+                    let options = !que.multiple_options ? [] : que.multiple_options
+                                                                .split(/\\,/)
+                                                                .map(ques => ques.trim())
+                                                                .filter(Boolean)       // remove empty strings
+                                                                .map(ques => ({ text: ques }));
                     let newQuestions = await this.databaseService.masterTemplateQuestion.create({
                         data: {
                             question: que.question,
