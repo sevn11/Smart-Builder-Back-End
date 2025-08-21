@@ -265,6 +265,7 @@ export class SelectionTemplateService {
             if (!category) {
                 throw new BadRequestException(ResponseMessages.RESOURCE_NOT_FOUND);
             }
+            let oldCategoryPhaseIds = category.phaseIds;
 
             // Update category
             category = await this.databaseService.category.update({
@@ -281,6 +282,65 @@ export class SelectionTemplateService {
                     phaseIds: body.isCategoryLinkedPhase ? body.phaseIds : []
                 }
             });
+
+            // Map Template Type
+            const templateTypeMap = {
+                "initial-selection": TemplateType.SELECTION_INITIAL,
+                "paint-selection": TemplateType.SELECTION_PAINT,
+            };
+
+            const templateType = templateTypeMap[type];
+            if (!templateType) {
+                throw new ForbiddenException("Invalid template type.");
+            }
+
+            const selectionFilters = {
+                [TemplateType.SELECTION_INITIAL]: {
+                    linkFilter: { linkToInitalSelection: true },
+                    categoryOrder: { initialOrder: "asc" },
+                    questionOrder: { initialQuestionOrder: "asc" },
+                },
+                [TemplateType.SELECTION_PAINT]: {
+                    linkFilter: { linkToPaintSelection: true },
+                    categoryOrder: { paintOrder: "asc" },
+                    questionOrder: { paintQuestionOrder: "asc" },
+                },
+            }[templateType];
+
+            const { linkFilter, questionOrder } = selectionFilters;
+
+            const questions = await this.databaseService.templateQuestion.findMany({
+                where: {
+                    ...linkFilter,
+                    isDeleted: false,
+                    categoryId: category.id,
+                },
+                omit: {
+                    isDeleted: false, categoryId: true, questionnaireTemplateId: true
+                },
+                orderBy: questionOrder
+            })
+
+            for (const question of questions) {
+                const questionPhaseIds = question.phaseIds ?? [];
+                const removedPhases = oldCategoryPhaseIds.filter(id => !body.phaseIds.includes(id));
+                const withoutRemoved = questionPhaseIds.filter(id => !removedPhases.includes(id));
+                const mergedPhaseIds = [...new Set([...body.phaseIds, ...withoutRemoved])];
+
+                await this.databaseService.templateQuestion.update({
+                    where: {
+                        id: question.id,
+                        ...linkFilter,
+                        isDeleted: false,
+                        categoryId: category.id,
+                    },
+                    data: {
+                        linkToPhase: body.isCategoryLinkedPhase,
+                        phaseIds: mergedPhaseIds
+                    }
+                })
+            }
+
 
             return { category, message: ResponseMessages.CATEGORY_UPDATED };
 
