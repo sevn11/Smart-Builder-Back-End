@@ -189,6 +189,7 @@ export class QuestionnaireCategoryService {
     categoryId: number,
     body: CreateUpdateCategoryDTO
   ) {
+
     try {
       // Check if User is Admin of the Company.
       if (
@@ -222,7 +223,7 @@ export class QuestionnaireCategoryService {
             isDeleted: false,
           },
         });
-
+        let oldCategoryPhaseIds = category.phaseIds
         let maxOrder = await this.databaseService.category.aggregate({
           _max: {
             questionnaireOrder: true,
@@ -298,7 +299,54 @@ export class QuestionnaireCategoryService {
             })
           }
 
-          return category
+          // Update the phases for questions.
+          const questions = await tx.templateQuestion.findMany({
+            where: {
+              isDeleted: false,
+              categoryId: categoryId,
+            },
+          });
+          for (const question of questions) {
+            const questionPhaseIds = question.phaseIds ?? [];
+            const removedPhases = oldCategoryPhaseIds.filter(id => !body.phaseIds.includes(id));
+            const withoutRemoved = questionPhaseIds.filter(id => !removedPhases.includes(id));
+            const mergedPhaseIds = [...new Set([...withoutRemoved, ...body.phaseIds])];
+            await tx.templateQuestion.update({
+              where: { id: question.id },
+              data: {
+                linkToPhase: body.isCategoryLinkedPhase,
+                phaseIds: mergedPhaseIds,
+              },
+            });
+          }
+
+          const updatedCategory = await tx.category.findUniqueOrThrow({
+            where: {
+              id: categoryId,
+              questionnaireTemplateId: templateId,
+              isCompanyCategory: true,
+              isDeleted: false,
+            },
+            include: {
+              questions: {
+                where: {
+                  isDeleted: false,
+                  categoryId: categoryId,
+                  linkToQuestionnaire: true,
+                },
+                omit: {
+                  isDeleted: true,
+                  categoryId: true,
+                  questionnaireTemplateId: true
+                },
+                orderBy: {
+                  questionOrder: "asc"
+                },
+              }
+            }
+          });
+
+          return updatedCategory
         });
         return { category: response, message: ResponseMessages.CATEGORY_UPDATED };
       }

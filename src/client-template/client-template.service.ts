@@ -223,6 +223,7 @@ export class ClientTemplateService {
                 [SelectionTemplates.INITIAL_SELECTION.toLowerCase().replace(/ /g, "-")]: "linkToInitalSelection",
                 [SelectionTemplates.PAINT_SELECTION.toLowerCase().replace(/ /g, "-")]: "linkToPaintSelection",
             };
+            const oldCategoryPhaseIds = clientCategory.phaseIds;
 
             const { _max } = await this.databaseService.clientCategory.aggregate({
                 _max: { questionnaireOrder: true, initialOrder: true, paintOrder: true, },
@@ -306,6 +307,32 @@ export class ClientTemplateService {
                     })
                 }
             });
+
+            const templateQuestions = await this.databaseService.clientTemplateQuestion.findMany({
+                where: { isDeleted: false, clientTemplateId: template.id, jobId, customerId: job.customerId, ...whereClause },
+                omit: { createdAt: true, updatedAt: true, },
+                orderBy: { [orderByClause[type]['question']]: 'asc' },
+            });
+
+            for (const templateQuestion of templateQuestions) {
+                const questionPhaseIds = templateQuestion.phaseIds ?? [];
+                const removedPhases = oldCategoryPhaseIds.filter(id => !body.phaseIds.includes(id));
+                const withoutRemoved = questionPhaseIds.filter(id => !removedPhases.includes(id));
+                const mergedPhaseIds = [...new Set([...withoutRemoved, ...body.phaseIds])];
+
+                await this.databaseService.clientTemplateQuestion.update({
+                    where: {
+                        id: templateQuestion.id,
+                        isDeleted: false,
+                    },
+                    data: {
+                        linkToPhase: body.isCategoryLinkedPhase,
+                        phaseIds: mergedPhaseIds
+                    }
+                })
+            }
+
+
 
             const clientCategories = await this.databaseService.clientCategory.findMany({
                 where: { isDeleted: false, clientTemplateId: template.id, customerId: job.customerId, jobId, companyId, ...whereClause },
