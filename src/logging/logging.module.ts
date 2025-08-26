@@ -10,7 +10,6 @@ import { LoggingFilter } from './logging.filter';
 const infoFilter = winston.format((info) => {
     return info.level === 'info' ? info : false;
 });
-
 @Module({
     imports: [
         WinstonModule.forRoot({
