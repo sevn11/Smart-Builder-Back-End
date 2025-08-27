@@ -264,7 +264,7 @@ export class ClientTemplateService {
                 decrement.paintOrder = true;
             }
 
-            await this.databaseService.$transaction(async (tx) => {
+            const updatedCategory = await this.databaseService.$transaction(async (tx) => {
                 await tx.clientCategory.update({
                     where: {
                         id: clientCategory.id,
@@ -306,6 +306,20 @@ export class ClientTemplateService {
                         data: { paintOrder: { decrement: 1 } }
                     })
                 }
+
+                const category = await tx.clientCategory.findFirstOrThrow({
+                    where: {
+                        id: clientCategory.id,
+                        isDeleted: false,
+                        clientTemplateId: template.id,
+                        jobId,
+                        customerId: job.customerId,
+                        companyId,
+                        ...whereClause
+                    },
+                });
+
+                return category;
             });
 
             const templateQuestions = await this.databaseService.clientTemplateQuestion.findMany({
@@ -318,7 +332,15 @@ export class ClientTemplateService {
                 const questionPhaseIds = templateQuestion.phaseIds ?? [];
                 const removedPhases = oldCategoryPhaseIds.filter(id => !body.phaseIds.includes(id));
                 const withoutRemoved = questionPhaseIds.filter(id => !removedPhases.includes(id));
-                const mergedPhaseIds = [...new Set([...withoutRemoved, ...body.phaseIds])];
+                const mergedPhaseIds = [...new Set([...withoutRemoved, ...body.phaseIds])].sort((a, b) => a - b);
+
+                let isLinkedInitialSelection = templateQuestion.linkToInitalSelection;
+                let isLinkedPaintSelection = templateQuestion.linkToPaintSelection;
+
+                if (type === 'questionnaire') {
+                    isLinkedInitialSelection = updatedCategory.linkToInitalSelection;
+                    isLinkedPaintSelection = updatedCategory.linkToPaintSelection;
+                }
 
                 await this.databaseService.clientTemplateQuestion.update({
                     where: {
@@ -327,12 +349,12 @@ export class ClientTemplateService {
                     },
                     data: {
                         linkToPhase: body.isCategoryLinkedPhase,
-                        phaseIds: mergedPhaseIds
+                        phaseIds: mergedPhaseIds,
+                        linkToInitalSelection: isLinkedInitialSelection,
+                        linkToPaintSelection: isLinkedPaintSelection
                     }
                 })
             }
-
-
 
             const clientCategories = await this.databaseService.clientCategory.findMany({
                 where: { isDeleted: false, clientTemplateId: template.id, customerId: job.customerId, jobId, companyId, ...whereClause },
@@ -561,6 +583,11 @@ export class ClientTemplateService {
                 });
             }
 
+            if (type === 'questionnaire') {
+                initialSelectionTypes.linkToInitalSelection = category.linkToInitalSelection
+                initialSelectionTypes.linkToPaintSelection = category.linkToPaintSelection
+            }
+
             const selectionTypeLinks = {
                 [SelectionTemplates.INITIAL_SELECTION.toLowerCase().replace(/ /g, "-")]: "linkToInitalSelection",
                 [SelectionTemplates.PAINT_SELECTION.toLowerCase().replace(/ /g, "-")]: "linkToPaintSelection",
@@ -582,16 +609,21 @@ export class ClientTemplateService {
                 orderValues.paintQuestionOrder = (_max?.paintQuestionOrder || 0) + 1;
             }
 
+            const linkToPhase = body.isQuestionLinkedPhase || category.linkToPhase;
+            const mergedPhaseIds = Array.from(
+                new Set([...(category.phaseIds || []), ...(body.phaseIds || [])])
+            ).sort((a, b) => a - b);
+
             await this.databaseService.clientTemplateQuestion.create({
                 data: {
                     question: body.question,
                     questionType: body.type,
                     multipleOptions: body.multipleOptions,
-                    linkToPhase: body.isQuestionLinkedPhase,
+                    linkToPhase: linkToPhase,
                     linkToQuestionnaire: type === 'questionnaire',
                     clientTemplateId: templateId,
                     clientCategoryId: categoryId,
-                    phaseIds: body.phaseIds,
+                    phaseIds: mergedPhaseIds,
                     customerId: job.customerId,
                     jobId: job.id,
                     ...orderValues,

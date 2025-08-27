@@ -32,6 +32,22 @@ export class TemplateQuestionService {
                 let categoryItem = await this.databaseService.category.findUniqueOrThrow({
                     where: { id: categoryId, isDeleted: false }
                 });
+                // Check category link status and selected questions link status
+                const isLinked = body.isQuestionLinkedPhase || categoryItem.linkToPhase;
+
+                // Merge the selected phase id and category's phase id
+                const mergedPhaseIds = Array.from(
+                    new Set([...(categoryItem.phaseIds ?? []), ...(body.phaseIds ?? [])])
+                ).sort((a, b) => a - b);
+
+                if (!body.isQuestionLinkedSelections && (categoryItem.linkToInitalSelection || categoryItem.linkToPaintSelection)) {
+                    body.isQuestionLinkedSelections = true;
+
+                    body.linkedSelections.push(...[
+                        categoryItem.linkToInitalSelection ? SelectionTemplates.INITIAL_SELECTION : null,
+                        categoryItem.linkToPaintSelection ? SelectionTemplates.PAINT_SELECTION : null,
+                    ].filter(Boolean));
+                }
 
                 let { _max: catAggregate } = await this.databaseService.category.aggregate({
                     _max: { questionnaireOrder: true, initialOrder: true, paintOrder: true },
@@ -84,13 +100,13 @@ export class TemplateQuestionService {
                         question: body.question,
                         questionType: body.type,
                         multipleOptions: body.multipleOptions,
-                        linkToPhase: body.isQuestionLinkedPhase,
+                        linkToPhase: isLinked,
                         questionOrder: order,
                         linkToInitalSelection: body.linkedSelections.includes(SelectionTemplates.INITIAL_SELECTION),
                         linkToPaintSelection: body.linkedSelections.includes(SelectionTemplates.PAINT_SELECTION),
                         questionnaireTemplateId: templateId,
                         categoryId: categoryId,
-                        phaseIds: body.phaseIds,
+                        phaseIds: mergedPhaseIds,
                         ...selQuestionOrder
                     },
                     omit: {
