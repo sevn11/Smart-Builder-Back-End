@@ -325,7 +325,7 @@ export class SelectionTemplateService {
                 const questionPhaseIds = question.phaseIds ?? [];
                 const removedPhases = oldCategoryPhaseIds.filter(id => !body.phaseIds.includes(id));
                 const withoutRemoved = questionPhaseIds.filter(id => !removedPhases.includes(id));
-                const mergedPhaseIds = [...new Set([...body.phaseIds, ...withoutRemoved])];
+                const mergedPhaseIds = [...new Set([...body.phaseIds, ...withoutRemoved])].sort((a, b) => a - b);
 
                 await this.databaseService.templateQuestion.update({
                     where: {
@@ -504,24 +504,6 @@ export class SelectionTemplateService {
             const maxOrder = aggregateResult._max?.[orderField] || 0;
             const order = body.questionOrder || maxOrder + 1;
 
-            const label = await this.databaseService.templateQuestion.create({
-                data: {
-                    question: body.question,
-                    multipleOptions: body.multipleOptions,
-                    questionType: body.type,
-                    linkToPhase: body.isQuestionLinkedPhase,
-                    linkToInitalSelection: isLinkedToInitialSelection,
-                    linkToPaintSelection: isLinkedToPaintSelection,
-                    linkToQuestionnaire: false,
-                    questionnaireTemplateId: templateId,
-                    categoryId,
-                    phaseId: body.linkedPhase || null,
-                    questionOrder: 0,
-                    [orderField]: order,
-                    phaseIds: body.phaseIds || null
-                }
-            });
-
             const questionsWhereClause: any = { isDeleted: false }
             if (templateType === TemplateType.SELECTION_INITIAL) {
                 questionsWhereClause.linkToInitalSelection = true;
@@ -532,7 +514,38 @@ export class SelectionTemplateService {
             }
 
             const orderByClause = { [orderField]: 'asc' };
-            const category = await this.databaseService.category.findUniqueOrThrow({
+            let category = await this.databaseService.category.findUniqueOrThrow({
+                where: { id: categoryId, isCompanyCategory: true, isDeleted: false },
+                include: {
+                    questions: {
+                        where: questionsWhereClause,
+                        orderBy: orderByClause
+                    }
+                }
+            });
+
+            const isPhaseLinked = body.isQuestionLinkedPhase || category.linkToPhase;
+            const mergedPhaseIds = Array.from(new Set([...(category.phaseIds ?? []), ...(body.phaseIds ?? [])])).sort((a, b) => a - b);
+
+            const label = await this.databaseService.templateQuestion.create({
+                data: {
+                    question: body.question,
+                    multipleOptions: body.multipleOptions,
+                    questionType: body.type,
+                    linkToPhase: isPhaseLinked,
+                    linkToInitalSelection: isLinkedToInitialSelection,
+                    linkToPaintSelection: isLinkedToPaintSelection,
+                    linkToQuestionnaire: false,
+                    questionnaireTemplateId: templateId,
+                    categoryId,
+                    phaseId: body.linkedPhase || null,
+                    questionOrder: 0,
+                    [orderField]: order,
+                    phaseIds: mergedPhaseIds || null
+                }
+            });
+
+            category = await this.databaseService.category.findUniqueOrThrow({
                 where: { id: categoryId, isCompanyCategory: true, isDeleted: false },
                 include: {
                     questions: {

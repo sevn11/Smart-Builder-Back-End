@@ -310,10 +310,15 @@ export class QuestionnaireCategoryService {
             const questionPhaseIds = question.phaseIds ?? [];
             const removedPhases = oldCategoryPhaseIds.filter(id => !body.phaseIds.includes(id));
             const withoutRemoved = questionPhaseIds.filter(id => !removedPhases.includes(id));
-            const mergedPhaseIds = [...new Set([...withoutRemoved, ...body.phaseIds])];
+            const mergedPhaseIds = [...new Set([...withoutRemoved, ...body.phaseIds])].sort((a, b) => a - b);
+            const linkToInitalSelection = category.linkToInitalSelection;
+            const linkToPaintSelection = category.linkToPaintSelection;
+
             await tx.templateQuestion.update({
               where: { id: question.id },
               data: {
+                linkToInitalSelection: linkToInitalSelection,
+                linkToPaintSelection: linkToPaintSelection,
                 linkToPhase: body.isCategoryLinkedPhase,
                 phaseIds: mergedPhaseIds,
               },
