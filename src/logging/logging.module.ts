@@ -23,6 +23,7 @@ const infoFilter = winston.format((info) => {
                     maxSize: '20m',
                     maxFiles: '1d',
                     level: 'info',
+                    auditFile: 'logs/.audit/info-audit.json',
                     format: winston.format.combine(
                         infoFilter(), // Apply the custom filter here
                         winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
@@ -42,6 +43,7 @@ const infoFilter = winston.format((info) => {
                     maxSize: '20m',
                     maxFiles: '1d',
                     level: 'error',
+                    auditFile: 'logs/.audit/error-audit.json',
                     format: winston.format.combine(
                         winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
                         winston.format.printf(
