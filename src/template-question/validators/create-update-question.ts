@@ -32,7 +32,7 @@ export class CreateUpdateQuestionDTO {
 
     @IsArray()
     @IsOptional()
-    linkedSelections?: string
+    linkedSelections?: string[]
 
     @IsArray()
     @IsOptional()
