@@ -19,9 +19,9 @@ const infoFilter = winston.format((info) => {
                     dirname: 'logs',
                     filename: 'app-%DATE%.log',
                     datePattern: 'YYYY-MM-DD',
-                    zippedArchive: true,
+                    zippedArchive: false,
                     maxSize: '20m',
-                    maxFiles: '1d',
+                    maxFiles: '14d',
                     level: 'info',
                     auditFile: 'logs/.audit/info-audit.json',
                     format: winston.format.combine(
@@ -39,9 +39,9 @@ const infoFilter = winston.format((info) => {
                     dirname: 'logs',
                     filename: 'error-%DATE%.log',
                     datePattern: 'YYYY-MM-DD',
-                    zippedArchive: true,
+                    zippedArchive: false,
                     maxSize: '20m',
-                    maxFiles: '1d',
+                    maxFiles: '14d',
                     level: 'error',
                     auditFile: 'logs/.audit/error-audit.json',
                     format: winston.format.combine(
