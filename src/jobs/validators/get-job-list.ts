@@ -21,6 +21,9 @@ export class GetJobListDTO {
     @IsString()
     @IsOptional()
     search?: string
-
+ 
+    @IsOptional()
+    @IsString()
+    status?: string;
 
 }
