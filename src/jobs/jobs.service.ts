@@ -42,7 +42,7 @@ export class JobsService {
                     data: {
                         descriptionId: body.description,
                         customerId: body.customerId,
-                        status: JobStatus.OPEN,
+                        status: JobStatus.PRE_SALE,
                         companyId: company.id,
                         userId: user.id,
                         calendarTemplateApplied: false,
@@ -110,11 +110,18 @@ export class JobsService {
                 });
                 const hasProjectAccess = userProjectPermission?.projectAccess ?? false;
                 const checkUserId = userProjectPermission?.fullAccess ? true : (hasProjectAccess ? true : false)
-                query.page = query.page === 0 ? 0 : query.page - 1
+                query.page = query.page === 0 ? 0 : query.page - 1;
+                const status = query.status && query.status !== "null" ? query.status : JobStatus.OPEN;
+
                 let jobdata = await this.databaseService.job.findMany({
                     where: {
                         companyId,
-                        isClosed: query.closed || false,
+                        status: status
+                        ? {
+                            equals: status,
+                            mode: "insensitive", // if it's a string field
+                            }
+                        : undefined,
                         isDeleted: false,
                         ...(checkUserId ? {} : { userId: user.id }),
                         customer: {
@@ -159,7 +166,12 @@ export class JobsService {
                 let totalCount = await this.databaseService.job.count({
                     where: {
                         companyId,
-                        isClosed: query.closed || false,
+                        status: status
+                        ? {
+                            equals: status,
+                            mode: "insensitive", // if it's a string field
+                            }
+                        : undefined,
                         isDeleted: false,
                         ...(checkUserId ? {} : { userId: user.id }),
                         customer: {
