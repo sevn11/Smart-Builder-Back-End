@@ -187,7 +187,18 @@ export class JobContractorService {
                         isDeleted: false
                     }
                 });
-                let replyTo = ccMail;
+
+                let replyTo = null;
+                if (ccMail !== null && ccMail !== undefined && ccMail.trim() !== "") {
+                    replyTo = ccMail;
+                }else{
+                    if (!company.email) {
+                        throw new ForbiddenException("Company email not found");
+                    }
+
+                    replyTo = company.email;
+
+                }
 
                 await Promise.all(jobContractors.map(async (jobContractor) => {
                     // Prepare attachments array
