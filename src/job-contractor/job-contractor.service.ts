@@ -422,13 +422,18 @@ export class JobContractorService {
                                         if (question?.answer?.answerIds?.length > 0) {
                                             if (question?.answer?.answerIds.includes("other")) {
                                                 let options = question?.multipleOptions as any;
-                                                answer = [
-                                                    options
-                                                      .filter((option, index) => question.answer.answerIds.includes(String(index)) && option.text !== "other")
-                                                      .map(option => option.text)
-                                                      .join(", "),
-                                                    question?.answer?.answerText ?? "-"
-                                                  ].join(", ")
+                                                let selectedOptions = options
+                                                    .filter((option, index) => question.answer.answerIds.includes(String(index)) && option.text !== "other")
+                                                    .map(option => option.text);
+
+                                                if (selectedOptions.length > 0) {
+                                                    // if other + others → others first, then otherText
+                                                    answer = [...selectedOptions, question?.answer?.answerText ?? "-"].join(", ");
+                                                } else {
+                                                    // if only other → show only otherText
+                                                    answer = question?.answer?.answerText ?? "-";
+                                                }
+                                                
                                             } else {
                                             let options = question?.multipleOptions as any;
                                             answer = options.filter((option, index) => question.answer.answerIds.includes(String(index)))
