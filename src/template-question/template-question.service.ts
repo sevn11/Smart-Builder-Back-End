@@ -278,32 +278,6 @@ export class TemplateQuestionService {
                         isDeleted: false,
                     }
                 })
-                if (!categoryItem.linkToInitalSelection || !categoryItem.linkToPaintSelection) {
-
-                    let { _max: maxOrders } = await this.databaseService.category.aggregate({
-                        _max: { questionnaireOrder: true, initialOrder: true, paintOrder: true },
-                        where: { questionnaireTemplateId: templateId, isDeleted: false }
-                    });
-                    const updatePayload: Record<string, any> = {};
-
-                    if (body.linkedSelections.includes(SelectionTemplates.INITIAL_SELECTION) && !categoryItem.linkToInitalSelection) {
-                        updatePayload.initialOrder = (maxOrders.initialOrder ?? 0) + 1;
-                        updatePayload.linkToInitalSelection = true;
-                    }
-
-                    if (body.linkedSelections.includes(SelectionTemplates.PAINT_SELECTION) && !categoryItem.linkToPaintSelection) {
-                        updatePayload.paintOrder = (maxOrders.paintOrder ?? 0) + 1;
-                        updatePayload.linkToPaintSelection = true;
-                    }
-
-                    // Update only if there's data to update
-                    if (Object.keys(updatePayload).length > 0) {
-                        categoryItem = await this.databaseService.category.update({
-                            where: { id: categoryId, isDeleted: false },
-                            data: updatePayload,
-                        });
-                    }
-                }
 
                 let selQuestionOrder: any = {}
                 if (templateQuestion.initialQuestionOrder === 0 && body.linkedSelections.includes(SelectionTemplates.INITIAL_SELECTION)) {
