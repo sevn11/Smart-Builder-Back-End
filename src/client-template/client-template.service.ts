@@ -710,8 +710,6 @@ export class ClientTemplateService {
                 initialSelectionTypes[selectionTypeLinks[type]] = true;
             }
 
-
-            await this.alterCategory(template.id, clientCategory.id, initialSelectionTypes)
             if (initialSelectionTypes.linkToInitalSelection) {
                 if (!question.linkToInitalSelection) {
                     orderValues.initialQuestionOrder = (_max?.initialQuestionOrder || 0) + 1;
@@ -737,18 +735,6 @@ export class ClientTemplateService {
             if (type === 'questionnaire' && question.linkToPaintSelection && !initialSelectionTypes.linkToPaintSelection) {
                 orderValues.paintQuestionOrder = 0
                 decrement.paintOrder = true;
-            }
-
-            if (!clientCategory.linkToInitalSelection || !clientCategory.linkToPaintSelection) {
-                if (Object.keys(initialSelectionTypes).length > 0) {
-                    const cat = await this.databaseService.clientCategory.update({
-                        where: {
-                            id: clientCategory.id,
-                            isDeleted: false,
-                        },
-                        data: initialSelectionTypes
-                    });
-                }
             }
 
             await this.databaseService.$transaction(async (tx) => {
