@@ -473,37 +473,56 @@ export class JobProjectEstimatorService {
                     throw new ForbiddenException("Action Not Allowed");
                 }
 
-                const prEstToDelete = await this.databaseService.jobProjectEstimator.findFirstOrThrow({
-                    where: {
-                        id: projectEstimatorId,
-                        isDeleted: false
-                    }
+                const pr = await this.databaseService.jobProjectEstimator.findUnique({
+                where: { id: projectEstimatorId },
+                select: {
+                    id: true,
+                    isDeleted: true,
+                    order: true,
+                    jobProjectEstimatorHeaderId: true,
+                },
                 });
 
-                const deleteOrder = prEstToDelete.order;
-                const deleteHeaderId = prEstToDelete.jobProjectEstimatorHeaderId;
-                await this.databaseService.$transaction(async (tx) => {
-                    await tx.jobProjectEstimator.update({
-                        where: {
-                            id: projectEstimatorId,
-                            isDeleted: false
-                        },
-                        data: {
-                            isDeleted: true,
-                            order: 0
-                        }
-                    })
-                    await tx.jobProjectEstimator.updateMany({
-                        where: {
-                            jobProjectEstimatorHeaderId: deleteHeaderId,
-                            isDeleted: false,
-                            order: { gt: deleteOrder }
-                        },
-                        data: { order: { decrement: 1 } }
-                    })
-                })
-                return { message: ResponseMessages.SUCCESSFUL }
-            } else {
+                if (!pr) {
+                    return { message: ResponseMessages.SUCCESSFUL };
+                }
+
+                if (pr.isDeleted) {
+                    return { message: ResponseMessages.SUCCESSFUL };
+                }
+
+
+                const deleteOrder = pr.order;
+                const deleteHeaderId = pr.jobProjectEstimatorHeaderId;
+                                
+                const deleteResult =  await this.databaseService.jobProjectEstimator.updateMany({
+                    where: {
+                    id: projectEstimatorId,
+                    isDeleted: false, 
+                    },
+                    data: {
+                    isDeleted: true,
+                    order: 0,
+                    },
+                });
+
+                if (deleteResult.count === 0) {
+                return { message: ResponseMessages.SUCCESSFUL };
+                }
+
+                await this.databaseService.jobProjectEstimator.updateMany({
+                where: {
+                    jobProjectEstimatorHeaderId: deleteHeaderId,
+                    isDeleted: false,
+                    order: { gt: deleteOrder },
+                },
+                data: {
+                    order: { decrement: 1 },
+                },
+                });
+
+                return { message: ResponseMessages.SUCCESSFUL };
+             } else {
                 throw new ForbiddenException("Action Not Allowed");
             }
 
@@ -511,13 +530,18 @@ export class JobProjectEstimatorService {
             console.log(error);
             // Database Exceptions
             if (error instanceof PrismaClientKnownRequestError) {
-                if (error.code == PrismaErrorCodes.NOT_FOUND)
-                    throw new BadRequestException(ResponseMessages.RESOURCE_NOT_FOUND);
-                else {
-                    console.log(error.code);
-                }
-            } else if (error instanceof ForbiddenException) {
-                throw error;
+            if (error.code === PrismaErrorCodes.NOT_FOUND) {
+                throw new BadRequestException(ResponseMessages.RESOURCE_NOT_FOUND);
+            }
+
+            throw new BadRequestException('Invalid request');
+            }
+
+            if (error instanceof ForbiddenException) {
+            throw error;
+            }
+            if (error instanceof BadRequestException) {
+            throw error;
             }
             throw new InternalServerErrorException();
         }
