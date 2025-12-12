@@ -101,6 +101,23 @@ export class JobProjectEstimatorController {
         return this.jobProjectEstimatorService.deleteProjectEstimator(user, companyId, jobId, projectEstimatorId);
     }
 
+    @Post('bulk-delete')
+    @HttpCode(HttpStatus.OK)
+    bulkDeleteProjectEstimators(
+        @GetUser() user: User,
+        @Param('companyId', ParseIntPipe) companyId: number,
+        @Param('jobId', ParseIntPipe) jobId: number,
+        @Body() body: { ids: number[] }
+    ) {
+        return this.jobProjectEstimatorService.bulkDeleteProjectEstimators(
+            user,
+            companyId,
+            jobId,
+            body.ids
+        );
+    }
+
+
     // insert new data for Accounting section
     @Post('accounting')
     @HttpCode(HttpStatus.OK)
