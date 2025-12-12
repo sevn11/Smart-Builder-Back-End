@@ -464,6 +464,88 @@ export class JobProjectEstimatorService {
         }
     }
 
+    // Delete Estimator Multipile Rows
+    async bulkDeleteProjectEstimators(user: User, companyId: number, jobId: number, ids: number[]) {
+        try {
+            // Check if User is Admin of the Company.
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) {
+                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
+                    throw new ForbiddenException("Action Not Allowed");
+                }
+
+                const rows = await this.databaseService.jobProjectEstimator.findMany({
+                    where: { id: { in: ids }, isDeleted: false, },
+                    select: {
+                        id: true,
+                        jobProjectEstimatorHeaderId: true,
+                        order: true,
+                    },
+                });
+
+                if (rows.length === 0) {
+                    throw new BadRequestException("No valid rows found to delete");
+                }
+                // Group rows by header
+                const headerMap = new Map<number, number[]>();
+                rows.forEach((row) => {
+                    if (!headerMap.has(row.jobProjectEstimatorHeaderId)) {
+                        headerMap.set(row.jobProjectEstimatorHeaderId, []);
+                    }
+                    headerMap.get(row.jobProjectEstimatorHeaderId)!.push(row.order);
+                });
+        
+        
+                await this.databaseService.$transaction(async (tx) => {
+                    await tx.jobProjectEstimator.updateMany({
+                        where: {
+                            id: { in: ids },
+                        },
+                        data: {
+                            isDeleted: true,
+                            order: 0,
+                        },
+                    });
+
+                    for (const [headerId] of headerMap.entries()) {
+                        const remainingRows = await tx.jobProjectEstimator.findMany({
+                            where: {
+                                jobProjectEstimatorHeaderId: headerId,
+                                isDeleted: false,
+                            },
+                            orderBy: { order: 'asc' },
+                            select: { id: true },
+                        });
+
+                        for (let i = 0; i < remainingRows.length; i++) {
+                            await tx.jobProjectEstimator.update({
+                                where: { id: remainingRows[i].id },
+                                data: { order: i + 1 },
+                            });
+                        }
+                    }
+                });
+
+                return { message: ResponseMessages.SUCCESSFUL }
+            } else {
+                throw new ForbiddenException("Action Not Allowed");
+            }
+
+        } catch (error) {
+            console.log(error);
+            // Database Exceptions
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code == PrismaErrorCodes.NOT_FOUND)
+                    throw new BadRequestException(ResponseMessages.RESOURCE_NOT_FOUND);
+                else {
+                    console.log(error.code);
+                }
+            } else if (error instanceof ForbiddenException) {
+                throw error;
+            }
+            throw new InternalServerErrorException();
+        }
+    }
+
     // delete project estimator data row of a header
     async deleteProjectEstimator(user: User, companyId: number, jobId: number, projectEstimatorId: number) {
         try {
@@ -473,56 +555,37 @@ export class JobProjectEstimatorService {
                     throw new ForbiddenException("Action Not Allowed");
                 }
 
-                const pr = await this.databaseService.jobProjectEstimator.findUnique({
-                where: { id: projectEstimatorId },
-                select: {
-                    id: true,
-                    isDeleted: true,
-                    order: true,
-                    jobProjectEstimatorHeaderId: true,
-                },
-                });
-
-                if (!pr) {
-                    return { message: ResponseMessages.SUCCESSFUL };
-                }
-
-                if (pr.isDeleted) {
-                    return { message: ResponseMessages.SUCCESSFUL };
-                }
-
-
-                const deleteOrder = pr.order;
-                const deleteHeaderId = pr.jobProjectEstimatorHeaderId;
-                                
-                const deleteResult =  await this.databaseService.jobProjectEstimator.updateMany({
+                const prEstToDelete = await this.databaseService.jobProjectEstimator.findFirstOrThrow({
                     where: {
-                    id: projectEstimatorId,
-                    isDeleted: false, 
-                    },
-                    data: {
-                    isDeleted: true,
-                    order: 0,
-                    },
+                        id: projectEstimatorId,
+                        isDeleted: false
+                    }
                 });
 
-                if (deleteResult.count === 0) {
-                return { message: ResponseMessages.SUCCESSFUL };
-                }
-
-                await this.databaseService.jobProjectEstimator.updateMany({
-                where: {
-                    jobProjectEstimatorHeaderId: deleteHeaderId,
-                    isDeleted: false,
-                    order: { gt: deleteOrder },
-                },
-                data: {
-                    order: { decrement: 1 },
-                },
-                });
-
-                return { message: ResponseMessages.SUCCESSFUL };
-             } else {
+                const deleteOrder = prEstToDelete.order;
+                const deleteHeaderId = prEstToDelete.jobProjectEstimatorHeaderId;
+                await this.databaseService.$transaction(async (tx) => {
+                    await tx.jobProjectEstimator.update({
+                        where: {
+                            id: projectEstimatorId,
+                            isDeleted: false
+                        },
+                        data: {
+                            isDeleted: true,
+                            order: 0
+                        }
+                    })
+                    await tx.jobProjectEstimator.updateMany({
+                        where: {
+                            jobProjectEstimatorHeaderId: deleteHeaderId,
+                            isDeleted: false,
+                            order: { gt: deleteOrder }
+                        },
+                        data: { order: { decrement: 1 } }
+                    })
+                })
+                return { message: ResponseMessages.SUCCESSFUL }
+            } else {
                 throw new ForbiddenException("Action Not Allowed");
             }
 
@@ -530,18 +593,13 @@ export class JobProjectEstimatorService {
             console.log(error);
             // Database Exceptions
             if (error instanceof PrismaClientKnownRequestError) {
-            if (error.code === PrismaErrorCodes.NOT_FOUND) {
-                throw new BadRequestException(ResponseMessages.RESOURCE_NOT_FOUND);
-            }
-
-            throw new BadRequestException('Invalid request');
-            }
-
-            if (error instanceof ForbiddenException) {
-            throw error;
-            }
-            if (error instanceof BadRequestException) {
-            throw error;
+                if (error.code == PrismaErrorCodes.NOT_FOUND)
+                    throw new BadRequestException(ResponseMessages.RESOURCE_NOT_FOUND);
+                else {
+                    console.log(error.code);
+                }
+            } else if (error instanceof ForbiddenException) {
+                throw error;
             }
             throw new InternalServerErrorException();
         }
