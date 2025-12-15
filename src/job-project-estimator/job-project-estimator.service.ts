@@ -464,6 +464,88 @@ export class JobProjectEstimatorService {
         }
     }
 
+    // Delete Estimator Multipile Rows
+    async bulkDeleteProjectEstimators(user: User, companyId: number, jobId: number, ids: number[]) {
+        try {
+            // Check if User is Admin of the Company.
+            if (user.userType == UserTypes.ADMIN || user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) {
+                if (user.userType == UserTypes.BUILDER && user.companyId !== companyId) {
+                    throw new ForbiddenException("Action Not Allowed");
+                }
+
+                const rows = await this.databaseService.jobProjectEstimator.findMany({
+                    where: { id: { in: ids }, isDeleted: false, },
+                    select: {
+                        id: true,
+                        jobProjectEstimatorHeaderId: true,
+                        order: true,
+                    },
+                });
+
+                if (rows.length === 0) {
+                    throw new BadRequestException("No valid rows found to delete");
+                }
+                // Group rows by header
+                const headerMap = new Map<number, number[]>();
+                rows.forEach((row) => {
+                    if (!headerMap.has(row.jobProjectEstimatorHeaderId)) {
+                        headerMap.set(row.jobProjectEstimatorHeaderId, []);
+                    }
+                    headerMap.get(row.jobProjectEstimatorHeaderId)!.push(row.order);
+                });
+        
+        
+                await this.databaseService.$transaction(async (tx) => {
+                    await tx.jobProjectEstimator.updateMany({
+                        where: {
+                            id: { in: ids },
+                        },
+                        data: {
+                            isDeleted: true,
+                            order: 0,
+                        },
+                    });
+
+                    for (const [headerId] of headerMap.entries()) {
+                        const remainingRows = await tx.jobProjectEstimator.findMany({
+                            where: {
+                                jobProjectEstimatorHeaderId: headerId,
+                                isDeleted: false,
+                            },
+                            orderBy: { order: 'asc' },
+                            select: { id: true },
+                        });
+
+                        for (let i = 0; i < remainingRows.length; i++) {
+                            await tx.jobProjectEstimator.update({
+                                where: { id: remainingRows[i].id },
+                                data: { order: i + 1 },
+                            });
+                        }
+                    }
+                });
+
+                return { message: ResponseMessages.SUCCESSFUL }
+            } else {
+                throw new ForbiddenException("Action Not Allowed");
+            }
+
+        } catch (error) {
+            console.log(error);
+            // Database Exceptions
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code == PrismaErrorCodes.NOT_FOUND)
+                    throw new BadRequestException(ResponseMessages.RESOURCE_NOT_FOUND);
+                else {
+                    console.log(error.code);
+                }
+            } else if (error instanceof ForbiddenException) {
+                throw error;
+            }
+            throw new InternalServerErrorException();
+        }
+    }
+
     // delete project estimator data row of a header
     async deleteProjectEstimator(user: User, companyId: number, jobId: number, projectEstimatorId: number) {
         try {
