@@ -37,20 +37,31 @@ export class AuthService {
 
             let data = await this.databaseService.seoSettings.findMany();
             let seoSettings = data[0];
-            
+
             let planAmount = 0;
-            body.planType == BuilderPlanTypes.MONTHLY 
-                ? planAmount = seoSettings.monthlyPlanAmount.toNumber() 
+            body.planType == BuilderPlanTypes.MONTHLY
+                ? planAmount = seoSettings.monthlyPlanAmount.toNumber()
                 : planAmount = seoSettings.yearlyPlanAmount.toNumber()
 
-            if(data) {
+            if (data) {
                 // Create new customer and add card details inside stripe
                 let promoCode: string;
-                if(body.promoCode) {
+                let promoCodeInfo: any = null;
+
+                if (body.promoCode) {
                     promoCode = body.promoCode;
+
+                    const promoResult = promoCode.startsWith("promo_")
+                        ? await this.stripeService.getPromoCodeById(promoCode)
+                        : await this.stripeService.getPromoCodeInfo(promoCode);
+
+                    if (promoResult.status) {
+                        promoCodeInfo = promoResult.info;
+                        promoCodeInfo.builderPlanAmount = planAmount;
+                    }
                 }
                 let response = await this.stripeService.createBuilderSubscription(body, planAmount, promoCode);
-                if(response.status) {
+                if (response.status) {
                     let signNowSubscriptionResponse = null;
                     let signNowSubStatus = true;
                     // Create a SignNow subscription if the builder chooses a plan
@@ -59,8 +70,8 @@ export class AuthService {
                         body.signNowPlanType == BuilderPlanTypes.MONTHLY
                             ? signNowPlanAmount = seoSettings.signNowMonthlyAmount.toNumber()
                             : signNowPlanAmount = seoSettings.signNowYearlyAmount.toNumber()
-    
-                        signNowSubscriptionResponse = await this.stripeService.createBuilderSignNowSubscription(body, response.stripeCustomerId, signNowPlanAmount);
+
+                        signNowSubscriptionResponse = await this.stripeService.createBuilderSignNowSubscription(body, response.stripeCustomerId, signNowPlanAmount, false, promoCode, promoCodeInfo);
                         if (!signNowSubscriptionResponse.status) {
                             signNowSubStatus = false
                         }
