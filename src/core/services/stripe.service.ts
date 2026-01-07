@@ -395,7 +395,7 @@ export class StripeService {
                         const couponParams = {
                             amount_off: Math.round(remainingPromoValue * 100),
                             currency: promoCodeInfo.currency || 'usd',
-                            duration: 'once',
+                            duration: promoCodeInfo.duration || 'once',
                         };
                         const existingCoupons = await this.StripeClient.coupons.list({
                             limit: 100, 
@@ -407,10 +407,10 @@ export class StripeService {
                             coupon.valid === true
                         );
                         if (!signNowCoupon) {                            
-                            const signNowCoupon = await this.StripeClient.coupons.create({
+                            signNowCoupon = await this.StripeClient.coupons.create({
                                 amount_off: Math.round(remainingPromoValue * 100),
                                 currency: promoCodeInfo.currency || 'usd',
-                                duration: 'once',
+                                duration: promoCodeInfo.duration || 'once',
                                 name: `SignNow Discount from ${promoCodeInfo.name || promoCodeInfo.code}`,
                             });
                         }
@@ -821,6 +821,7 @@ export class StripeService {
                     percentOff: promo.coupon?.percent_off ?? null,
                     amountOff: promo.coupon?.amount_off ?? null,
                     currency: promo.coupon?.currency ?? null,
+                    duration: promo.coupon?.duration ?? null,
                 },
             };
         } catch (error) {
