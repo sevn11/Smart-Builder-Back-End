@@ -347,15 +347,15 @@ export class StripeService {
     }
 
     // Function to create new subscription for sign now
-    async createBuilderSignNowSubscription(body: any, stripeCustomerId: string, planAmount: number, isDemoUser?: boolean) {
+    async createBuilderSignNowSubscription(body: any, stripeCustomerId: string, planAmount: number, isDemoUser?: boolean, promoCode?: string, promoCodeInfo?: any) {
         try {
             const signNowPlanType = body.signNowPlanType == BuilderPlanTypes.MONTHLY ? 'month' : 'year';
-    
+
             // Create new product in stripe
             const product = await this.StripeClient.products.create({
                 name: `${body.companyName || body.name}-SignNow`
             });
-    
+
             // Create a price for the product
             const price = await this.StripeClient.prices.create({
                 unit_amount: planAmount * 100,
@@ -375,9 +375,50 @@ export class StripeService {
 
             // Apply coupon for demo builders
             let coupon: string;
-            if(isDemoUser) {
+            if (isDemoUser) {
                 coupon = await this.createCoupon();
                 subscriptionPayload.coupon = coupon;
+            }
+
+            if (promoCode && promoCodeInfo) {
+
+                if (promoCodeInfo.percentOff) {
+                    subscriptionPayload.promotion_code = promoCodeInfo.promotionCodeId;
+                }
+                else if (promoCodeInfo.amountOff) {
+
+                    const discountValue = promoCodeInfo.amountOff / 100;
+
+                    const remainingPromoValue = discountValue - (promoCodeInfo.builderPlanAmount || 0);
+
+                    if (remainingPromoValue > 0) {
+                        const couponParams = {
+                            amount_off: Math.round(remainingPromoValue * 100),
+                            currency: promoCodeInfo.currency || 'usd',
+                            duration: promoCodeInfo.duration || 'once',
+                        };
+                        const existingCoupons = await this.StripeClient.coupons.list({
+                            limit: 100, 
+                        });
+                        let signNowCoupon = existingCoupons.data.find(coupon => 
+                            coupon.amount_off === couponParams.amount_off &&
+                            coupon.currency === couponParams.currency &&
+                            coupon.duration === couponParams.duration &&
+                            coupon.valid === true
+                        );
+                        if (!signNowCoupon) {                            
+                            signNowCoupon = await this.StripeClient.coupons.create({
+                                amount_off: Math.round(remainingPromoValue * 100),
+                                currency: promoCodeInfo.currency || 'usd',
+                                duration: promoCodeInfo.duration || 'once',
+                                name: `SignNow Discount from ${promoCodeInfo.name || promoCodeInfo.code}`,
+                            });
+                        }
+
+
+                        subscriptionPayload.coupon = signNowCoupon.id;
+                    }
+                }
             }
             // Create a subscription for sign-now
             const subscription = await this.StripeClient.subscriptions.create(subscriptionPayload);
@@ -756,6 +797,39 @@ export class StripeService {
                 info: null,
                 message: "Invalid promo code"
             }
+        }
+    }
+
+    async getPromoCodeById(promoCodeId: string) {
+        try {
+            const promo = await this.StripeClient.promotionCodes.retrieve(promoCodeId);
+
+            if (!promo || !promo.active) {
+                return {
+                    status: false,
+                    info: null,
+                    message: "Promo code is inactive or invalid",
+                };
+            }
+
+            return {
+                status: true,
+                info: {
+                    promotionCodeId: promo.id,
+                    code: promo.code,
+                    couponId: promo.coupon?.id,
+                    percentOff: promo.coupon?.percent_off ?? null,
+                    amountOff: promo.coupon?.amount_off ?? null,
+                    currency: promo.coupon?.currency ?? null,
+                    duration: promo.coupon?.duration ?? null,
+                },
+            };
+        } catch (error) {
+            return {
+                status: false,
+                info: null,
+                message: "Promo code not found in Stripe",
+            };
         }
     }
 }
