@@ -347,7 +347,7 @@ export class StripeService {
     }
 
     // Function to create new subscription for sign now
-    async createBuilderSignNowSubscription(body: any, stripeCustomerId: string, planAmount: number, isDemoUser?: boolean, promoCode?: string, promoCodeInfo?: any) {
+    async createBuilderSignNowSubscription(body: any, stripeCustomerId: string, planAmount: number, isDemoUser?: boolean, promoCode?: string, promoCodeInfo?: any, addonCouponId?: string) {
         try {
             const signNowPlanType = body.signNowPlanType == BuilderPlanTypes.MONTHLY ? 'month' : 'year';
 
@@ -392,31 +392,7 @@ export class StripeService {
                     const remainingPromoValue = discountValue - (promoCodeInfo.builderPlanAmount || 0);
 
                     if (remainingPromoValue > 0) {
-                        const couponParams = {
-                            amount_off: Math.round(remainingPromoValue * 100),
-                            currency: promoCodeInfo.currency || 'usd',
-                            duration: promoCodeInfo.duration || 'once',
-                        };
-                        const existingCoupons = await this.StripeClient.coupons.list({
-                            limit: 100, 
-                        });
-                        let signNowCoupon = existingCoupons.data.find(coupon => 
-                            coupon.amount_off === couponParams.amount_off &&
-                            coupon.currency === couponParams.currency &&
-                            coupon.duration === couponParams.duration &&
-                            coupon.valid === true
-                        );
-                        if (!signNowCoupon) {                            
-                            signNowCoupon = await this.StripeClient.coupons.create({
-                                amount_off: Math.round(remainingPromoValue * 100),
-                                currency: promoCodeInfo.currency || 'usd',
-                                duration: promoCodeInfo.duration || 'once',
-                                name: `SignNow Discount from ${promoCodeInfo.name || promoCodeInfo.code}`,
-                            });
-                        }
-
-
-                        subscriptionPayload.coupon = signNowCoupon.id;
+                        subscriptionPayload.coupon = addonCouponId;
                     }
                 }
             }
@@ -830,6 +806,45 @@ export class StripeService {
                 info: null,
                 message: "Promo code not found in Stripe",
             };
+        }
+    }
+
+
+    async couponsCreate(promoCodeInfo?: any ){
+     
+        try {
+
+            const discountValue = promoCodeInfo.amountOff / 100;
+
+            const remainingPromoValue = discountValue - (promoCodeInfo.builderPlanAmount || 0);
+
+            const couponParams = {
+                amount_off: Math.round(remainingPromoValue * 100),
+                currency: promoCodeInfo.currency || 'usd',
+                duration: promoCodeInfo.duration || 'once',
+            };
+            const existingCoupons = await this.StripeClient.coupons.list({
+                limit: 100, 
+            });
+            let signNowCoupon = existingCoupons.data.find(coupon => 
+                coupon.amount_off === couponParams.amount_off &&
+                coupon.currency === couponParams.currency &&
+                coupon.duration === couponParams.duration &&
+                coupon.valid === true
+            );
+
+            if (!signNowCoupon) {                            
+                signNowCoupon = await this.StripeClient.coupons.create({
+                    amount_off: Math.round(remainingPromoValue * 100),
+                    currency: promoCodeInfo.currency || 'usd',
+                    duration: promoCodeInfo.duration || 'once',
+                    name: `Addon : ${promoCodeInfo.name || promoCodeInfo.code}`,
+                });
+            }
+
+            return signNowCoupon;
+        } catch (error) {
+            throw new Error("Failed to fetch Coupon");
         }
     }
 }

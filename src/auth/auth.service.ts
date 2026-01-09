@@ -60,6 +60,23 @@ export class AuthService {
                         promoCodeInfo.builderPlanAmount = planAmount;
                     }
                 }
+                let Addoncoupon = null;
+
+                if (promoCode && promoCodeInfo) {
+                    if (promoCodeInfo.amountOff) {
+                        const discountValue = promoCodeInfo.amountOff / 100;
+                        const remainingPromoValue = discountValue - (promoCodeInfo.builderPlanAmount || 0);
+
+                        if (remainingPromoValue > 0) {
+
+                            Addoncoupon = await this.stripeService.couponsCreate(promoCodeInfo);
+
+                            if (!Addoncoupon) {
+                                throw new BadRequestException("Failed to fetch Coupon, Please try again later");
+                            }
+                        }
+                    }
+                }
                 let response = await this.stripeService.createBuilderSubscription(body, planAmount, promoCode);
                 if (response.status) {
                     let signNowSubscriptionResponse = null;
@@ -71,7 +88,7 @@ export class AuthService {
                             ? signNowPlanAmount = seoSettings.signNowMonthlyAmount.toNumber()
                             : signNowPlanAmount = seoSettings.signNowYearlyAmount.toNumber()
 
-                        signNowSubscriptionResponse = await this.stripeService.createBuilderSignNowSubscription(body, response.stripeCustomerId, signNowPlanAmount, false, promoCode, promoCodeInfo);
+                        signNowSubscriptionResponse = await this.stripeService.createBuilderSignNowSubscription(body, response.stripeCustomerId, signNowPlanAmount, false, promoCode, promoCodeInfo , Addoncoupon?.id);
                         if (!signNowSubscriptionResponse.status) {
                             signNowSubStatus = false
                         }
@@ -155,6 +172,10 @@ export class AuthService {
                 if (ex.code == PrismaErrorCodes.UNIQUE_CONSTRAINT_ERROR) {
                     throw new BadRequestException(ResponseMessages.UNIQUE_EMAIL_ERROR);
                 }
+            }
+
+            if (ex.message == "Failed to fetch Coupon") {
+                throw new BadRequestException("Failed to fetch promo code, Please try again later");
             }
             throw new InternalServerErrorException()
         }
