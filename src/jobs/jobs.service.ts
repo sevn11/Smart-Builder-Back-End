@@ -117,11 +117,11 @@ export class JobsService {
                     where: {
                         companyId,
                         status: status
-                        ? {
-                            equals: status,
-                            mode: "insensitive", // if it's a string field
+                            ? {
+                                equals: status,
+                                mode: "insensitive", // if it's a string field
                             }
-                        : undefined,
+                            : undefined,
                         isDeleted: false,
                         ...(checkUserId ? {} : { userId: user.id }),
                         customer: {
@@ -167,11 +167,11 @@ export class JobsService {
                     where: {
                         companyId,
                         status: status
-                        ? {
-                            equals: status,
-                            mode: "insensitive", // if it's a string field
+                            ? {
+                                equals: status,
+                                mode: "insensitive", // if it's a string field
                             }
-                        : undefined,
+                            : undefined,
                         isDeleted: false,
                         ...(checkUserId ? {} : { userId: user.id }),
                         customer: {
@@ -861,7 +861,7 @@ export class JobsService {
                 });
 
                 if (!job) {
-                    return { error: 'Job not found' };
+                    return { error: 'Job not found, or it will be closed or deleted. Please check the project status and try again.' };
                 }
 
                 let uniqueId = 1;
