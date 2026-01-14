@@ -60,7 +60,7 @@ export class AuthService {
                         promoCodeInfo.builderPlanAmount = planAmount;
                     }
                 }
-                let Addoncoupon = null;
+                let addOnCoupon = null;
 
                 if (promoCode && promoCodeInfo) {
                     if (promoCodeInfo.amountOff) {
@@ -69,9 +69,9 @@ export class AuthService {
 
                         if (remainingPromoValue > 0) {
 
-                            Addoncoupon = await this.stripeService.couponsCreate(promoCodeInfo);
+                            addOnCoupon = await this.stripeService.couponsCreate(promoCodeInfo);
 
-                            if (!Addoncoupon) {
+                            if (!addOnCoupon) {
                                 throw new BadRequestException("Failed to fetch Coupon, Please try again later");
                             }
                         }
@@ -88,7 +88,7 @@ export class AuthService {
                             ? signNowPlanAmount = seoSettings.signNowMonthlyAmount.toNumber()
                             : signNowPlanAmount = seoSettings.signNowYearlyAmount.toNumber()
 
-                        signNowSubscriptionResponse = await this.stripeService.createBuilderSignNowSubscription(body, response.stripeCustomerId, signNowPlanAmount, false, promoCode, promoCodeInfo , Addoncoupon?.id);
+                        signNowSubscriptionResponse = await this.stripeService.createBuilderSignNowSubscription(body, response.stripeCustomerId, signNowPlanAmount, false, promoCode, promoCodeInfo, addOnCoupon?.id);
                         if (!signNowSubscriptionResponse.status) {
                             signNowSubStatus = false
                         }
