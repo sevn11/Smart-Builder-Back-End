@@ -65,7 +65,7 @@ export class StripeService {
             // Create a subscription for the new employee
             let subscription: Stripe.Subscription;
             const now = Math.floor(Date.now() / 1000);
-            
+
             const subscriptionPayload: Stripe.SubscriptionCreateParams = {
                 customer: customer.id,
                 items: [{ price: price.id }],
@@ -83,7 +83,7 @@ export class StripeService {
             }
 
             let coupon: string;
-            if(builder.isDemoUser) {
+            if (builder.isDemoUser) {
                 coupon = await this.createCoupon();
                 subscriptionPayload.coupon = coupon;
             }
@@ -173,7 +173,7 @@ export class StripeService {
     async removeSubscription(subscriptionId: string) {
         try {
             let subscription = await this.StripeClient.subscriptions.retrieve(subscriptionId);
-            if(subscription) {
+            if (subscription) {
                 await this.StripeClient.subscriptions.cancel(subscriptionId);
                 return true;
             }
@@ -188,7 +188,7 @@ export class StripeService {
     async deleteStripeCustomer(customerId: string) {
         try {
             let customer = await this.StripeClient.customers.retrieve(customerId);
-            if(customer) {
+            if (customer) {
                 await this.StripeClient.customers.del(customerId);
                 return true;
             }
@@ -258,7 +258,7 @@ export class StripeService {
             };
             let coupon: string;
             let subscription: Stripe.Subscription;
-            if(user.isDemoUser) {
+            if (user.isDemoUser) {
                 coupon = await this.createCoupon();
                 subscriptionPayload.coupon = coupon;
             }
@@ -314,7 +314,7 @@ export class StripeService {
                 product: product.id,
                 tax_behavior: 'exclusive'
             });
-            const trialEndDate = Math.floor((new Date().getTime() + 30 * 24 * 60 * 60 * 1000) / 1000);
+            const trialEndDate = Math.floor((new Date().getTime() + 1 * 24 * 60 * 60 * 1000) / 1000);
 
             // Create a subscription for the new employee
             let subscriptionPayload: Stripe.SubscriptionCreateParams = {
@@ -363,8 +363,8 @@ export class StripeService {
                 recurring: { interval: signNowPlanType },
                 product: product.id,
             });
-            const trialEndDate = Math.floor((new Date().getTime() + 30 * 24 * 60 * 60 * 1000) / 1000);
-    
+            const trialEndDate = Math.floor((new Date().getTime() + 1 * 24 * 60 * 60 * 1000) / 1000);
+
             const subscriptionPayload: Stripe.SubscriptionCreateParams = {
                 customer: stripeCustomerId,
                 items: [{ price: price.id }],
@@ -416,24 +416,24 @@ export class StripeService {
     }
 
     // Function to get sign now subscription status
-    async getSignNowPlanStatus (subscriptionId: string) {
+    async getSignNowPlanStatus(subscriptionId: string) {
         try {
-        let subInfo = await this.StripeClient.subscriptions.retrieve(subscriptionId);
-        const currentDate = Math.floor(Date.now() / 1000);
-        if(subInfo.current_period_end > currentDate) {
-            return { status: true };
-        } else {
-            return { status: false };
-        }
+            let subInfo = await this.StripeClient.subscriptions.retrieve(subscriptionId);
+            const currentDate = Math.floor(Date.now() / 1000);
+            if (subInfo.current_period_end > currentDate) {
+                return { status: true };
+            } else {
+                return { status: false };
+            }
         } catch (error) {
             return { status: false };
         }
     }
 
-    async isSignNowCancelled (subscriptionId: string) {
+    async isSignNowCancelled(subscriptionId: string) {
         try {
             let subInfo = await this.StripeClient.subscriptions.retrieve(subscriptionId);
-            if(subInfo.status != 'canceled') {
+            if (subInfo.status != 'canceled') {
                 return { status: true };
             } else {
                 return { status: false };
@@ -455,9 +455,9 @@ export class StripeService {
                 console.warn(`Unable to retrieve existing SignNow subscription for company ${company.id}: ${error}`);
                 existingSignNowSubscription = null;
             }
-            
+
             const planType = company.planType == BuilderPlanTypes.MONTHLY ? 'month' : 'year';
-            
+
             // Create new product in stripe
             const product = await this.StripeClient.products.create({
                 name: `${company.name}-SignNow`
@@ -472,12 +472,12 @@ export class StripeService {
                 tax_behavior: 'exclusive',
             });
 
-            if(!existingSignNowSubscription) {
+            if (!existingSignNowSubscription) {
                 let builderSubscription = await this.StripeClient.subscriptions.retrieve(builder.subscriptionId);
                 let customer = await this.StripeClient.customers.retrieve(builder.stripeCustomerId);
                 let subscription: Stripe.Subscription;
                 const now = Math.floor(Date.now() / 1000);
-                
+
                 const subscriptionPayload: Stripe.SubscriptionCreateParams = {
                     customer: customer.id,
                     items: [{ price: price.id }],
@@ -493,20 +493,20 @@ export class StripeService {
                     subscriptionPayload.billing_cycle_anchor = builderSubscription.current_period_end
                     subscriptionPayload.proration_behavior = 'create_prorations';
                 }
-                 // Apply coupon for demo builders
+                // Apply coupon for demo builders
                 let coupon: string;
-                if(builder.isDemoUser) {
+                if (builder.isDemoUser) {
                     coupon = await this.createCoupon();
                     subscriptionPayload.coupon = coupon;
                 }
 
                 subscription = await this.StripeClient.subscriptions.create(subscriptionPayload);
 
-                return { 
+                return {
                     status: true,
-                    message: "Subscription added", 
+                    message: "Subscription added",
                     subscriptionId: subscription.id,
-                    productId: product.id, 
+                    productId: product.id,
                 };
             }
 
@@ -530,14 +530,14 @@ export class StripeService {
                 proration_behavior: prorationBehavious,
                 automatic_tax: { enabled: true },
             };
-    
+
             if (trialEnd) {
                 subscriptionPayload.trial_end = trialEnd;
             }
 
             // Apply coupon for demo builders
             let coupon: string;
-            if(builder.isDemoUser) {
+            if (builder.isDemoUser) {
                 coupon = await this.createCoupon();
                 subscriptionPayload.coupon = coupon;
             }
@@ -545,10 +545,10 @@ export class StripeService {
             // Create the new SignNow subscription
             const subscription = await this.StripeClient.subscriptions.create(subscriptionPayload);
 
-            return { 
-                status: true, message: "Subscription added", 
+            return {
+                status: true, message: "Subscription added",
                 subscriptionId: subscription.id,
-                productId: product.id, 
+                productId: product.id,
             };
         } catch (error) {
             console.log(error);
@@ -556,7 +556,7 @@ export class StripeService {
         }
     }
 
-    async changeSignNowSubscriptionPlanType (company: any, planAmount: number, planType: any) {
+    async changeSignNowSubscriptionPlanType(company: any, planAmount: number, planType: any) {
         try {
             let subscription = await this.StripeClient.subscriptions.retrieve(company.signNowSubscriptionId);
             const isTrialActive = subscription.trial_end && subscription.trial_end > Math.floor(Date.now() / 1000);
@@ -632,7 +632,7 @@ export class StripeService {
                 recurring: { interval: planType },
                 product: product.id,
             });
-            const trialEndDate = Math.floor((new Date().getTime() + 30 * 24 * 60 * 60 * 1000) / 1000);
+            const trialEndDate = Math.floor((new Date().getTime() + 1 * 24 * 60 * 60 * 1000) / 1000);
             const trialEndDateObj = new Date(trialEndDate * 1000);
 
             const subscription = await this.StripeClient.subscriptions.create({
@@ -726,7 +726,7 @@ export class StripeService {
     }
 
     // Function to get promo code information
-    async getPromoCodeInfo (promo_code: string) {
+    async getPromoCodeInfo(promo_code: string) {
         try {
             const promotionCodes = await this.StripeClient.promotionCodes.list({
                 limit: 100,
@@ -810,8 +810,8 @@ export class StripeService {
     }
 
 
-    async couponsCreate(promoCodeInfo?: any ){
-     
+    async couponsCreate(promoCodeInfo?: any) {
+
         try {
 
             const discountValue = promoCodeInfo.amountOff / 100;
@@ -824,16 +824,16 @@ export class StripeService {
                 duration: promoCodeInfo.duration || 'once',
             };
             const existingCoupons = await this.StripeClient.coupons.list({
-                limit: 100, 
+                limit: 100,
             });
-            let signNowCoupon = existingCoupons.data.find(coupon => 
+            let signNowCoupon = existingCoupons.data.find(coupon =>
                 coupon.amount_off === couponParams.amount_off &&
                 coupon.currency === couponParams.currency &&
                 coupon.duration === couponParams.duration &&
                 coupon.valid === true
             );
 
-            if (!signNowCoupon) {                            
+            if (!signNowCoupon) {
                 signNowCoupon = await this.StripeClient.coupons.create({
                     amount_off: Math.round(remainingPromoValue * 100),
                     currency: promoCodeInfo.currency || 'usd',
