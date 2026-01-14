@@ -314,7 +314,7 @@ export class StripeService {
                 product: product.id,
                 tax_behavior: 'exclusive'
             });
-            const trialEndDate = Math.floor((new Date().getTime() + 1 * 24 * 60 * 60 * 1000) / 1000);
+            const trialEndDate = Math.floor((new Date().getTime() + 30 * 24 * 60 * 60 * 1000) / 1000);
 
             // Create a subscription for the new employee
             let subscriptionPayload: Stripe.SubscriptionCreateParams = {
@@ -363,7 +363,7 @@ export class StripeService {
                 recurring: { interval: signNowPlanType },
                 product: product.id,
             });
-            const trialEndDate = Math.floor((new Date().getTime() + 1 * 24 * 60 * 60 * 1000) / 1000);
+            const trialEndDate = Math.floor((new Date().getTime() + 30 * 24 * 60 * 60 * 1000) / 1000);
 
             const subscriptionPayload: Stripe.SubscriptionCreateParams = {
                 customer: stripeCustomerId,
@@ -632,7 +632,7 @@ export class StripeService {
                 recurring: { interval: planType },
                 product: product.id,
             });
-            const trialEndDate = Math.floor((new Date().getTime() + 1 * 24 * 60 * 60 * 1000) / 1000);
+            const trialEndDate = Math.floor((new Date().getTime() + 30 * 24 * 60 * 60 * 1000) / 1000);
             const trialEndDateObj = new Date(trialEndDate * 1000);
 
             const subscription = await this.StripeClient.subscriptions.create({
