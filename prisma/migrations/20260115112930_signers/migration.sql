@@ -5,16 +5,13 @@ CREATE TYPE "DocumentStatus" AS ENUM ('PENDING', 'COMPLETED');
 CREATE TYPE "SignerStatus" AS ENUM ('PENDING', 'SIGNED');
 
 -- CreateEnum
-CREATE TYPE "SignatureType" AS ENUM ('TYPED', 'DRAWN');
-
--- AlterTable
-ALTER TABLE "client_template_question" ADD COLUMN     "images" TEXT[] DEFAULT ARRAY[]::TEXT[];
+CREATE TYPE "SignatureType" AS ENUM ('BUILDER', 'OWNER');
 
 -- CreateTable
 CREATE TABLE "sign_here" (
-    "id" TEXT NOT NULL,
-    "type" TEXT NOT NULL,
-    "originalPdf" TEXT NOT NULL,
+    "id" SERIAL NOT NULL,
+    "type" TEXT,
+    "originalPdf" TEXT,
     "signedPdf" TEXT,
     "status" "DocumentStatus" NOT NULL DEFAULT 'PENDING',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -27,11 +24,11 @@ CREATE TABLE "sign_here" (
 
 -- CreateTable
 CREATE TABLE "signers" (
-    "id" TEXT NOT NULL,
-    "signerType" "SignatureType" NOT NULL,
-    "documentId" TEXT NOT NULL,
-    "name" TEXT NOT NULL,
-    "email" TEXT NOT NULL,
+    "id" SERIAL NOT NULL,
+    "signerType" "SignatureType",
+    "documentId" INTEGER NOT NULL,
+    "name" TEXT,
+    "email" TEXT,
     "approved_date" TIMESTAMP(3) NOT NULL,
     "signed_date" TIMESTAMP(3) NOT NULL,
     "token" TEXT NOT NULL,
@@ -40,7 +37,7 @@ CREATE TABLE "signers" (
     "signImage" TEXT[],
     "type" "SignatureType" NOT NULL,
     "typedName" TEXT,
-    "ipAddress" TEXT NOT NULL,
+    "ipAddress" TEXT,
     "userAgent" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
