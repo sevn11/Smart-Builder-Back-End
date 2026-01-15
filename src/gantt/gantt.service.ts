@@ -63,7 +63,7 @@ export class GanttService {
             });
 
             if (!job) {
-                return { error: 'Job not found', task: [], link: [] };
+                return { error: 'Project not found', task: [], link: [] };
             }
 
             const tasks = await this.prepareTasks(job);

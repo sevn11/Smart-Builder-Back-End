@@ -499,7 +499,7 @@ export class CalendarTemplateService {
 
                 if (!company) throw new ForbiddenException("Action Not Allowed");
                 if (!calendarTemplate) throw new ForbiddenException("Calendar template not found.")
-                if (!job) throw new ForbiddenException("Job not found.")
+                if (!job) throw new ForbiddenException("Project not found.")
 
                 const groupedData = await this.calendarTemplateDataGrouped(companyId, templateId, job.id);
 
@@ -613,7 +613,7 @@ export class CalendarTemplateService {
 
                 if (!company) throw new ForbiddenException("Action Not Allowed");
                 if (!template) throw new ForbiddenException("Calendar template not found.");
-                if (!job) throw new ForbiddenException("Job not found.");
+                if (!job) throw new ForbiddenException("Project not found.");
 
                 const oldSchedules = await this.getOldSchedulesForCleanup(user, companyId, jobId);
 
@@ -782,7 +782,7 @@ export class CalendarTemplateService {
 
                 if (!company) throw new ForbiddenException("Action Not Allowed");
                 if (!template) throw new ForbiddenException("Calendar template not found.");
-                if (!job) throw new ForbiddenException("Job not found.");
+                if (!job) throw new ForbiddenException("Project not found.");
 
 
                 const jobData = await this.databaseService.job.update({
