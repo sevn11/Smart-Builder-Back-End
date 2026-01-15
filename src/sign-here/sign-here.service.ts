@@ -440,6 +440,7 @@ export class SignHereService {
             signedPdf: document?.signedPdf,
             totalSigners,
             signedCount,
+            documentType:document?.type
         };
     }
 
