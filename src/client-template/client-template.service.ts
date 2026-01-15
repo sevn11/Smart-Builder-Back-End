@@ -29,7 +29,7 @@ export class ClientTemplateService {
             where: { id: jobId, isDeleted: false, companyId }
         })
         if (!job) {
-            throw new ForbiddenException('Job not found.')
+            throw new ForbiddenException('Project not found.')
         }
         return job;
     }
