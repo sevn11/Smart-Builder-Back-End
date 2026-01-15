@@ -1033,3 +1033,55 @@ model CalendarTemplateDataLink {
   updatedAt         DateTime     @updatedAt
   @@map("calendar_template_data_link")
 }
+
+enum DocumentStatus {
+  PENDING
+  COMPLETED
+}
+
+enum SignerStatus {
+  PENDING
+  SIGNED
+}
+
+enum SignatureType {
+  BUILDER
+  OWNER
+}
+
+model SignHere {
+  id            Int               @id @default(autoincrement())
+  type          String?
+  originalPdf   String?
+  signedPdf     String?
+  status        DocumentStatus    @default(PENDING)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt @map("updated_at")
+  completedAt   DateTime?
+  ccAdmin       Boolean           @default(false)
+  signers       Signer[]
+
+  @@map("sign_here")
+}
+
+model Signer {
+  id            Int           @id @default(autoincrement())
+  signerType    SignatureType?
+  documentId    Int
+  document      SignHere      @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  name          String?
+  email         String?
+  approvedDate  DateTime      @map("approved_date")
+  signedDate    DateTime      @map("signed_date")
+  token         String        @unique
+  status        SignerStatus  @default(PENDING)
+  signedAt      DateTime?
+  signImage     String[]
+  type          SignatureType
+  typedName     String?
+  ipAddress     String?
+  userAgent     String?
+  createdAt     DateTime     @default(now())
+
+  @@map("signers")
+}
