@@ -825,7 +825,6 @@ export class JobsService {
                         id: jobId,
                         companyId,
                         isDeleted: false,
-                        isClosed: false
                     },
                     omit: {
                         isDeleted: true
@@ -861,7 +860,10 @@ export class JobsService {
                 });
 
                 if (!job) {
-                    return { error: 'Job not found, or it will be closed or deleted. Please check the project status and try again.' };
+                    return { error: 'Project not found' };
+                }
+                if(job.isClosed) {
+                    return { error: "This project is currently marked as Closed or Pre-Sale. Please change the status to Open and try again." }
                 }
 
                 let uniqueId = 1;
