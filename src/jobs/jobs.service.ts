@@ -862,8 +862,8 @@ export class JobsService {
                 if (!job) {
                     return { error: 'Project not found' };
                 }
-                if(job.isClosed) {
-                    return { error: "This project is currently marked as Closed or Pre-Sale. Please change the status to Open and try again." }
+                if (job.isClosed) {
+                    return { error: "This project is currently marked as Closed, Warranty, or Pre-Sale. Please change the status to Open and try again." }
                 }
 
                 let uniqueId = 1;
