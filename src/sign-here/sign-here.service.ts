@@ -9,6 +9,8 @@ import * as path from 'path';
 import * as crypto from 'crypto';
 import { Prisma } from '@prisma/client';
 import { AWSService } from 'src/core/services/aws.service';
+import { SendgridService } from 'src/core/services';
+import { ConfigService } from '@nestjs/config';
 
 enum SignerStatus {
     PENDING = 'PENDING',
@@ -24,6 +26,8 @@ export class SignHereService {
     constructor(
         private databaseService: DatabaseService,
         private awsService: AWSService,
+        private sendgridService: SendgridService,
+        private readonly config: ConfigService
     ) {
         if (!fs.existsSync(this.uploadPath)) {
             fs.mkdirSync(this.uploadPath, { recursive: true });
@@ -136,6 +140,24 @@ export class SignHereService {
                         userAgent: '',
                     } as Prisma.SignerUncheckedCreateInput,
                 });
+
+                let documentType = "";
+
+                if (Type.includes("Specification")) {
+                    documentType = "Specification";
+                } else if (Type.includes("Selection")) {
+                    documentType = "Selection";
+                } else if (Type.includes("Proposal")) {
+                    documentType = "Proposal";
+                }
+
+                const templateData = {
+                    buildername: body.senderName,
+                    documentType: documentType,
+                    signUrl: `${this.config.get("FRONTEND_BASEURL")}/sign-here-document/${token}`
+                }
+                this.sendgridService.sendEmailWithTemplate(senderEmail, this.config.get('SIGNHERE_TEMPLATE_ID'), templateData)
+
             }
             // form.append('file', readableStream, {
             //     filename: file.originalname,
@@ -328,6 +350,54 @@ export class SignHereService {
 
             // TODO: Send completion email to all parties
             console.log('All signers have signed. Document completed!');
+        }else {
+            // Find next unsigned signer for THIS document only
+            const nextSigner = updatedSigners.find(
+                (s) => s.status !== SignerStatus.SIGNED
+            );
+
+            if (nextSigner) {
+                // Calculate owner index if next signer is an OWNER
+                let ownerIndex: number | null = null;
+                if (nextSigner.type === 'OWNER') {
+                    const owners = updatedSigners.filter((s) => s.type === 'OWNER');
+                    ownerIndex = owners.findIndex((s) => s.id === nextSigner.id);
+                    if (ownerIndex === -1) ownerIndex = 0;
+                }
+
+                // Determine document type for email template
+                let documentType = "";
+                if (document.type.includes("Specification")) {
+                    documentType = "Specification";
+                } else if (document.type.includes("Selection")) {
+                    documentType = "Selection";
+                } else if (document.type.includes("Proposal")) {
+                    documentType = "Proposal";
+                } else if (document.type.includes("Paint")) {
+                    documentType = "Paint Selection";
+                } else {
+                    documentType = document.type || "Document";
+                }
+
+                // Prepare email template data
+                const templateData = {
+                    buildername: nextSigner.name || nextSigner.email.split('@')[0],
+                    documentType: documentType,
+                    signUrl: `${this.config.get("FRONTEND_BASEURL")}/sign-here-document/${nextSigner.token}`,
+                };
+
+                // Send email to next signer
+                try {
+                    await this.sendgridService.sendEmailWithTemplate(
+                        nextSigner.email,
+                        this.config.get('SIGNHERE_TEMPLATE_ID'),
+                        templateData
+                    );
+                    
+                } catch (error) {
+                    console.error(`Failed to send email to next signer: ${nextSigner.email}`, error);
+                }
+            }
         }
 
         return {
