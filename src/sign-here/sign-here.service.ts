@@ -41,8 +41,8 @@ export class SignHereService {
 
             const timestamp = Date.now();
             const fileName = `${companyId}_${jobId}_${timestamp}_${file.originalname}`;
-            // const filePath = path.join(this.uploadPath, fileName);
-            const key = `${fileName}`;
+            const filePath = path.join(this.uploadPath, fileName);
+            const key = `sign-documents/${fileName}`; 
 
             const uploadedUrl = await this.awsService.uploadFileToS3(
                                     key,
@@ -50,16 +50,7 @@ export class SignHereService {
                                     file.mimetype || 'application/pdf'
                                     );
 
-            // try {
-            //     await fs.promises.writeFile(filePath, new Uint8Array(file.buffer));
-            // } catch (writeError) {
-            //     throw new Error(`Failed to save file: ${writeError.message}`);
-            // }
-
-            // let form = new FormData();
-            // const readableStream = new PassThrough();
-            // readableStream.end(file.buffer);
-            // // readableStream.end(new Uint8Array(file.buffer));
+        
             const recipients = JSON.parse(body.recipients);
             let recipientsPayload = [];
 
@@ -127,7 +118,7 @@ export class SignHereService {
 
                 const token = this.generateSignerToken(senderEmail, String(signHere.id));
 
-                const BuilerSigner = await this.databaseService.signer.create({
+                const builerSigner = await this.databaseService.signer.create({
                     data: {
                         documentId: signHere.id,
                         email: senderEmail,
@@ -159,20 +150,6 @@ export class SignHereService {
                 this.sendgridService.sendEmailWithTemplate(senderEmail, this.config.get('SIGNHERE_TEMPLATE_ID'), templateData)
 
             }
-            // form.append('file', readableStream, {
-            //     filename: file.originalname,
-            //     contentType: file.mimetype,
-            // });
-            // form.append('Tags', body.tags);
-
-            // TODO: Move to s3
-
-            // 
-
-
-            // TODO- EMail 
-
-
 
             return {
                 status: true,
@@ -204,7 +181,6 @@ export class SignHereService {
         const part3 = hash.substring(16, 24);
         const part4 = hash.substring(24, 32);
 
-        // Total length: 2 + 1 + 8 + 1 + 8 + 1 + 8 + 1 + 8 = 40 characters
         return `SH-${part1}-${part2}-${part3}-${part4}`;
     }
 
@@ -231,7 +207,6 @@ export class SignHereService {
 
         const response = await this.awsService.getUploadedFile(originalPdf);
 
-        // Convert to buffer
         const buffer = Buffer.from(await response.Body.transformToByteArray());
 
         return {
@@ -284,33 +259,17 @@ export class SignHereService {
         const fileBaseName = path.basename(originalFileName, fileExtension);
         const timestamp = Date.now();
 
-        if (signer.type === 'OWNER') {
-            // Calculate owner index
-            const owners = document.signers.filter((s) => s.type === 'OWNER');
-            const ownerIndex = owners.findIndex((s) => s.id === signer.id);
-            newFileName = `${fileBaseName}_signed_owner${ownerIndex}_${timestamp}${fileExtension}`;
-        } else if (signer.type === 'BUILDER') {
-            newFileName = `${fileBaseName}_signed_builder_${timestamp}${fileExtension}`;
-        } else {
-            newFileName = `${fileBaseName}_signed_${signer.id}_${timestamp}${fileExtension}`;
-        }
-
-        // Save the signed PDF
-        // const filePath = path.join(this.uploadPath, newFileName);
-
-        const key = `${newFileName}`;
+    
+        newFileName = `${signer.id}_${fileBaseName}${fileExtension}`;
+ 
+        const key = `sign-documents/${fileBaseName}`; 
 
         const uploadedUrl = await this.awsService.uploadFileToS3(
                                 key,
                                 file.buffer,
                                 file.mimetype || 'application/pdf'
                                 );
-        // try {
-        //     await fs.promises.writeFile(filePath, new Uint8Array(file.buffer));
-        // } catch (writeError) {
-        //     throw new Error(`Failed to save signed file: ${writeError.message}`);
-        // }
-
+ 
         // Update signer status to SIGNED
         await this.databaseService.signer.update({
             where: { id: signer.id },
@@ -326,7 +285,7 @@ export class SignHereService {
         await this.databaseService.signHere.update({
             where: { id: document.id },
             data: {
-                originalPdf: newFileName,
+                originalPdf: uploadedUrl,
                 updatedAt: new Date(),
             },
         });
@@ -348,7 +307,6 @@ export class SignHereService {
                 },
             });
 
-            // TODO: Send completion email to all parties
             console.log('All signers have signed. Document completed!');
         }else {
             // Find next unsigned signer for THIS document only
@@ -487,15 +445,6 @@ export class SignHereService {
         const totalSigners = allSigners.length;
         const isDocumentCompleted = document?.status === 'COMPLETED' || signedCount === totalSigners;
 
-        console.log('Signer info:', {
-            id: signer.id,
-            type: signer.type,
-            name: signer.name,
-            email: signer.email,
-            ownerIndex,
-            status: signer.status,
-            isDocumentCompleted,
-        });
 
         return {
             id: signer.id,
@@ -507,7 +456,6 @@ export class SignHereService {
             signedDate: signer.signedDate,
             documentStatus: document?.status,
             isDocumentCompleted,
-            signedPdf: document?.signedPdf,
             totalSigners,
             signedCount,
             documentType:document?.type
@@ -530,10 +478,10 @@ export class SignHereService {
             throw new NotFoundException('Document not found');
         }
 
-        const { signedPdf, originalPdf } = signer.document;
+        const { originalPdf } = signer.document;
 
         // Prefer signed PDF, fallback to original
-        const pdfToServe = signedPdf || originalPdf;
+        const pdfToServe = originalPdf;
 
         if (!pdfToServe) {
             throw new NotFoundException('PDF file not found');
@@ -548,18 +496,10 @@ export class SignHereService {
         // Convert to buffer
         const buffer = Buffer.from(await response.Body.transformToByteArray());
 
-        // const filePath = path.join(this.uploadPath, pdfToServe);
-
-        // if (!fs.existsSync(filePath)) {
-        //     throw new NotFoundException(`PDF file does not exist: ${filePath}`);
-        // }
-
-        // const buffer = fs.readFileSync(filePath);
-        console.log(filePath);
 
         return {
             buffer,
-            filename: signedPdf ? `signed-document.pdf` : pdfToServe,
+            filename: originalPdf ? `signed-document.pdf` : pdfToServe,
         };
     }
 
