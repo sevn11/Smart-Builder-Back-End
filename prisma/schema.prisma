@@ -1065,7 +1065,6 @@ model SignHere {
 
 model Signer {
   id            Int           @id @default(autoincrement())
-  signerType    SignatureType?
   documentId    Int
   document      SignHere      @relation(fields: [documentId], references: [id], onDelete: Cascade)
   name          String?
@@ -1074,10 +1073,7 @@ model Signer {
   signedDate    DateTime      @map("signed_date")
   token         String        @unique
   status        SignerStatus  @default(PENDING)
-  signedAt      DateTime?
-  signImage     String[]
   type          SignatureType
-  typedName     String?
   ipAddress     String?
   userAgent     String?
   createdAt     DateTime     @default(now())
