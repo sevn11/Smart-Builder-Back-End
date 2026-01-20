@@ -138,7 +138,7 @@ export class SignHereService {
                     documentType = "Specification";
                 } else if (Type.includes("selection")) {
                     documentType = "Selection";
-                } else if (Type.includes("Proposal")) {
+                } else if (Type.includes("proposal")) {
                     documentType = "Proposal";
                 }
 
@@ -147,7 +147,8 @@ export class SignHereService {
                     documentType: documentType,
                     signUrl: `${this.config.get("FRONTEND_BASEURL")}/sign-here-document/${token}`
                 }
-                this.sendgridService.sendEmailWithTemplate(senderEmail, this.config.get('SIGNHERE_TEMPLATE_ID'), templateData)
+
+                this.sendgridService.sendEmailWithTemplate(senderEmail, this.config.get('SIGNHERE_TEMPLATE_ID'), templateData , undefined, undefined, sendCC, builder.email)
 
             }
 
@@ -262,7 +263,7 @@ export class SignHereService {
     
         newFileName = `${signer.id}_${fileBaseName}${fileExtension}`;
  
-        const key = `sign-documents/${fileBaseName}`; 
+        const key = `sign-documents/${newFileName}`; 
 
         const uploadedUrl = await this.awsService.uploadFileToS3(
                                 key,
@@ -326,16 +327,12 @@ export class SignHereService {
 
                 // Determine document type for email template
                 let documentType = "";
-                if (document.type.includes("Specification")) {
+                if (document.type.includes("specification")) {
                     documentType = "Specification";
-                } else if (document.type.includes("Selection")) {
+                } else if (document.type.includes("selection")) {
                     documentType = "Selection";
-                } else if (document.type.includes("Proposal")) {
+                } else if (document.type.includes("proposal")) {
                     documentType = "Proposal";
-                } else if (document.type.includes("Paint")) {
-                    documentType = "Paint Selection";
-                } else {
-                    documentType = document.type || "Document";
                 }
 
                 // Prepare email template data
