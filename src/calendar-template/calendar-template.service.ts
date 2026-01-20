@@ -810,4 +810,172 @@ export class CalendarTemplateService {
             }
         }
     }
+
+    /**
+     * Reapply the start date and update the current schedules.
+     */
+    async reapplyStartDate(user: User, companyId: number, jobId: number, body: ContractorAssignmentDTO) {
+        try {
+            if (user.userType == UserTypes.ADMIN || ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId === companyId)) {
+                const jobSchedule = await this.databaseService.jobSchedule.findMany({
+                    where: {
+                        companyId,
+                        jobId,
+                        isDeleted: false,
+                    },
+                    include: {
+                        contractor: {
+                            include: {
+                                phase: true
+                            }
+                        },
+                        job: {
+                            include: {
+                                customer: {
+                                    select: {
+                                        name: true
+                                    }
+                                },
+                                description: {
+                                    select: {
+                                        name: true
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    orderBy: {
+                        id: 'asc'
+                    }
+                });
+                const baseStartDate = new Date(Math.min(...jobSchedule.map(s => new Date(s.startDate).getTime())));
+                const userChosenStartDate = formatCalendarDate(new Date(body.startDate));
+                const dayDiff = (from: Date, to: Date) => Math.round((to.getTime() - from.getTime()) / 86400000);
+
+                for (const schedule of jobSchedule) {
+                    // how far this task is from the first one
+                    const offsetDays = dayDiff(baseStartDate, new Date(schedule.startDate));
+
+                    const newStartDate = new Date(userChosenStartDate.getTime() + offsetDays * 86400000);
+
+                    const newEndDate = formatEndDate(
+                        newStartDate,
+                        schedule.duration,
+                        schedule.isScheduledOnWeekend
+                    );
+                    await this.databaseService.jobSchedule.update({
+                        where: { id: schedule.id },
+                        data: {
+                            startDate: newStartDate,
+                            endDate: newEndDate,
+                        },
+                    });
+
+                    let updatedSchedule = await this.databaseService.jobSchedule.findFirst({
+                        where: {
+                            id: schedule.id,
+                            companyId,
+                            jobId,
+                            isDeleted: false,
+                        },
+                        include: {
+                            contractor: {
+                                include: {
+                                    phase: true
+                                }
+                            },
+                            job: {
+                                include: {
+                                    customer: {
+                                        select: {
+                                            name: true
+                                        }
+                                    },
+                                    description: {
+                                        select: {
+                                            name: true
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        orderBy: {
+                            id: 'asc'
+                        }
+                    });
+
+                    const syncExist = await this.databaseService.googleEventId.findFirst({
+                        where: {
+                            companyId: companyId,
+                            userId: user.id,
+                            jobId: jobId,
+                            jobScheduleId: schedule.id,
+                            isDeleted: false,
+                        },
+                        orderBy: { id: 'desc' },
+                        take: 1
+                    });
+
+                    await this.googleService.syncJobSchedule(user.id, updatedSchedule, syncExist?.eventId, syncExist);
+                }
+                return { message: "Start Date applied successfully" }
+            } else {
+                throw new ForbiddenException("Action Not Allowed");
+            }
+        } catch (error) {
+            console.log(error);
+            // Database Exceptions
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code == PrismaErrorCodes.UNIQUE_CONSTRAINT_ERROR)
+                    throw new BadRequestException(ResponseMessages.UNIQUE_EMAIL_ERROR);
+                else {
+                    console.log(error.code);
+                }
+            } else if (error instanceof ForbiddenException) {
+                throw error;
+            } else {
+                throw new InternalServerErrorException();
+            }
+        }
+    }
+
+    /**
+     * Get the start date of the schedule
+     */
+    async getStartDate(user: User, companyId: number, jobId: number) {
+        try {
+            if (user.userType == UserTypes.ADMIN || ((user.userType == UserTypes.BUILDER || user.userType == UserTypes.EMPLOYEE) && user.companyId === companyId)) {
+                const jobSchedule = await this.databaseService.jobSchedule.findFirst({
+                    where: {
+                        companyId,
+                        jobId,
+                        isDeleted: false,
+                    },
+                    orderBy: { id: 'asc' },
+                });
+
+                if (jobSchedule) {
+                    return jobSchedule
+                }
+                return null;
+            } else {
+                throw new ForbiddenException("Action Not Allowed");
+            }
+        } catch (error) {
+            console.error(error);
+
+            if (error instanceof PrismaClientKnownRequestError) {
+                if (error.code === PrismaErrorCodes.UNIQUE_CONSTRAINT_ERROR) {
+                    throw new BadRequestException(ResponseMessages.UNIQUE_EMAIL_ERROR);
+                }
+            }
+
+            if (error instanceof ForbiddenException) {
+                throw error;
+            }
+
+            throw new InternalServerErrorException();
+        }
+    }
+
 }

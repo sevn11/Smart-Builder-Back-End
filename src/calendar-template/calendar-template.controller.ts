@@ -110,4 +110,16 @@ export class CalendarTemplateController {
   async removeLinkBetweenEvents(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number, @Param('templateId', ParseIntPipe) templateId: number, @Param('linkId', ParseIntPipe) linkId: number) {
     return this.calendarTemplateLinkService.removeLinkBetweenEvents(user, companyId, templateId, linkId);
   }
+
+  @HttpCode(HttpStatus.OK)
+  @Patch('job/:jobId/update-start-date')
+  updateStartDate(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number, @Param('jobId', ParseIntPipe) jobId: number, @Body() body: ContractorAssignmentDTO) {
+    return this.calendarTemplateService.reapplyStartDate(user, companyId, jobId, body);
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Get('job/:jobId/get-startdate')
+  getStartDate(@GetUser() user: User, @Param('companyId', ParseIntPipe) companyId: number, @Param('jobId', ParseIntPipe) jobId: number) {
+    return this.calendarTemplateService.getStartDate(user, companyId, jobId)
+  }
 }
