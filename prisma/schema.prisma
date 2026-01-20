@@ -1053,7 +1053,6 @@ model SignHere {
   id            Int               @id @default(autoincrement())
   type          String?
   originalPdf   String?
-  signedPdf     String?
   status        DocumentStatus    @default(PENDING)
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt @map("updated_at")
