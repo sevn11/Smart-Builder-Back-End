@@ -293,6 +293,7 @@ export class SignHereService {
         // Check if all signers have signed
         const updatedSigners = await this.databaseService.signer.findMany({
             where: { documentId: document.id },
+            orderBy: { id: 'asc' },
         });
 
         const allSigned = updatedSigners.every((s) => s.status === SignerStatus.SIGNED);
