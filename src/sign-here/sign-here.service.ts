@@ -134,9 +134,9 @@ export class SignHereService {
 
                 let documentType = "";
 
-                if (Type.includes("Specification")) {
+                if (Type.includes("specification")) {
                     documentType = "Specification";
-                } else if (Type.includes("Selection")) {
+                } else if (Type.includes("selection")) {
                     documentType = "Selection";
                 } else if (Type.includes("Proposal")) {
                     documentType = "Proposal";
