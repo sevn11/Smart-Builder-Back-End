@@ -353,7 +353,7 @@ export class StripeService {
     
             // Create new product in stripe
             const product = await this.StripeClient.products.create({
-                name: `${body.companyName || body.name}-SignNow`
+                name: `${body.companyName || body.name}-SignHere`
             });
     
             // Create a price for the product
@@ -386,14 +386,14 @@ export class StripeService {
                 stripeCustomerId: stripeCustomerId,
                 subscriptionId: subscription.id,
                 productId: product.id,
-                message: "SignNow Subscription added"
+                message: "SignHere Subscription added"
             }
         }
         catch (error) {
             console.log(error);
             return {
                 status: false,
-                message: "Failed to create signnow subscription"
+                message: "Failed to create SignHere subscription"
             }
         }
     }
@@ -435,7 +435,7 @@ export class StripeService {
                     existingSignNowSubscription = await this.StripeClient.subscriptions.retrieve(company.signNowSubscriptionId);
                 }
             } catch (error) {
-                console.warn(`Unable to retrieve existing SignNow subscription for company ${company.id}: ${error}`);
+                console.warn(`Unable to retrieve existing SignHere subscription for company ${company.id}: ${error}`);
                 existingSignNowSubscription = null;
             }
             
@@ -443,7 +443,7 @@ export class StripeService {
             
             // Create new product in stripe
             const product = await this.StripeClient.products.create({
-                name: `${company.name}-SignNow`
+                name: `${company.name}-SignHere`
             });
 
             // Create a price for the product
@@ -525,7 +525,7 @@ export class StripeService {
                 subscriptionPayload.coupon = coupon;
             }
 
-            // Create the new SignNow subscription
+            // Create the new SignHere subscription
             const subscription = await this.StripeClient.subscriptions.create(subscriptionPayload);
 
             return { 
@@ -535,7 +535,7 @@ export class StripeService {
             };
         } catch (error) {
             console.log(error);
-            return { status: false, message: "Failed to add signnow subscription" };
+            return { status: false, message: "Failed to add SignHere subscription" };
         }
     }
 
