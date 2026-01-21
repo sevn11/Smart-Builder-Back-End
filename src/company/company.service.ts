@@ -656,11 +656,11 @@ export class CompanyService {
                             }
                         })
                         signNowResponse.status = true;
-                        signNowResponse.message = "Sign now subscription added.";
+                        signNowResponse.message = "Sign here subscription added.";
                     }
                     else {
                         signNowResponse.status = false;
-                        signNowResponse.message = "Failed to add sign now subscription.";
+                        signNowResponse.message = "Failed to add sign here subscription.";
                     }
                 } 
                 else {
@@ -672,10 +672,10 @@ export class CompanyService {
                             let status = await this.stripeService.removeSubscription(company.signNowSubscriptionId);
                             if(status) {
                                 signNowResponse.status = true;
-                                signNowResponse.message = "Sign Now subscription cancelled.";
+                                signNowResponse.message = "Sign here subscription cancelled.";
                             } else {
                                 signNowResponse.status = false;
-                                signNowResponse.message = "Failed to cancel sign now subscription.";
+                                signNowResponse.message = "Failed to cancel sign here subscription.";
                             }
                         } 
                     }
