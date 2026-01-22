@@ -613,11 +613,18 @@ export class StripeService {
         let customer: Stripe.Customer;
         try {
             const planType = body.planType == BuilderPlanTypes.MONTHLY ? 'month' : 'year'
-
             // Create new customer in stripe
             customer = await this.StripeClient.customers.create({
                 name: body.name,
-                email: body.email
+                email: body.email,
+                address: {
+                    line1: body.address,
+                    country: 'US',
+                    postal_code: body.zipcode
+                },
+                tax: {
+                    validate_location: 'immediately',
+                },
             });
 
             // Create new product in stripe
