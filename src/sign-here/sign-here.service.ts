@@ -72,7 +72,8 @@ export class SignHereService {
                         { userType: UserTypes.ADMIN }
                     ]
                 },
-                select: { email: true }
+                select: { email: true,company: true },
+                
             });
 
             const signHere = await this.databaseService.signHere.create({
@@ -80,6 +81,9 @@ export class SignHereService {
                     type: Type,
                     originalPdf: uploadedUrl,
                     ccAdmin: sendCC,
+                    jobId: jobId ?? jobId,
+                    userId: user.id,
+                    companyId: companyId,
                 },
             });
 
@@ -150,21 +154,21 @@ export class SignHereService {
                 let documentType = "";
 
                 if (Type.includes("specification")) {
-                    documentType = "Specification";
+                    documentType = "Specifications";
                 } else if (Type.includes("selection")) {
-                    documentType = "Selection";
+                    documentType = "Selections";
                 } else if (Type.includes("proposal")) {
                     documentType = "Proposal";
                 }
 
                 const templateData = {
-                    buildername: body.senderName,
+                    buildername: builder?.company?.name ?? "Builder",
                     documentType: documentType,
                     signUrl: `${this.config.get("FRONTEND_BASEURL")}/sign-here-document/${token}`
                 }
 
                 this.sendgridService.sendEmailWithTemplate(senderEmail, this.config.get('SIGNHERE_TEMPLATE_ID'), templateData , undefined, undefined, sendCC, builder.email)
-                this.logger.log('signlog', 'Email sending commented out - would send to: ' + senderEmail);
+                this.logger.log('signlog', 'Email sending to: ' + senderEmail);
 
             }
 
@@ -278,6 +282,7 @@ export class SignHereService {
                                 orderBy: { id: 'asc' },
                             },
                         },
+                        
                     },
                 },
             });
@@ -381,16 +386,32 @@ export class SignHereService {
                     // Determine document type for email template
                     let documentType = "";
                     if (document.type.includes("specification")) {
-                        documentType = "Specification";
+                        documentType = "Specifications";
                     } else if (document.type.includes("selection")) {
-                        documentType = "Selection";
+                        documentType = "Selections";
                     } else if (document.type.includes("proposal")) {
                         documentType = "Proposal";
                     }
 
+                    const companyId = (document as any).companyId;
+
+                    let companyName = 'Builder'; 
+
+                    if (companyId) {
+                        const company = await this.databaseService.company.findFirst({
+                            where: {
+                            id: companyId,
+                            isDeleted: false,
+                            },
+                            select: { name: true },
+                        });
+
+                        if (company?.name) companyName = company.name;
+                    }                    
+
                     // Prepare email template data
                     const templateData = {
-                        buildername: nextSigner.name || nextSigner.email.split('@')[0],
+                        buildername: companyName,
                         documentType: documentType,
                         signUrl: `${this.config.get("FRONTEND_BASEURL")}/sign-here-document/${nextSigner.token}`,
                     };
@@ -402,7 +423,7 @@ export class SignHereService {
                             this.config.get('SIGNHERE_TEMPLATE_ID'),
                             templateData
                         );
-                        this.logger.log('signlog', 'Email sending commented out - would send to: ' + nextSigner.email);
+                        this.logger.log('signlog', 'Email sending to: ' + nextSigner.email);
                     } catch (error) {
                         this.logger.log('signlog', 'Failed to send email to next signer: ' + nextSigner.email + ', Error: ' + error.message);
                         console.error(`Failed to send email to next signer: ${nextSigner.email}`, error);
