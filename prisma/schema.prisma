@@ -48,7 +48,7 @@ model User {
   Job            Job[]
   EmployeeDetails EmployeeDetails?
   GoogleEventId   GoogleEventId[]
-  
+  SignHeres       SignHere[]
   @@map("users")
 }
 
@@ -114,6 +114,7 @@ model Company {
   ContractorMailInfo    ContractorMailInfo[]
   calendarTemplate       CalendarTemplate[]
   calendarTemplateData   CalendarTemplateData[]
+  SignHeres              SignHere[]
   @@map("companies")
 }
 
@@ -255,6 +256,7 @@ model Job {
 
   GoogleEventId        GoogleEventId[]
   ContractorMailInfo    ContractorMailInfo[]
+  SignHeres             SignHere[]
   @@map("jobs")
 }
 
@@ -1059,6 +1061,12 @@ model SignHere {
   completedAt   DateTime?
   ccAdmin       Boolean           @default(false)
   signers       Signer[]
+  userId        Int?              @map("user_id")
+  user          User?             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  companyId     Int?              @map("company_id")
+  company       Company?          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  jobId         Int?              @map("job_id")
+  job           Job?              @relation(fields: [jobId], references: [id], onDelete: Cascade)
 
   @@map("sign_here")
 }
