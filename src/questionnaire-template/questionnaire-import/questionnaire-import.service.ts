@@ -84,6 +84,8 @@ export class QuestionnaireImportService {
                     company_category: current.company_category,
                     category_order: current.category_order,
                     questions: [],
+                    initial_order: current.initial_order,
+                    paint_order: current.paint_order,
                 };
             }
 
@@ -127,7 +129,9 @@ export class QuestionnaireImportService {
                     companyId: companyId,
                     questionnaireOrder: Number(importData.category_order),
                     questionnaireTemplateId: templateId,
-                    linkToQuestionnaire: true
+                    linkToQuestionnaire: true,
+                    initialOrder:importData.initial_order,
+                    paintOrder:importData.paint_order,
                 },
                 omit: {
                     isDeleted: true,
