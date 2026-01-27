@@ -723,7 +723,6 @@ model ClientTemplateQuestion {
   clientCategoryId        Int?                   @map("client_category_id")
   clientCategory          ClientCategory?        @relation(fields: [clientCategoryId], references: [id], onDelete: Cascade)
   phaseId                 Int?                   @map("phase_id")
-  images                  String[]               @default([]) @map("images")
   phase                   ContractorPhase?       @relation(fields: [phaseId], references: [id])
   questionOrder           Int                    @default(0) @map("question_order")
   customerId              Int                    @map("customer_id")
