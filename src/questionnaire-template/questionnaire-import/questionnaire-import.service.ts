@@ -100,6 +100,8 @@ export class QuestionnaireImportService {
                     question_linked_phase_ids: current.question_linked_phase_ids,
                     multiple_options: current.multiple_options,
                     question_order: current.question_order,
+                    initial_question_order: current.question_initial_order,
+                    paint_question_order: current.question_paint_order,
                 });
             }
 
@@ -130,8 +132,8 @@ export class QuestionnaireImportService {
                     questionnaireOrder: Number(importData.category_order),
                     questionnaireTemplateId: templateId,
                     linkToQuestionnaire: true,
-                    initialOrder:importData.initial_order,
-                    paintOrder:importData.paint_order,
+                    initialOrder: Number(importData.initial_order),
+                    paintOrder: Number(importData.paint_order),
                 },
                 omit: {
                     isDeleted: true,
@@ -166,6 +168,8 @@ export class QuestionnaireImportService {
                             questionOrder: Number(que.question_order),
                             questionnaireTemplateId: templateId,
                             categoryId: categoryId,
+                            initialQuestionOrder: que.initial_question_order,
+                            paintQuestionOrder: que.paint_question_order
                         },
                         omit: {
                             isDeleted: true,
