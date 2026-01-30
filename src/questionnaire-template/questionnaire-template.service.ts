@@ -487,8 +487,10 @@ export class QuestionnaireTemplateService {
                 const template = await this.questionnaireImportService.checkTemplateExist('questionnaire', body, companyId);
                 const templateId = template.id;
 
-                groupedData.forEach(async (element: any) => {
-                    await this.questionnaireImportService.processImport(element, templateId, companyId)
+                await this.databaseService.$transaction(async (tx) => {
+                    for (const element of groupedData) {
+                        await this.questionnaireImportService.processImport(tx, element, templateId, companyId);
+                    }
                 });
 
                 let newTemplate = await this.databaseService.questionnaireTemplate.findMany({
