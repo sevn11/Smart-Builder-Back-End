@@ -1,4 +1,5 @@
 import { BadRequestException, ForbiddenException, Injectable, InternalServerErrorException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { PrismaErrorCodes, ResponseMessages, TemplateType } from 'src/core/utils';
 import { DatabaseService } from 'src/database/database.service';
@@ -112,13 +113,13 @@ export class QuestionnaireImportService {
         return groupedArray;
     }
 
-    async processImport(importData: ImportData, templateId: number, companyId: number) {
+    async processImport(tx: Prisma.TransactionClient, importData: ImportData, templateId: number, companyId: number) {
 
         try {
 
             const categoryName = typeof importData.category !== 'string' ? (importData.category).toString() : importData.category;
 
-            let category = await this.databaseService.category.create({
+            let category = await tx.category.create({
                 data: {
                     name: categoryName,
                     isCompanyCategory: importData.company_category ? true : false,
@@ -139,21 +140,21 @@ export class QuestionnaireImportService {
                     isDeleted: true,
                     isCompanyCategory: false,
                 },
-            })
+            });
 
             if (!category) return;
 
             const categoryId = category.id;
-            if (importData.questions && importData.questions.length) {
-                importData.questions.map(async (que) => {
+            for (const que of importData.questions) {
 
+                try {
                     let options = !que.multiple_options ? [] : que.multiple_options
                                                                 .split(/\\,/)
                                                                 .map(ques => ques.trim())
                                                                 .filter(Boolean)       // remove empty strings
                                                                 .map(ques => ({ text: ques }));
                                                                 
-                    let newQuestions = await this.databaseService.templateQuestion.create({
+                    await tx.templateQuestion.create({
                         data: {
                             question: que.question,
                             questionType: que.question_type,
@@ -176,15 +177,17 @@ export class QuestionnaireImportService {
                             questionnaireTemplateId: true,
                             categoryId: true
                         }
-                    })
-                    return newQuestions;
-                })
+                    });
+                } catch (questionError) {
+                    console.error(`Question import failed: ${que.question}`,questionError);
+                    throw questionError;
+                }
             }
 
             return category;
         } catch (error) {
-            console.log(error);
-            return false;
+            console.error(`Category import failed: ${importData.category}`,error);
+            throw error;
         }
     }
 
