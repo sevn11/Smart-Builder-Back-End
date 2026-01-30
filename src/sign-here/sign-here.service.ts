@@ -551,6 +551,17 @@ export class SignHereService {
             const totalSigners = allSigners.length;
             const isDocumentCompleted = document?.status === 'COMPLETED' || signedCount === totalSigners;
 
+            let isLastOwner = false;
+
+            if (signer.type === 'OWNER' && signer.document) {
+                const ownerSigners = signer.document.signers
+                    .filter(s => s.type === 'OWNER')
+                    .sort((a, b) => b.id - a.id); // DESC by id
+
+                if (ownerSigners.length > 0 && ownerSigners[0].id === signer.id) {
+                    isLastOwner = true;
+                }
+            }
 
             return {
                 id: signer.id,
@@ -564,7 +575,8 @@ export class SignHereService {
                 isDocumentCompleted,
                 totalSigners,
                 signedCount,
-                documentType:document?.type
+                documentType:document?.type,
+                isLastOwner: isLastOwner
             };
         } catch (error) {
             this.logger.log('signlog', '========== ERROR in getSignerInfo ==========');
