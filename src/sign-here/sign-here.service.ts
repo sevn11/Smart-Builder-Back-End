@@ -393,34 +393,27 @@ export class SignHereService {
 
                 console.log('All signers have signed. Document completed!');
 
-                const builderSigner = updatedSigners.find(
-                    (s) => s.type === 'BUILDER'
+                const uploadedUrl = await this.awsService.getS3BaseUrl();
+                const pdfUrl = `${uploadedUrl}/${document.originalPdf}`;
+                const templateData = {
+                    documentType: documentType,
+                    pdfUrl: pdfUrl,
+                };
+
+                await Promise.all(
+                    updatedSigners.map(async (signer) => {
+                        try {
+                            await this.sendgridService.sendEmailWithTemplate(
+                                signer.email,
+                                this.config.get('SIGNHERE_COMPLETED_TEMPLATE_ID'),
+                                templateData
+                            );
+                            this.logger.log('signlog', `Completion email sent to ${signer.type}: ${signer.email}`);
+                        } catch (error) {
+                            this.logger.log('signlog', `Failed to send completion email to ${signer.type}: ${signer.email}, Error: ${error.message}`);
+                        }
+                    })
                 );
-                // Prepare email template data
-                if (builderSigner) {
-
-                    const uploadedUrl = await this.awsService.getS3BaseUrl();
-                    const pdfUrl = `${uploadedUrl}/${document.originalPdf}`;
-                    const templateData = {
-                        documentType: documentType,
-                        pdfUrl: pdfUrl,
-                    };
-
-                    // Send completion email to BUILDER
-                    try {
-                        await this.sendgridService.sendEmailWithTemplate(
-                            builderSigner.email,
-                            this.config.get('SIGNHERE_COMPLETED_TEMPLATE_ID'),
-                            templateData
-                        );
-                        this.logger.log('signlog', 'Completion email sent to BUILDER: ' + builderSigner.email);
-                    } catch (error) {
-                        this.logger.log('signlog', 'Failed to send completion email to BUILDER: ' + builderSigner.email + ', Error: ' + error.message);
-                        console.error(`Failed to send completion email to BUILDER: ${builderSigner.email}`, error);
-                    }
-                } else {
-                    this.logger.log('signlog', 'WARNING: No BUILDER signer found for completed document ID: ' + document.id);
-                }
 
             }else {
                 // Find next unsigned signer for THIS document only
