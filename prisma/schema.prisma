@@ -48,7 +48,7 @@ model User {
   Job            Job[]
   EmployeeDetails EmployeeDetails?
   GoogleEventId   GoogleEventId[]
-  
+  SignHeres       SignHere[]
   @@map("users")
 }
 
@@ -114,6 +114,7 @@ model Company {
   ContractorMailInfo    ContractorMailInfo[]
   calendarTemplate       CalendarTemplate[]
   calendarTemplateData   CalendarTemplateData[]
+  SignHeres              SignHere[]
   @@map("companies")
 }
 
@@ -255,6 +256,7 @@ model Job {
 
   GoogleEventId        GoogleEventId[]
   ContractorMailInfo    ContractorMailInfo[]
+  SignHeres             SignHere[]
   @@map("jobs")
 }
 
@@ -1032,4 +1034,57 @@ model CalendarTemplateDataLink {
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
   @@map("calendar_template_data_link")
+}
+
+enum DocumentStatus {
+  PENDING
+  COMPLETED
+}
+
+enum SignerStatus {
+  PENDING
+  SIGNED
+}
+
+enum SignatureType {
+  BUILDER
+  OWNER
+}
+
+model SignHere {
+  id            Int               @id @default(autoincrement())
+  type          String?
+  originalPdf   String?
+  status        DocumentStatus    @default(PENDING)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt @map("updated_at")
+  completedAt   DateTime?
+  ccAdmin       Boolean           @default(false)
+  signers       Signer[]
+  userId        Int?              @map("user_id")
+  user          User?             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  companyId     Int?              @map("company_id")
+  company       Company?          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  jobId         Int?              @map("job_id")
+  job           Job?              @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@map("sign_here")
+}
+
+model Signer {
+  id            Int           @id @default(autoincrement())
+  documentId    Int
+  document      SignHere      @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  name          String?
+  email         String?
+  approvedDate  DateTime      @map("approved_date")
+  signedDate    DateTime      @map("signed_date")
+  token         String        @unique
+  status        SignerStatus  @default(PENDING)
+  type          SignatureType
+  ipAddress     String?
+  userAgent     String?
+  createdAt     DateTime     @default(now())
+
+  @@map("signers")
 }

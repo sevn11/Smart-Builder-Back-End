@@ -475,7 +475,7 @@ export class AdminUsersService {
                     signNowYearlyAmount: body.signNowYearlyPlanAmount
                 }
             });
-            return { message: "Sign Now Plan Updated" }
+            return { message: "SignHere Plan Updated" }
         } catch (error) {
             console.log(error)
             throw new InternalServerErrorException({
