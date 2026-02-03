@@ -355,6 +355,31 @@ export class SignHereService {
 
             const allSigned = updatedSigners.every((s) => s.status === SignerStatus.SIGNED);
 
+            // Determine document type for email template
+            let documentType = "";
+            if (document.type.includes("specification")) {
+                documentType = "Specifications";
+            } else if (document.type.includes("selection")) {
+                documentType = "Selections";
+            } else if (document.type.includes("proposal")) {
+                documentType = "Proposal";
+            }
+
+            const companyId = (document as any).companyId;
+
+            let companyName = 'Builder'; 
+
+            if (companyId) {
+                const company = await this.databaseService.company.findFirst({
+                    where: {
+                    id: companyId,
+                    isDeleted: false,
+                    },
+                    select: { name: true },
+                });
+
+                if (company?.name) companyName = company.name;
+            }     
             // If all signed, update document status (if you have such a field)
             if (allSigned) {
                 await this.databaseService.signHere.update({
@@ -367,6 +392,36 @@ export class SignHereService {
                 this.logger.log('signlog', 'Document marked as COMPLETED for document ID: ' + document.id);
 
                 console.log('All signers have signed. Document completed!');
+
+                const builderSigner = updatedSigners.find(
+                    (s) => s.type === 'BUILDER'
+                );
+                // Prepare email template data
+                if (builderSigner) {
+
+                    const uploadedUrl = await this.awsService.getS3BaseUrl();
+                    const pdfUrl = `${uploadedUrl}/${document.originalPdf}`;
+                    const templateData = {
+                        documentType: documentType,
+                        pdfUrl: pdfUrl,
+                    };
+
+                    // Send completion email to BUILDER
+                    try {
+                        await this.sendgridService.sendEmailWithTemplate(
+                            builderSigner.email,
+                            this.config.get('SIGNHERE_COMPLETED_TEMPLATE_ID'),
+                            templateData
+                        );
+                        this.logger.log('signlog', 'Completion email sent to BUILDER: ' + builderSigner.email);
+                    } catch (error) {
+                        this.logger.log('signlog', 'Failed to send completion email to BUILDER: ' + builderSigner.email + ', Error: ' + error.message);
+                        console.error(`Failed to send completion email to BUILDER: ${builderSigner.email}`, error);
+                    }
+                } else {
+                    this.logger.log('signlog', 'WARNING: No BUILDER signer found for completed document ID: ' + document.id);
+                }
+
             }else {
                 // Find next unsigned signer for THIS document only
                 const nextSigner = updatedSigners.find(
@@ -381,33 +436,7 @@ export class SignHereService {
                         const owners = updatedSigners.filter((s) => s.type === 'OWNER');
                         ownerIndex = owners.findIndex((s) => s.id === nextSigner.id);
                         if (ownerIndex === -1) ownerIndex = 0;
-                    }
-
-                    // Determine document type for email template
-                    let documentType = "";
-                    if (document.type.includes("specification")) {
-                        documentType = "Specifications";
-                    } else if (document.type.includes("selection")) {
-                        documentType = "Selections";
-                    } else if (document.type.includes("proposal")) {
-                        documentType = "Proposal";
-                    }
-
-                    const companyId = (document as any).companyId;
-
-                    let companyName = 'Builder'; 
-
-                    if (companyId) {
-                        const company = await this.databaseService.company.findFirst({
-                            where: {
-                            id: companyId,
-                            isDeleted: false,
-                            },
-                            select: { name: true },
-                        });
-
-                        if (company?.name) companyName = company.name;
-                    }                    
+                    }               
 
                     // Prepare email template data
                     const templateData = {
