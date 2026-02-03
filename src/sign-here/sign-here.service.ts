@@ -393,8 +393,8 @@ export class SignHereService {
 
                 console.log('All signers have signed. Document completed!');
 
-                const uploadedUrl = await this.awsService.getS3BaseUrl();
-                const pdfUrl = `${uploadedUrl}/${document.originalPdf}`;
+                const s3BaseUrl = await this.awsService.getS3BaseUrl();
+                const pdfUrl = `${s3BaseUrl}/${uploadedUrl}`;
                 const templateData = {
                     documentType: documentType,
                     pdfUrl: pdfUrl,
