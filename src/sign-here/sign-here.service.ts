@@ -369,6 +369,9 @@ export class SignHereService {
 
             let companyName = 'Builder'; 
 
+            let sendCC = false;
+            let builder: { email: string } | null = null;   
+
             if (companyId) {
                 const company = await this.databaseService.company.findFirst({
                     where: {
@@ -379,6 +382,19 @@ export class SignHereService {
                 });
 
                 if (company?.name) companyName = company.name;
+
+                builder = await this.databaseService.user.findFirst({
+                    where: {
+                        companyId: companyId,
+                        OR: [
+                            { userType: UserTypes.BUILDER },
+                            { userType: UserTypes.ADMIN }
+                        ]
+                    },
+                    select: { email: true,company: true },
+                });
+
+                sendCC = Boolean(document?.ccAdmin);
             }     
             // If all signed, update document status (if you have such a field)
             if (allSigned) {
@@ -406,7 +422,11 @@ export class SignHereService {
                             await this.sendgridService.sendEmailWithTemplate(
                                 signer.email,
                                 this.config.get('SIGNHERE_COMPLETED_TEMPLATE_ID'),
-                                templateData
+                                templateData,
+                                undefined, 
+                                undefined, 
+                                sendCC, 
+                                builder.email
                             );
                             this.logger.log('signlog', `Completion email sent to ${signer.type}: ${signer.email}`);
                         } catch (error) {
@@ -443,7 +463,11 @@ export class SignHereService {
                         await this.sendgridService.sendEmailWithTemplate(
                             nextSigner.email,
                             this.config.get('SIGNHERE_TEMPLATE_ID'),
-                            templateData
+                            templateData,
+                            undefined, 
+                            undefined, 
+                            sendCC, 
+                            builder.email
                         );
                         this.logger.log('signlog', 'Email sending to: ' + nextSigner.email);
                     } catch (error) {
