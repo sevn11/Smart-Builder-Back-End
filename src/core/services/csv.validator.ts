@@ -15,6 +15,38 @@ export interface CSVValidationConfig {
 }
 
 export class CSVValidator {
+
+    private static getDisplayName(columnId: string): string {
+        const displayNameMap: Record<string, string> = {
+            'id': 'Id',
+            'category': 'Category',
+            'category_linked_to_questionnaire': 'Category_Linked_to_Questionnaire',
+            'category_linked_to_initial_selection': 'Category_Linked_To_Final_Selection',
+            'category_linked_to_final_selection': 'Category_Linked_To_Final_Selection',
+            'category_linked_to_paint_selection': 'Category_Linked_To_Paint_Selection',
+            'category_linked_to_phase': 'Category_Linked_to_Phase',
+            'category_linked_phase_ids': 'Category_Linked_Phase_IDs',
+            'company_category': 'Company_Category',
+            'question': 'Question',
+            'question_type': 'Question_Type',
+            'question_linked_to_questionnaire': 'Question_Linked_to_Questionnaire',
+            'question_linked_to_initial_selection': 'Question_Linked_To_Final_Selection',
+            'question_linked_to_final_selection': 'Question_Linked_To_Final_Selection',
+            'question_linked_to_paint_selection': 'Question_Linked_To_Paint_Selection',
+            'question_linked_to_phase': 'Question_Linked_to_Phase',
+            'question_linked_phase_ids': 'Question_Linked_Phase_IDs',
+            'category_order': 'Category Order',
+            'multiple_options': 'Multiple Options',
+            'question_order': 'Question Order',
+            'initial_order': 'Category Final Order',
+            'paint_order': 'Category Paint Order',
+            'question_initial_order': 'Question\'s Final Order',
+            'question_paint_order': 'Question\'s Paint Order',
+        };
+
+        return displayNameMap[columnId] || columnId;
+    }
+
     /**
      * Validate CSV columns against required and optional columns
      */
@@ -42,7 +74,7 @@ export class CSVValidator {
 
         // Convert snake_case to readable format
         const missingColumnsReadable = missingColumns.map(col =>
-            this.snakeToReadable(col)
+            this.getDisplayName(col)
         );
 
         return {
@@ -73,11 +105,11 @@ export class CSVValidator {
                     // Check if it's a valid number and not negative
                     if (isNaN(numValue)) {
                         errors.push(
-                            `Row ${index + 1}: '${this.snakeToReadable(column)}' must be a number (found: '${value}')`
+                            `Row ${index + 1}: '${this.getDisplayName(column)}' must be a number (found: '${value}')`
                         );
                     } else if (numValue < 0) {
                         errors.push(
-                            `Row ${index + 1}: '${this.snakeToReadable(column)}' cannot be negative (found: ${numValue})`
+                            `Row ${index + 1}: '${this.getDisplayName(column)}' cannot be negative (found: ${numValue})`
                         );
                     }
                 }
