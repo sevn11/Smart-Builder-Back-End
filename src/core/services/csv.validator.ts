@@ -38,8 +38,8 @@ export class CSVValidator {
             'category_order': 'Category Order',
             'multiple_options': 'Multiple Options',
             'question_order': 'Question Order',
-            'initial_order': 'Category Final Order',
-            'paint_order': 'Category Paint Order',
+            'initial_order': 'Category\'s Final Order',
+            'paint_order': 'Category\'s Paint Order',
             'question_initial_order': 'Question\'s Final Order',
             'question_paint_order': 'Question\'s Paint Order',
         };
@@ -57,7 +57,7 @@ export class CSVValidator {
         if (!parsedData || parsedData.length === 0) {
             throw new BadRequestException('CSV file is empty');
         }
-
+        console.log(config, 'config');
         const { requiredColumns, optionalColumns = [], strictMode = false } = config;
 
         // Get columns from the first row
@@ -68,7 +68,7 @@ export class CSVValidator {
 
         // Find extra columns (if in strict mode)
         const allowedColumns = [...requiredColumns, ...optionalColumns];
-        const extraColumns = strictMode 
+        const extraColumns = strictMode
             ? csvColumns.filter(col => !allowedColumns.includes(col))
             : [];
 
@@ -97,11 +97,11 @@ export class CSVValidator {
         parsedData.forEach((row, index) => {
             numericColumns.forEach(column => {
                 const value = row[column];
-                
+
                 // Check if value exists and is a number
                 if (value !== undefined && value !== null && value !== '') {
                     const numValue = Number(value);
-                    
+
                     // Check if it's a valid number and not negative
                     if (isNaN(numValue)) {
                         errors.push(
@@ -162,12 +162,12 @@ export class CSVValidator {
         // Then validate numeric columns if specified
         if (config.numericColumns && config.numericColumns.length > 0) {
             const numericValidation = this.validateNumericColumns(parsedData, config.numericColumns);
-            
+
             if (!numericValidation.isValid) {
                 throw new BadRequestException({
                     message: 'CSV validation failed',
                     errors: numericValidation.errors,
-                    help: 'Please ensure all order values are non-negative numbers'
+                    help: 'Please ensure all order values are non-negative numbers in the uploaded CSV.'
                 });
             }
         }
@@ -206,7 +206,7 @@ export const CSV_COLUMN_DEFINITIONS = {
             'category_linked_to_phase',
             'initial_order',
             'paint_order',
-            
+
             // Question required fields
             'question',
             'question_type',
@@ -232,5 +232,5 @@ export const CSV_COLUMN_DEFINITIONS = {
             'question_initial_order'
         ]
     },
-    
+
 };
