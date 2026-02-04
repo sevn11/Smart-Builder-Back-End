@@ -57,7 +57,7 @@ export class CSVValidator {
         if (!parsedData || parsedData.length === 0) {
             throw new BadRequestException('CSV file is empty');
         }
-        console.log(config, 'config');
+
         const { requiredColumns, optionalColumns = [], strictMode = false } = config;
 
         // Get columns from the first row
