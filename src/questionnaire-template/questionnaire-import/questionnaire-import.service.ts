@@ -30,7 +30,7 @@ export interface QuestionDetails {
     question_linked_phase_ids: string | number; // This is a list of IDs, so we use an array of numbers
     multiple_options: string;
     question_order: number;
-    initial_question_order: number;
+    final_question_order: number;
     paint_question_order: number;
 }
 
@@ -55,12 +55,12 @@ export interface ImportData extends CategoryDetails {
     multiple_options: string;
     category_order: number;
     initial_selection_order: number;
-    initial_order: number;
+    category_final_order: number;
     paint_selection_order: number;
-    paint_order: number;
+    category_paint_order: number;
     question_order: number;
     questions: QuestionDetails[];
-    question_initial_order: number;
+    question_final_order: number;
     question_paint_order: number;
 }
 
@@ -85,8 +85,8 @@ export class QuestionnaireImportService {
                     company_category: current.company_category,
                     category_order: current.category_order,
                     questions: [],
-                    initial_order: current.initial_order,
-                    paint_order: current.paint_order,
+                    category_final_order: current.category_final_order,
+                    category_paint_order: current.category_paint_order,
                 };
             }
 
@@ -101,7 +101,7 @@ export class QuestionnaireImportService {
                     question_linked_phase_ids: current.question_linked_phase_ids,
                     multiple_options: current.multiple_options,
                     question_order: current.question_order,
-                    initial_question_order: current.question_initial_order,
+                    final_question_order: current.question_final_order,
                     paint_question_order: current.question_paint_order,
                 });
             }
@@ -133,8 +133,8 @@ export class QuestionnaireImportService {
                     questionnaireOrder: Number(importData.category_order),
                     questionnaireTemplateId: templateId,
                     linkToQuestionnaire: true,
-                    initialOrder: Number(importData.initial_order),
-                    paintOrder: Number(importData.paint_order),
+                    initialOrder: Number(importData.category_final_order),
+                    paintOrder: Number(importData.category_paint_order),
                 },
                 omit: {
                     isDeleted: true,
@@ -149,11 +149,11 @@ export class QuestionnaireImportService {
 
                 try {
                     let options = !que.multiple_options ? [] : que.multiple_options
-                                                                .split(/\\,/)
-                                                                .map(ques => ques.trim())
-                                                                .filter(Boolean)       // remove empty strings
-                                                                .map(ques => ({ text: ques }));
-                                                                
+                        .split(/\\,/)
+                        .map(ques => ques.trim())
+                        .filter(Boolean)       // remove empty strings
+                        .map(ques => ({ text: ques }));
+
                     await tx.templateQuestion.create({
                         data: {
                             question: que.question,
@@ -169,7 +169,7 @@ export class QuestionnaireImportService {
                             questionOrder: Number(que.question_order),
                             questionnaireTemplateId: templateId,
                             categoryId: categoryId,
-                            initialQuestionOrder: que.initial_question_order,
+                            initialQuestionOrder: que.final_question_order,
                             paintQuestionOrder: que.paint_question_order
                         },
                         omit: {
@@ -179,14 +179,14 @@ export class QuestionnaireImportService {
                         }
                     });
                 } catch (questionError) {
-                    console.error(`Question import failed: ${que.question}`,questionError);
+                    console.error(`Question import failed: ${que.question}`, questionError);
                     throw questionError;
                 }
             }
 
             return category;
         } catch (error) {
-            console.error(`Category import failed: ${importData.category}`,error);
+            console.error(`Category import failed: ${importData.category}`, error);
             throw error;
         }
     }
