@@ -38,9 +38,9 @@ export class CSVValidator {
             'category_order': 'Category Order',
             'multiple_options': 'Multiple Options',
             'question_order': 'Question Order',
-            'initial_order': 'Category\'s Final Order',
-            'paint_order': 'Category\'s Paint Order',
-            'question_initial_order': 'Question\'s Final Order',
+            'category_final_order': 'Category\'s Final Order',
+            'category_paint_order': 'Category\'s Paint Order',
+            'question_final_order': 'Question\'s Final Order',
             'question_paint_order': 'Question\'s Paint Order',
         };
 
@@ -193,9 +193,10 @@ export class CSVValidator {
     }
 }
 
-// Column Definitions - Add your CSV types here
+// Column Definitions
 export const CSV_COLUMN_DEFINITIONS = {
-    QUESTIONNAIRE: {
+
+    QUESTIONNAIRE_USER: {
         requiredColumns: [
             // Category required fields
             'category',
@@ -204,8 +205,8 @@ export const CSV_COLUMN_DEFINITIONS = {
             'category_linked_to_final_selection',
             'category_linked_to_paint_selection',
             'category_linked_to_phase',
-            'initial_order',
-            'paint_order',
+            'category_final_order',
+            'category_paint_order',
 
             // Question required fields
             'question',
@@ -216,21 +217,46 @@ export const CSV_COLUMN_DEFINITIONS = {
             'question_linked_to_paint_selection',
             'question_linked_to_phase',
             'question_paint_order',
-            'question_initial_order'
+            'question_final_order'
         ],
+
         optionalColumns: [
-            'initial_question_order',
+            'final_question_order',
             'paint_question_order',
             'multiple_options',
+            'category_linked_phase_ids',
+            'question_linked_phase_ids'
         ],
-        // Columns that must be non-negative numbers
+
         numericColumns: [
-            'initial_order',
-            'paint_order',
+            'category_order',
+            'category_final_order',
+            'category_paint_order',
             'question_order',
             'question_paint_order',
-            'question_initial_order'
+            'question_final_order'
         ]
     },
+    QUESTIONNAIRE_ADMIN: {
+        requiredColumns: [
+            'category',
+            'category_order',
+            'company_category',
+
+            'question',
+            'question_type',
+            'question_order',
+            'question_linked_to_questionnaire'
+        ],
+
+        optionalColumns: [
+            'multiple_options'
+        ],
+
+        numericColumns: [
+            'category_order',
+            'question_order'
+        ]
+    }
 
 };

@@ -480,7 +480,7 @@ export class QuestionnaireTemplateService {
                         resolve(snakeCaseRecords);
                     });
                 });
-                CSVValidator.validateColumnsOrThrow(parsedData, CSV_COLUMN_DEFINITIONS.QUESTIONNAIRE);
+                CSVValidator.validateColumnsOrThrow(parsedData, CSV_COLUMN_DEFINITIONS.QUESTIONNAIRE_USER);
                 if (!parsedData.length) throw new ForbiddenException('Could not read csv file. please check the format and retry.')
                 let groupedData = await this.questionnaireImportService.groupContent(parsedData);
                 if (!groupedData.length) throw new ForbiddenException('Could not read csv file. please check the format and retry.')
@@ -536,7 +536,7 @@ export class QuestionnaireTemplateService {
 
         } catch (error) {
             console.log(error);
-            if (error instanceof BadRequestException) {                
+            if (error instanceof BadRequestException) {
                 throw error; // Re-throw to send to client
             }
             // Database Exceptions
