@@ -1,4 +1,5 @@
 import { BadRequestException, ForbiddenException, Injectable, InternalServerErrorException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { PrismaErrorCodes, ResponseMessages, TemplateType } from 'src/core/utils';
 import { DatabaseService } from 'src/database/database.service';
@@ -29,7 +30,7 @@ export interface QuestionDetails {
     question_linked_phase_ids: string | number; // This is a list of IDs, so we use an array of numbers
     multiple_options: string;
     question_order: number;
-    initial_question_order: number;
+    final_question_order: number;
     paint_question_order: number;
 }
 
@@ -54,12 +55,12 @@ export interface ImportData extends CategoryDetails {
     multiple_options: string;
     category_order: number;
     initial_selection_order: number;
-    initial_order: number;
+    category_final_order: number;
     paint_selection_order: number;
-    paint_order: number;
+    category_paint_order: number;
     question_order: number;
     questions: QuestionDetails[];
-    question_initial_order: number;
+    question_final_order: number;
     question_paint_order: number;
 }
 
@@ -84,6 +85,8 @@ export class QuestionnaireImportService {
                     company_category: current.company_category,
                     category_order: current.category_order,
                     questions: [],
+                    category_final_order: current.category_final_order,
+                    category_paint_order: current.category_paint_order,
                 };
             }
 
@@ -98,6 +101,8 @@ export class QuestionnaireImportService {
                     question_linked_phase_ids: current.question_linked_phase_ids,
                     multiple_options: current.multiple_options,
                     question_order: current.question_order,
+                    final_question_order: current.question_final_order,
+                    paint_question_order: current.question_paint_order,
                 });
             }
 
@@ -108,13 +113,13 @@ export class QuestionnaireImportService {
         return groupedArray;
     }
 
-    async processImport(importData: ImportData, templateId: number, companyId: number) {
+    async processImport(tx: Prisma.TransactionClient, importData: ImportData, templateId: number, companyId: number) {
 
         try {
 
             const categoryName = typeof importData.category !== 'string' ? (importData.category).toString() : importData.category;
 
-            let category = await this.databaseService.category.create({
+            let category = await tx.category.create({
                 data: {
                     name: categoryName,
                     isCompanyCategory: importData.company_category ? true : false,
@@ -127,27 +132,29 @@ export class QuestionnaireImportService {
                     companyId: companyId,
                     questionnaireOrder: Number(importData.category_order),
                     questionnaireTemplateId: templateId,
-                    linkToQuestionnaire: true
+                    linkToQuestionnaire: true,
+                    initialOrder: Number(importData.category_final_order),
+                    paintOrder: Number(importData.category_paint_order),
                 },
                 omit: {
                     isDeleted: true,
                     isCompanyCategory: false,
                 },
-            })
+            });
 
             if (!category) return;
 
             const categoryId = category.id;
-            if (importData.questions && importData.questions.length) {
-                importData.questions.map(async (que) => {
+            for (const que of importData.questions) {
 
+                try {
                     let options = !que.multiple_options ? [] : que.multiple_options
-                                                                .split(/\\,/)
-                                                                .map(ques => ques.trim())
-                                                                .filter(Boolean)       // remove empty strings
-                                                                .map(ques => ({ text: ques }));
-                                                                
-                    let newQuestions = await this.databaseService.templateQuestion.create({
+                        .split(/\\,/)
+                        .map(ques => ques.trim())
+                        .filter(Boolean)       // remove empty strings
+                        .map(ques => ({ text: ques }));
+
+                    await tx.templateQuestion.create({
                         data: {
                             question: que.question,
                             questionType: que.question_type,
@@ -162,21 +169,25 @@ export class QuestionnaireImportService {
                             questionOrder: Number(que.question_order),
                             questionnaireTemplateId: templateId,
                             categoryId: categoryId,
+                            initialQuestionOrder: que.final_question_order,
+                            paintQuestionOrder: que.paint_question_order
                         },
                         omit: {
                             isDeleted: true,
                             questionnaireTemplateId: true,
                             categoryId: true
                         }
-                    })
-                    return newQuestions;
-                })
+                    });
+                } catch (questionError) {
+                    console.error(`Question import failed: ${que.question}`, questionError);
+                    throw questionError;
+                }
             }
 
             return category;
         } catch (error) {
-            console.log(error);
-            return false;
+            console.error(`Category import failed: ${importData.category}`, error);
+            throw error;
         }
     }
 

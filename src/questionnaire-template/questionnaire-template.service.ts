@@ -7,6 +7,7 @@ import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { bufferToStream } from 'src/core/utils/files';
 import * as csv from 'csv-parse';
 import { QuestionnaireImportService } from './questionnaire-import/questionnaire-import.service'
+import { CSVValidator, CSV_COLUMN_DEFINITIONS } from 'src/core/services/csv.validator';
 @Injectable()
 export class QuestionnaireTemplateService {
 
@@ -479,7 +480,7 @@ export class QuestionnaireTemplateService {
                         resolve(snakeCaseRecords);
                     });
                 });
-
+                CSVValidator.validateColumnsOrThrow(parsedData, CSV_COLUMN_DEFINITIONS.QUESTIONNAIRE_USER);
                 if (!parsedData.length) throw new ForbiddenException('Could not read csv file. please check the format and retry.')
                 let groupedData = await this.questionnaireImportService.groupContent(parsedData);
                 if (!groupedData.length) throw new ForbiddenException('Could not read csv file. please check the format and retry.')
@@ -487,8 +488,10 @@ export class QuestionnaireTemplateService {
                 const template = await this.questionnaireImportService.checkTemplateExist('questionnaire', body, companyId);
                 const templateId = template.id;
 
-                groupedData.forEach(async (element: any) => {
-                    await this.questionnaireImportService.processImport(element, templateId, companyId)
+                await this.databaseService.$transaction(async (tx) => {
+                    for (const element of groupedData) {
+                        await this.questionnaireImportService.processImport(tx, element, templateId, companyId);
+                    }
                 });
 
                 let newTemplate = await this.databaseService.questionnaireTemplate.findMany({
@@ -533,6 +536,9 @@ export class QuestionnaireTemplateService {
 
         } catch (error) {
             console.log(error);
+            if (error instanceof BadRequestException) {
+                throw error; // Re-throw to send to client
+            }
             // Database Exceptions
             if (error instanceof PrismaClientKnownRequestError) {
                 if (error.code == PrismaErrorCodes.NOT_FOUND)
