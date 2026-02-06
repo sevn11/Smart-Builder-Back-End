@@ -63,6 +63,7 @@ export class SignHereService {
             let recipientsPayload = [];
 
             let senderEmail = body.senderEmail;
+            let senderName = body.senderName;
             let sendCC = body.sendCC == 'true';
             let builder = await this.databaseService.user.findFirst({
                 where: {
@@ -140,7 +141,7 @@ export class SignHereService {
                     data: {
                         documentId: signHere.id,
                         email: senderEmail,
-                        name: senderEmail.split('@')[0],
+                        name: senderName,
                         token: token,
                         type: 'BUILDER',
                         approvedDate: new Date(),
@@ -163,6 +164,7 @@ export class SignHereService {
 
                 const templateData = {
                     buildername: builder?.company?.name ?? "Builder",
+                    builderSenderName: senderName,
                     documentType: documentType,
                     signUrl: `${this.config.get("FRONTEND_BASEURL")}/sign-here-document/${token}`
                 }
@@ -450,11 +452,14 @@ export class SignHereService {
                         ownerIndex = owners.findIndex((s) => s.id === nextSigner.id);
                         if (ownerIndex === -1) ownerIndex = 0;
                     }               
+                    const builderSigner = updatedSigners.find((s) => s.type === 'BUILDER');
+                    const senderName = builderSigner?.name || "Builder";
 
                     // Prepare email template data
                     const templateData = {
                         buildername: companyName,
                         documentType: documentType,
+                        builderSenderName: senderName,
                         signUrl: `${this.config.get("FRONTEND_BASEURL")}/sign-here-document/${nextSigner.token}`,
                     };
 
