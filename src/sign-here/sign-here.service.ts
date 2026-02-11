@@ -160,6 +160,8 @@ export class SignHereService {
                     documentType = "Selections";
                 } else if (Type.includes("proposal")) {
                     documentType = "Proposal";
+                } else if (Type.includes("change-order")) {
+                    documentType = "Change Order";
                 }
 
                 const templateData = {
@@ -365,6 +367,8 @@ export class SignHereService {
                 documentType = "Selections";
             } else if (document.type.includes("proposal")) {
                 documentType = "Proposal";
+            } else if (document.type.includes("change-order")) {
+                documentType = "Change Order";
             }
 
             const companyId = (document as any).companyId;
