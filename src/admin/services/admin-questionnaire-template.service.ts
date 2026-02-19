@@ -132,6 +132,9 @@ export class AdminQuestionnaireTemplateService {
                                 questionnaireOrder: 'asc'
                             }
                         }
+                    },
+                    orderBy: {
+                        name: 'asc'
                     }
                 });
                 return { templates }

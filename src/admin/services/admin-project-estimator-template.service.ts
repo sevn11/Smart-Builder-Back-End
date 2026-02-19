@@ -261,6 +261,9 @@ export class AdminProjectEstimatorTemplateService {
                 let tempData = await this.databaseService.masterProjectEstimatorTemplate.findMany({
                     where: {
                         isDeleted: false,
+                    },
+                    orderBy: {
+                        templateName: 'asc'
                     }
                 })
 
