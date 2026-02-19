@@ -301,6 +301,9 @@ export class ProjectEstimatorTemplateService {
                     where: {
                         companyId: user.companyId,
                         isDeleted: false,
+                    },
+                    orderBy: {
+                        templateName: 'asc'
                     }
                 })
 

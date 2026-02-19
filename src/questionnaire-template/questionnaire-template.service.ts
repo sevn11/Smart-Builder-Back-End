@@ -168,6 +168,9 @@ export class QuestionnaireTemplateService {
                                 questionnaireOrder: 'asc'
                             }
                         }
+                    },
+                    orderBy: {
+                        name: 'asc'
                     }
                 });
                 return { templates }
