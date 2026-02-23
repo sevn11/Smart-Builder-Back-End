@@ -287,6 +287,9 @@ export class CalendarTemplateService {
                     where: {
                         isDeleted: false,
                         companyId
+                    },
+                    orderBy: {
+                        name: 'asc'
                     }
                 });
 

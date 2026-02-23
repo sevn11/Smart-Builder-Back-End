@@ -24,6 +24,9 @@ export class TemplateService {
                         projectEstimatorTemplateId: {
                             not: null
                         }
+                    },
+                    orderBy: {
+                        name: 'asc' // ascending (A → Z)
                     }
                 });
 

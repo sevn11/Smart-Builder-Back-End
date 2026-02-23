@@ -47,6 +47,9 @@ export class SelectionTemplateService {
                     isDeleted: true,
                     isCompanyTemplate: false,
                 },
+                orderBy: {
+                    name: 'asc'
+                }
             })
             return { templates }
         } catch (error) {
