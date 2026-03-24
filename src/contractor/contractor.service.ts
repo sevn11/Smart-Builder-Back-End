@@ -270,9 +270,23 @@ export class ContractorService {
                 const categoryCondition: any = {
                     companyId,
                     isDeleted: false,
-                    phaseIds: {
-                        has: phaseId
-                    }
+                    OR: [
+                        {
+                            phaseIds: {
+                                has: phaseId
+                            }
+                        },
+                        {
+                            questions: {
+                                some: {
+                                    isDeleted: false,
+                                    phaseIds: {
+                                        has: phaseId
+                                    }
+                                }
+                            }
+                        }
+                    ]
                 };
                 let templateInfo: any = null;
                 if(templateId) {
