@@ -330,10 +330,23 @@ export class TemplateService {
                     where: {
                         isDeleted: false,
                         clientTemplateId: templateId,
-                        [linkField]: true,
                         companyId,
                         jobId,
-                        customerId
+                        customerId,
+                        OR: [
+                            { [linkField]: true },
+                            {
+                                ClientTemplateQuestion: {
+                                    some: {
+                                        isDeleted: false,
+                                        clientTemplateId: templateId,
+                                        [linkField]: true,
+                                        jobId,
+                                        customerId,
+                                    }
+                                }
+                            }
+                        ]
                     },
                     omit: { createdAt: true, updatedAt: true },
                     orderBy: { [orderField]: 'asc' },
