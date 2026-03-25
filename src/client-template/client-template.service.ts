@@ -583,11 +583,6 @@ export class ClientTemplateService {
                 });
             }
 
-            if (type === 'questionnaire') {
-                initialSelectionTypes.linkToInitalSelection = category.linkToInitalSelection
-                initialSelectionTypes.linkToPaintSelection = category.linkToPaintSelection
-            }
-
             const selectionTypeLinks = {
                 [SelectionTemplates.INITIAL_SELECTION.toLowerCase().replace(/ /g, "-")]: "linkToInitalSelection",
                 [SelectionTemplates.PAINT_SELECTION.toLowerCase().replace(/ /g, "-")]: "linkToPaintSelection",
