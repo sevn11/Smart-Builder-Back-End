@@ -323,7 +323,7 @@ export class ClientTemplateService {
             });
 
             const templateQuestions = await this.databaseService.clientTemplateQuestion.findMany({
-                where: { isDeleted: false, clientTemplateId: template.id, jobId, customerId: job.customerId, ...whereClause },
+                where: { isDeleted: false, clientTemplateId: template.id, clientCategoryId : categoryId, jobId, customerId: job.customerId, ...whereClause },
                 omit: { createdAt: true, updatedAt: true, },
                 orderBy: { [orderByClause[type]['question']]: 'asc' },
             });
