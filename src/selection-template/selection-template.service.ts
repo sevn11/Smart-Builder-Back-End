@@ -120,7 +120,17 @@ export class SelectionTemplateService {
                     isCompanyCategory: true,
                     companyId,
                     isDeleted: false,
-                    ...linkFilter,
+                    OR: [
+                        { ...linkFilter },
+                        {
+                            questions: {
+                                some: {
+                                    isDeleted: false,
+                                    ...linkFilter,
+                                }
+                            }
+                        }
+                    ]
                 },
                 include: {
                     questions: {

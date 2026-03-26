@@ -323,7 +323,7 @@ export class ClientTemplateService {
             });
 
             const templateQuestions = await this.databaseService.clientTemplateQuestion.findMany({
-                where: { isDeleted: false, clientTemplateId: template.id, jobId, customerId: job.customerId, ...whereClause },
+                where: { isDeleted: false, clientTemplateId: template.id, clientCategoryId : categoryId, jobId, customerId: job.customerId, ...whereClause },
                 omit: { createdAt: true, updatedAt: true, },
                 orderBy: { [orderByClause[type]['question']]: 'asc' },
             });
@@ -576,26 +576,18 @@ export class ClientTemplateService {
                 'initial-selection': { 'category': 'initialOrder', 'question': 'initialQuestionOrder' },
                 'paint-selection': { 'category': 'paintOrder', 'question': 'paintQuestionOrder' }
             }
-            if (body.isQuestionLinkedSelections && Array.isArray(body.linkedSelections)) {
-                body.linkedSelections.forEach((selection) => {
-                    initialSelectionTypes.linkToInitalSelection ||= selection === SelectionTemplates.INITIAL_SELECTION;
-                    initialSelectionTypes.linkToPaintSelection ||= selection === SelectionTemplates.PAINT_SELECTION;
-                });
-            }
+            
+            if (!body.isQuestionLinkedSelections && (category.linkToInitalSelection || category.linkToPaintSelection)) {
+                body.isQuestionLinkedSelections = true;
 
-            if (type === 'questionnaire') {
-                initialSelectionTypes.linkToInitalSelection = category.linkToInitalSelection
-                initialSelectionTypes.linkToPaintSelection = category.linkToPaintSelection
+                body.linkedSelections.push(...[
+                    category.linkToInitalSelection ? SelectionTemplates.INITIAL_SELECTION : null,
+                    category.linkToPaintSelection ? SelectionTemplates.PAINT_SELECTION : null,
+                ].filter(Boolean));
             }
+            initialSelectionTypes.linkToInitalSelection = body.linkedSelections.includes(SelectionTemplates.INITIAL_SELECTION);
+            initialSelectionTypes.linkToPaintSelection = body.linkedSelections.includes(SelectionTemplates.PAINT_SELECTION);
 
-            const selectionTypeLinks = {
-                [SelectionTemplates.INITIAL_SELECTION.toLowerCase().replace(/ /g, "-")]: "linkToInitalSelection",
-                [SelectionTemplates.PAINT_SELECTION.toLowerCase().replace(/ /g, "-")]: "linkToPaintSelection",
-            }
-
-            if (type in selectionTypeLinks) {
-                initialSelectionTypes[selectionTypeLinks[type]] = true;
-            }
             await this.alterCategory(template.id, category.id, initialSelectionTypes)
             if (whereClause.linkToQuestionnaire) {
                 orderValues.questionOrder = (_max?.questionOrder || 0) + 1;

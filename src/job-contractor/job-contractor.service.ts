@@ -565,6 +565,8 @@ export class JobContractorService {
                     questionnaireTemplateId: jobDetails.templateId,
                 }
             })
+
+            const phaseId = jobContractor.contractor.phase.id;
             // Fetch each linked details seperately
             let [questionnaireDetails, initialSelectionDetails, paintSelectionDetails] = await Promise.all([
                 // Questionnaire details
@@ -573,11 +575,25 @@ export class JobContractorService {
                         companyId,
                         isDeleted: false,
                         jobId,
-                        phaseIds: {
-                            has: jobContractor.contractor.phase.id
-                        },
                         clientTemplateId: clientTemplateInfo.id,
-                        linkToQuestionnaire: true
+                        linkToQuestionnaire: true,
+                        OR: [
+                            {
+                                phaseIds: {
+                                has: phaseId
+                                }
+                            },
+                            {
+                                ClientTemplateQuestion: {
+                                some: {
+                                    isDeleted: false,
+                                    phaseIds: {
+                                    has: phaseId
+                                    }
+                                }
+                                }
+                            }
+                        ]
                     },
                     orderBy: { questionnaireOrder: 'asc' },
                     include: {
@@ -604,12 +620,26 @@ export class JobContractorService {
                         companyId,
                         isDeleted: false,
                         jobId,
-                        phaseIds: {
-                            has: jobContractor.contractor.phase.id
-                        },
                         clientTemplateId: clientTemplateInfo.id,
                         linkToInitalSelection: true,
                         linkToQuestionnaire: false,
+                        OR: [
+                            {
+                                phaseIds: {
+                                has: phaseId
+                                }
+                            },
+                            {
+                                ClientTemplateQuestion: {
+                                some: {
+                                    isDeleted: false,
+                                    phaseIds: {
+                                    has: phaseId
+                                    }
+                                }
+                                }
+                            }
+                        ]
                     },
                     orderBy: { initialOrder: 'asc' },
                     include: {
@@ -636,12 +666,26 @@ export class JobContractorService {
                         companyId,
                         isDeleted: false,
                         jobId,
-                        phaseIds: {
-                            has: jobContractor.contractor.phase.id
-                        },
                         clientTemplateId: clientTemplateInfo.id,
                         linkToPaintSelection: true,
                         linkToQuestionnaire: false,
+                        OR: [
+                            {
+                                phaseIds: {
+                                has: phaseId
+                                }
+                            },
+                            {
+                                ClientTemplateQuestion: {
+                                some: {
+                                    isDeleted: false,
+                                    phaseIds: {
+                                    has: phaseId
+                                    }
+                                }
+                                }
+                            }
+                        ]
                     },
                     orderBy: { paintOrder: 'asc' },
                     include: {
