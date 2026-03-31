@@ -1,10 +1,9 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { PassportStrategy } from "@nestjs/passport";
 import { Request } from "express";
 import { ExtractJwt, Strategy } from "passport-jwt";
 import { DatabaseService } from "src/database/database.service";
-
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
@@ -16,11 +15,12 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
                 this.activeToken = token;
                 return token;
             }]),
-            secretOrKey: config.get('JWT_SECRET')
+            secretOrKey: config.get('JWT_SECRET'),
+            passReqToCallback: true,
         });
     }
 
-    async validate(payload: { sub: number, email: string }) {
+    async validate(req: Request, payload: { sub: number, email: string }) {
         try {
             const user = await this.databaseService.user.findUniqueOrThrow({
                 where: {
@@ -31,6 +31,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
                     activeAuthToken: this.activeToken
                 }
             });
+
             return user;
         } catch (error) {
             return null;

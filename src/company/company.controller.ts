@@ -5,6 +5,7 @@ import { GetUser } from 'src/core/decorators';
 import { User } from '@prisma/client';
 import { AddUserDTO, UploadLogoDTO, UpdateCompanyDTO, UpdateUserDTO, ChangeEmailDTO } from './validators';
 import { PaymentMethodDTO } from './validators/payment-method';
+import { ActivateSubscriptionDTO } from './validators/activate-subscription';
 
 
 @UseGuards(JwtGuard)
@@ -112,6 +113,16 @@ export class CompanyController {
     @Get(':id/sign-now-plan-info')
     getSignNowPlanInfo(@GetUser() user: User, @Param('id', ParseIntPipe) companyId: number) {
         return this.companyService.getSignNowPlanInfo(user, companyId);
+    }
+
+    @HttpCode(HttpStatus.OK)
+    @Post(':id/activate-subscription')
+    activateSubscription(
+        @GetUser() user: User,
+        @Param('id', ParseIntPipe) companyId: number,
+        @Body() body: ActivateSubscriptionDTO
+    ) {
+        return this.companyService.activateSubscription(user, companyId, body);
     }
 
     @Patch(':id/sales-tax-rate')

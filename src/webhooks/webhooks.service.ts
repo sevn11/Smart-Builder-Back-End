@@ -42,14 +42,75 @@ export class WebhooksService {
 
 
     async handleStripeWebhook(body: any) {
-        // Seperate logic for subscription canceled event
-        if (body.type == 'customer.subscription.updated' || body.type == 'customer.subscription.deleted') {
-            let canceledDate = new Date(body.data.object.canceled_at * 1000);
+        // Handle subscription status changes (canceled, paused)
+        if (body.type == 'customer.subscription.updated' || body.type == 'customer.subscription.deleted' || body.type == 'customer.subscription.paused') {
             let subscriptionId = body.data.object.id;
+            let subscriptionStatus = body.data.object.status;
+
+            // Find user by main subscription or sign-here subscription
             let user = await this.databaseService.user.findFirst({
                 where: { subscriptionId }
             });
-            if (user && body.data.object.status == "canceled") {
+
+            console.log(user)
+            const isPaused = body.data.object.pause_collection !== null && 
+                 body.data.object.pause_collection !== undefined;
+            
+            const isResumed = body.data.previous_attributes?.pause_collection !== null &&
+                  body.data.previous_attributes?.pause_collection !== undefined &&
+                  body.data.object.pause_collection === null;
+
+            // Handle paused status (trial expired without payment method)
+            if (user && isPaused) {
+                let pausedDate = new Date();
+
+                await this.databaseService.user.update({
+                    where: { id: user.id },
+                    data: {
+                        accountStatus: 'inactive',
+                    }
+                });
+
+                await this.databaseService.paymentLog.create({
+                    data: {
+                        userId: user.id,
+                        paymentDate: pausedDate,
+                        paymentId: body.data.object.id,
+                        amount: 0,
+                        status: 'paused',
+                        response: body.data.object
+                    }
+                });
+                return;
+            }
+
+            if (user && isResumed) {
+                let pausedDate = new Date();
+
+                await this.databaseService.user.update({
+                    where: { id: user.id },
+                    data: {
+                        accountStatus: 'active',
+                    }
+                });
+
+                await this.databaseService.paymentLog.create({
+                    data: {
+                        userId: user.id,
+                        paymentDate: pausedDate,
+                        paymentId: body.data.object.id,
+                        amount: 0,
+                        status: 'paused',
+                        response: body.data.object
+                    }
+                });
+                return;
+            }
+
+
+            // Handle canceled status
+            if (user && subscriptionStatus == "canceled") {
+                let canceledDate = new Date(body.data.object.canceled_at * 1000);
                 const month = canceledDate.getMonth() + 1;
                 const year = canceledDate.getFullYear();
 
@@ -86,13 +147,14 @@ export class WebhooksService {
                         }
                     });
                 }
-                // Make employee as incactive
+                // Make user inactive
                 await this.databaseService.user.update({
                     where: {
                         id: user.id
                     },
                     data: {
-                        isActive: false
+                        accountStatus: 'inactive',
+                        cardOnFile: false,
                     }
                 });
                 return;
@@ -102,8 +164,9 @@ export class WebhooksService {
 
         let paymentDate = new Date(body.data.object.created * 1000)
         let user = await this.databaseService.user.findFirst({
-            where: { subscriptionId: body.data.object.subscription }
+            where: { subscriptionId: body.data.object.id }
         });
+
         if (user) {
             const month = paymentDate.getMonth() + 1;
             const year = paymentDate.getFullYear();
@@ -117,6 +180,7 @@ export class WebhooksService {
                     }
                 }
             });
+
             let status: string;
             switch (body.type) {
                 case 'invoice.created':

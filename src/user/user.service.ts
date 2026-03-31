@@ -40,6 +40,22 @@ export class UserService {
                     }
                 }
             });
+
+            // Check if trial expired and no card on file → deactivate
+            if (
+                userObj &&
+                userObj.trialEndsAt &&
+                new Date(userObj.trialEndsAt) < new Date() &&
+                !userObj.cardOnFile &&
+                userObj.accountStatus === 'active'
+            ) {
+                await this.databaseService.user.update({
+                    where: { id: user.id },
+                    data: { accountStatus: 'inactive' }
+                });
+                userObj.accountStatus = 'inactive';
+            }
+
             return userObj;
         } catch (error) {
             throw new InternalServerErrorException()

@@ -1,13 +1,15 @@
-import { Injectable, InternalServerErrorException } from "@nestjs/common";
+import { Inject, Injectable, InternalServerErrorException, LoggerService } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { User } from "@prisma/client";
 import { SignUpDTO } from "src/auth/validators";
 import { AddUserDTO } from "src/company/validators";
+import { ActivateSubscriptionDTO } from "src/company/validators/activate-subscription";
 import { DatabaseService } from "src/database/database.service";
 import Stripe from "stripe";
 import { BuilderPlanTypes } from "../utils/builder-plan-types";
 import { UserTypes } from "../utils";
 import { DemoUserDTO } from "src/admin/validators/add-demo-user";
+import { WINSTON_MODULE_PROVIDER } from "nest-winston";
 
 
 @Injectable()
@@ -17,7 +19,8 @@ export class StripeService {
 
     constructor(
         private readonly config: ConfigService,
-        private databaseService: DatabaseService
+        private databaseService: DatabaseService,
+        @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: LoggerService
     ) {
         this.StripeClient = new Stripe(config.get('STRIPE_API_KEY'))
         this.stripeTaxRateId = config.get('STRIPE_TAX_RATE_ID')
@@ -109,6 +112,23 @@ export class StripeService {
             }
         }
 
+    }
+
+    // Function to detach (delete) default payment method from a stripe customer
+    async deleteDefaultPaymentMethod(customerId: string) {
+        try {
+            const customer = await this.StripeClient.customers.retrieve(customerId);
+            if (customer.deleted !== true) {
+                const defaultPaymentMethodId = customer.invoice_settings?.default_payment_method;
+                if (defaultPaymentMethodId) {
+                    await this.StripeClient.paymentMethods.detach(defaultPaymentMethodId as string);
+                }
+            }
+            return { status: true };
+        } catch (error) {
+            console.log("Error deleting default payment method", error);
+            return { status: false, message: error.message };
+        }
     }
 
     // Function to set default payment method to a stripe customer
@@ -369,8 +389,8 @@ export class StripeService {
                 customer: stripeCustomerId,
                 items: [{ price: price.id }],
                 trial_end: trialEndDate,
+                payment_behavior: 'default_incomplete',
                 proration_behavior: 'none',
-                automatic_tax: { enabled: true },
             };
 
             // Apply coupon for demo builders
@@ -393,7 +413,7 @@ export class StripeService {
             console.log(error);
             return {
                 status: false,
-                message: "Failed to create SignHere subscription"
+                message: error?.message ?? "Failed to create SignHere subscription"
             }
         }
     }
@@ -654,6 +674,9 @@ export class StripeService {
             let subscription = await this.StripeClient.subscriptions.retrieve(employee ? employee.subscriptionId : user.subscriptionId);
             const isTrialActive = subscription.trial_end && subscription.trial_end > Math.floor(Date.now() / 1000);
 
+            let newProduct = employee ? employee.productId : user.productId;
+            console.log(employee)
+
             // Create new price in stripe
             let newPrice = await this.StripeClient.prices.create({
                 unit_amount: planAmount,
@@ -715,6 +738,162 @@ export class StripeService {
         }
     }
 
+    // Pause a Stripe subscription (void invoices during pause)
+    async pauseSubscription(subscriptionId: string) {
+        try {
+            await this.StripeClient.subscriptions.update(subscriptionId, {
+                pause_collection: { behavior: 'void' },
+            });
+            console.log('Stripe subscription paused:', subscriptionId);
+            return { status: true };
+        } catch (error) {
+            console.error('Failed to pause Stripe subscription:', error);
+            return { status: false, message: error?.message ?? 'Failed to pause subscription' };
+        }
+    }
+
+    // Resume a paused Stripe subscription with a payment method
+    async resumeSubscription(subscriptionId: string, paymentMethodId: string) {
+        try {
+            await this.StripeClient.subscriptions.update(subscriptionId, {
+                pause_collection: '',
+                default_payment_method: paymentMethodId,
+            } as any);
+            console.log('Stripe subscription resumed:', subscriptionId);
+            return { status: true };
+        } catch (error) {
+            console.error('Failed to resume Stripe subscription:', error);
+            return { status: false, message: error?.message ?? 'Failed to resume subscription' };
+        }
+    }
+
+    // Create Stripe customer + trial subscription (no payment method required)
+    async createTrialSubscription(email: string, name: string, phone?: string, planAmount?: number, body?: any, promoCode?: string) {
+        let customer: Stripe.Customer;
+        try {
+            let yearlyAmount: number;
+            if (planAmount !== undefined) {
+                yearlyAmount = Math.round(planAmount * 100); // convert to cents
+            } else {
+                // Fallback: get yearly plan amount from DB
+                const seoSettings = await this.databaseService.seoSettings.findFirst();
+                if (!seoSettings || !seoSettings.yearlyPlanAmount) {
+                    console.error('seo_settings not found or yearlyPlanAmount is missing');
+                    return { status: false, message: 'Plan pricing not configured in DB' };
+                }
+                yearlyAmount = Math.round(Number(seoSettings.yearlyPlanAmount) * 100);
+            }
+
+            customer = await this.StripeClient.customers.create({
+                email,
+                name,
+                phone: phone || undefined,
+            });
+
+            let productId: string;
+
+            const product = await this.StripeClient.products.create({
+                    name: `${body.companyName}-${name}`
+                });
+            
+            productId = product.id;
+
+            let subscriptionPayload: Stripe.SubscriptionCreateParams = {
+                customer: customer.id,
+                items: [{
+                    price_data: {
+                        currency: 'usd',
+                        product: productId,
+                        unit_amount: yearlyAmount,
+                        recurring: {
+                            interval: 'year',
+                        },
+                    },
+                }],
+                trial_period_days: 30,
+                payment_behavior: 'default_incomplete',
+                payment_settings: {
+                    save_default_payment_method: 'on_subscription',
+                },
+                trial_settings: {
+                    end_behavior: {
+                        missing_payment_method: 'pause',
+                    },
+                },
+            };
+
+            const subscription = await this.StripeClient.subscriptions.create(subscriptionPayload);
+
+            return {
+                status: true,
+                stripeCustomerId: customer.id,
+                subscriptionId: subscription.id,
+                productId : productId
+            };
+        } catch (error) {
+            if (customer) {
+                try {
+                    await this.StripeClient.customers.del(customer.id);
+                } catch (cleanupError) {
+                    console.error('Failed to cleanup Stripe customer:', cleanupError);
+                }
+            }
+            return { status: false, message: error?.message ?? 'Stripe subscription creation failed' };
+        }
+    }
+
+    async createTrialBuilderSignNowSubscription(company: any, stripeCustomerId: any, signNowPlanAmount: number) {
+        try {
+
+            let yearlyAmount: number;
+          
+            yearlyAmount = Math.round(Number(signNowPlanAmount) * 100);
+
+            // Create new product in stripe
+            const product = await this.StripeClient.products.create({
+                name: `${company.companyName || company.name}-SignHere`
+            });
+
+            const productId = product.id;
+
+            let subscriptionPayload: Stripe.SubscriptionCreateParams = {
+                customer: stripeCustomerId,
+                items: [{
+                    price_data: {
+                        currency: 'usd',
+                        product: productId,
+                        unit_amount: yearlyAmount,
+                        recurring: {
+                            interval: 'year',
+                        },
+                    },
+                }],
+                trial_period_days: 30,
+                payment_behavior: 'default_incomplete',
+                payment_settings: {
+                    save_default_payment_method: 'on_subscription',
+                },
+                trial_settings: {
+                    end_behavior: {
+                        missing_payment_method: 'pause',
+                    },
+                },
+            };
+
+            const subscription = await this.StripeClient.subscriptions.create(subscriptionPayload);
+
+            return {
+                status: true,
+                stripeCustomerId: stripeCustomerId,
+                subscriptionId: subscription.id,
+                productId: productId,
+            };
+        }
+        catch (error) {
+           return { status: false, message: error?.message ?? 'Stripe subscription creation failed' };
+        }
+    }
+
     // Function to get promo code information
     async getPromoCodeInfo(promo_code: string) {
         try {
@@ -763,6 +942,225 @@ export class StripeService {
                 info: null,
                 message: "Invalid promo code"
             }
+        }
+    }
+
+    async activateSubscription(
+    user: User,
+    body: ActivateSubscriptionDTO,
+    signNowSubscriptionId: string,
+    planAmount: number,
+    signNowPlanAmount: number,
+    ) {
+        try {
+            if (!user?.stripeCustomerId) {
+                throw new Error('Customer ID missing');
+            }
+
+            if (!body?.paymentMethodId) {
+                throw new Error('Payment method is required');
+            }
+
+            const customerId = user.stripeCustomerId;
+            const paymentMethodId = body.paymentMethodId;
+            const promoCode = body.promoCode;
+            const planType = body.planType === BuilderPlanTypes.MONTHLY ? 'month' : 'year';
+
+            // Attach payment method to customer
+            try {
+                await this.StripeClient.paymentMethods.attach(paymentMethodId, {
+                    customer: customerId,
+                });
+            } catch (error: any) {
+                const msg = error?.message?.toLowerCase() || '';
+                const alreadyAttached =
+                    msg.includes('already attached') ||
+                    msg.includes('previously used') ||
+                    error?.code === 'resource_already_exists';
+                if (!alreadyAttached) {
+                    throw error;
+                }
+            }
+
+            await this.StripeClient.customers.update(customerId, {
+                invoice_settings: {
+                    default_payment_method: paymentMethodId,
+                },
+            });
+
+            // Check current subscription status to decide: resume paused OR create new
+            let mainSubscription: Stripe.Subscription | null = null;
+            let subscriptionStatus: string | null = null;
+
+            if (user.subscriptionId) {
+                try {
+                    mainSubscription = await this.StripeClient.subscriptions.retrieve(user.subscriptionId);
+                    subscriptionStatus = mainSubscription.status;
+                } catch (error) {
+                    // Subscription not found in Stripe (deleted or invalid)
+                    mainSubscription = null;
+                    subscriptionStatus = null;
+                }
+            }
+
+            let resultSubscriptionId = user.subscriptionId;
+            let resultProductId = user.productId;
+
+            if (subscriptionStatus === 'paused') {
+                // PAUSED subscription → Resume it
+                await this.StripeClient.subscriptions.update(user.subscriptionId, {
+                    pause_collection: '',
+                    default_payment_method: paymentMethodId,
+                } as any);
+
+                // Apply promo code if provided
+                if (promoCode) {
+                    await this.StripeClient.subscriptions.update(user.subscriptionId, {
+                        discounts: [{ promotion_code: promoCode }],
+                    });
+                }
+
+                console.log('Resumed paused subscription:', user.subscriptionId);
+
+                // Also resume SignHere subscription if paused
+                if (signNowSubscriptionId) {
+                    try {
+                        const signNowSub = await this.StripeClient.subscriptions.retrieve(signNowSubscriptionId);
+                        if (signNowSub.status === 'paused') {
+                            await this.StripeClient.subscriptions.update(signNowSubscriptionId, {
+                                pause_collection: '',
+                                default_payment_method: paymentMethodId,
+                            } as any);
+                            console.log('Resumed paused SignHere subscription:', signNowSubscriptionId);
+                        }
+                    } catch (error) {
+                        console.error('Failed to resume SignHere subscription:', error);
+                    }
+                }
+
+            } else if (!mainSubscription || subscriptionStatus === 'canceled' || subscriptionStatus === 'incomplete_expired') {
+                // CANCELED or NO subscription → Create a brand new subscription
+                const amountInCents = Math.round(planAmount * 100);
+
+                // Create new product
+                const customer = await this.StripeClient.customers.retrieve(customerId) as Stripe.Customer;
+                const product = await this.StripeClient.products.create({
+                    name: `${customer.name || user.email}-Reactivation`,
+                });
+                // Create price for the product
+                const price = await this.StripeClient.prices.create({
+                    unit_amount: amountInCents,
+                    currency: 'usd',
+                    recurring: { interval: planType as Stripe.PriceCreateParams.Recurring.Interval },
+                    product: product.id,
+                    tax_behavior: 'exclusive',
+                });
+
+             
+                let subscriptionPayload: Stripe.SubscriptionCreateParams = {
+                    customer: customerId,
+                    items: [{
+                        price_data: {
+                            currency: 'usd',
+                            product: product.id,
+                            unit_amount: amountInCents,
+                            recurring: { interval: planType as Stripe.PriceCreateParams.Recurring.Interval },
+                        },
+                    }],
+                    payment_settings: {
+                        save_default_payment_method: 'on_subscription',
+                    },
+                };
+
+                if (promoCode) {
+                    subscriptionPayload.promotion_code = promoCode;
+                }
+
+                const newSubscription = await this.StripeClient.subscriptions.create(subscriptionPayload);
+                resultSubscriptionId = newSubscription.id;
+                resultProductId = product.id;
+
+                // Also create new SignHere subscription
+                if (signNowPlanAmount > 0) {
+                    try {
+                        const signNowProduct = await this.StripeClient.products.create({
+                            name: `${customer.name || user.email}-SignHere-Reactivation`,
+                        });
+
+                        const signNowPrice = await this.StripeClient.prices.create({
+                            unit_amount: Math.round(signNowPlanAmount * 100),
+                            currency: 'usd',
+                            recurring: { interval: planType as Stripe.PriceCreateParams.Recurring.Interval },
+                            product: signNowProduct.id,
+                        });
+
+                        const signNowSub = await this.StripeClient.subscriptions.create({
+                            customer: customerId,
+                            items: [{ price: signNowPrice.id }],
+                            default_payment_method: paymentMethodId,
+                            proration_behavior: 'none',
+                        });
+
+                        console.log('Created new SignHere subscription:', signNowSub.id);
+
+                        return {
+                            status: true,
+                            subscriptionId: resultSubscriptionId,
+                            productId: resultProductId,
+                            signHereSubscriptionId: signNowSub.id,
+                            signHereProductId: signNowProduct.id,
+                            isNewSubscription: true,
+                        };
+                    } catch (error) {
+                        console.error('Failed to create new SignHere subscription:', error);
+                    }
+                }
+
+                return {
+                    status: true,
+                    subscriptionId: resultSubscriptionId,
+                    productId: resultProductId,
+                    signHereSubscriptionId: null,
+                    signHereProductId: null,
+                    isNewSubscription: true,
+                };
+
+            } else {
+                // ACTIVE or TRIALING subscription → Just update payment method and promo
+                const updatePayload: Stripe.SubscriptionUpdateParams = {
+                    default_payment_method: paymentMethodId,
+                    proration_behavior: 'none',
+                };
+
+                if (promoCode) {
+                    updatePayload.discounts = [{ promotion_code: promoCode }];
+                }
+
+                await this.StripeClient.subscriptions.update(user.subscriptionId, updatePayload);
+
+                // Also update SignHere subscription payment method
+                if (signNowSubscriptionId) {
+                    try {
+                        await this.StripeClient.subscriptions.update(signNowSubscriptionId, {
+                            default_payment_method: paymentMethodId,
+                        });
+                    } catch (error) {
+                        console.error('Failed to update SignHere subscription payment method:', error);
+                    }
+                }
+            }
+
+            return {
+                status: true,
+                subscriptionId: resultSubscriptionId,
+                productId: resultProductId,
+                signHereSubscriptionId: signNowSubscriptionId,
+                signHereProductId: null,
+                isNewSubscription: false,
+            };
+        } catch (error) {
+            console.error('Stripe activateSubscription error:', error);
+            throw error;
         }
     }
 }

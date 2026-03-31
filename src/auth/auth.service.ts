@@ -8,8 +8,8 @@ import { PrismaErrorCodes, HelperFunctions, ResponseMessages, UserTypes } from '
 import { SendgridService } from 'src/core/services';
 import { ConfigService } from '@nestjs/config';
 import { StripeService } from 'src/core/services/stripe.service';
-import { BuilderPlanTypes } from 'src/core/utils/builder-plan-types';
 import { Prisma, PrismaClient, User } from '@prisma/client';
+import { BuilderPlanTypes } from 'src/core/utils/builder-plan-types';
 
 
 @Injectable()
@@ -32,113 +32,153 @@ export class AuthService {
                 }
             });
             if (existingUser) {
-                throw new BadRequestException();
+                throw new BadRequestException(ResponseMessages.UNIQUE_EMAIL_ERROR);
             }
 
-            let data = await this.databaseService.seoSettings.findMany();
-            let seoSettings = data[0];
-            
-            let planAmount = 0;
-            body.planType == BuilderPlanTypes.MONTHLY 
-                ? planAmount = seoSettings.monthlyPlanAmount.toNumber() 
-                : planAmount = seoSettings.yearlyPlanAmount.toNumber()
+            const hash = await argon.hash(body.password);
+            const now = new Date();
+            const trialEndsAt = new Date(now);
+            trialEndsAt.setDate(trialEndsAt.getDate() + 30);
 
-            if(data) {
-                // Create new customer and add card details inside stripe
-                let promoCode: string;
-                if(body.promoCode) {
-                    promoCode = body.promoCode;
+            const user = await this.databaseService.user.create({
+                data: {
+                    email: body.email.toLowerCase(),
+                    hash,
+                    name: body.name,
+                    userType: UserTypes.BUILDER,
+                    tosAcceptanceTime: new Date().toISOString(),
+                    isTosAccepted: true,
+                    tosVersion: HelperFunctions.getTosVersion(),
+                    stripeCustomerId: null,
+                    productId: null,
+                    subscriptionId: null,
+                    plan: 'yearly',
+                    accountStatus: 'active',
+                    planStartsAt: now,
+                    trialEndsAt: trialEndsAt,
+                    cardOnFile: false,
+                    company: {
+                        create: {
+                            name: body.companyName,
+                            address: body.address,
+                            zipcode: body.zipcode,
+                            phoneNumber: body.phoneNumber,
+                            planType: 'YEARLY',
+                        }
+                    },
+                    PermissionSet: {
+                        create: {
+                            fullAccess: true,
+                            viewOnly: false
+                        }
+                    }
+                },
+                omit: {
+                    hash: true,
+                    invitationToken: true,
+                    passwordResetCode: true,
+                    isDeleted: true
+                },
+                include: {
+                    company: {
+                        omit: {
+                            isDeleted: true
+                        }
+                    },
+                    PermissionSet: {
+                        omit: {
+                            userId: true,
+                            isDeleted: true,
+                        }
+                    }
                 }
-                let response = await this.stripeService.createBuilderSubscription(body, planAmount, promoCode);
-                if(response.status) {
+            });
+            // Create Stripe trial subscriptions (non-blocking)
+            try {
+                console.log('=== STRIPE REGISTRATION START ===');
+                const seoSettings = await this.databaseService.seoSettings.findFirst();
+                const yearlyPlanAmount = seoSettings.yearlyPlanAmount.toNumber();
+                const signNowYearlyAmount = seoSettings.signNowYearlyAmount.toNumber();
+
+                // Create main subscription with trial
+                const response = await this.stripeService.createTrialSubscription(
+                    user.email,
+                    body.name,
+                    body.phoneNumber,
+                    yearlyPlanAmount,
+                    body
+                );
+
+                if (response.status) {
                     let signNowSubscriptionResponse = null;
                     let signNowSubStatus = true;
-                    // Create a SignNow subscription if the builder chooses a plan
-                    if (body.signNowPlanType && Object.values(BuilderPlanTypes).includes(body.signNowPlanType)) {
-                        let signNowPlanAmount = 0;
-                        body.signNowPlanType == BuilderPlanTypes.MONTHLY
-                            ? signNowPlanAmount = seoSettings.signNowMonthlyAmount.toNumber()
-                            : signNowPlanAmount = seoSettings.signNowYearlyAmount.toNumber()
-    
-                        signNowSubscriptionResponse = await this.stripeService.createBuilderSignNowSubscription(body, response.stripeCustomerId, signNowPlanAmount);
-                        if (!signNowSubscriptionResponse.status) {
-                            signNowSubStatus = false
-                        }
+
+                    // Always create SignNow at registration with YEARLY plan
+                    const signNowBody = {
+                        ...body,
+                        signNowPlanType: BuilderPlanTypes.YEARLY,
+                    };
+
+                    signNowSubscriptionResponse = await this.stripeService.createTrialBuilderSignNowSubscription(
+                        signNowBody,
+                        response.stripeCustomerId,
+                        signNowYearlyAmount,
+                    );
+
+                    if (!signNowSubscriptionResponse.status) {
+                        signNowSubStatus = false;
                     }
-                    const hash = await argon.hash(body.password);
-                    const user = await this.databaseService.user.create({
+
+                    // Save both IDs to DB
+                    await this.databaseService.user.update({
+                        where: { id: user.id },
                         data: {
-                            email: body.email.toLowerCase(),
-                            hash,
-                            name: body.name,
-                            userType: UserTypes.BUILDER,
-                            tosAcceptanceTime: new Date().toISOString(),
-                            isTosAccepted: true,
-                            tosVersion: HelperFunctions.getTosVersion(),
                             stripeCustomerId: response.stripeCustomerId,
-                            productId: response.productId,
                             subscriptionId: response.subscriptionId,
-                            company: {
-                                create: {
-                                    name: body.companyName,
-                                    address: body.address,
-                                    zipcode: body.zipcode,
-                                    phoneNumber: body.phoneNumber,
-                                    planType: body.planType,
-                                    planAmount,
-                                    extraFee: seoSettings.additionalEmployeeFee,
-                                    signNowSubscriptionId: signNowSubscriptionResponse?.subscriptionId || null,
-                                    signNowStripeProductId: signNowSubscriptionResponse?.productId || null,
-                                }
-                            },
-                            PermissionSet: {
-                                create: {
-                                    fullAccess: true,
-                                    viewOnly: false
-                                }
-                            }
+                            
+                            trialEndsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+                            accountStatus: 'active',
+                            productId: response.productId,
+                            plan: 'YEARLY',
+                            cardOnFile: false,
                         },
-                        omit: {
-                            hash: true,
-                            invitationToken: true,
-                            passwordResetCode: true,
-                            isDeleted: true
-                        },
-                        include: {
-                            company: {
-                                omit: {
-                                    isDeleted: true
-                                }
-                            },
-                            PermissionSet: {
-                                omit: {
-                                    userId: true,
-                                    isDeleted: true,
-                                }
-                            }
-                        }
                     });
-                    const payload = { sub: user.id, email: user.email, companyId: user.company.id };
-                    const access_token = await this.jwtService.signAsync(payload);
 
-                    // Copy master templates to builder
-                    if (user.companyId) {
-                        await this.prepareBuilderTemplateData(user);
+                    // Update company with SignHere subscription info
+                    if (signNowSubStatus && user.companyId) {
+                        await this.databaseService.company.update({
+                            where: { id: user.companyId },
+                            data: {
+                                signNowSubscriptionId: signNowSubscriptionResponse.subscriptionId,
+                                signNowStripeProductId: signNowSubscriptionResponse.productId,
+                            },
+                        });
                     }
-
-                    // Send mail to admin
-                    await this.sendMailToAdmin(user);
-
-                    return { status: true, user, access_token, signNowSubStatus };
+                } else {
+                    console.error('Stripe trial creation failed, registration continues:', response.message);
                 }
-                else {
-                    return response;
-                }
-            } else {
-                throw new InternalServerErrorException()
+            } catch (stripeError) {
+                console.error('Stripe integration error during signup, registration continues:', stripeError);
             }
+
+            const payload = { sub: user.id, email: user.email, companyId: user.company.id };
+            const access_token = await this.jwtService.signAsync(payload);
+
+            // Copy master templates to builder
+            if (user.companyId) {
+                await this.prepareBuilderTemplateData(user);
+            }
+
+            // Send mail to admin
+            // await this.sendMailToAdmin(user);
+
+            return { status: true, user, access_token };
         } catch (ex) {
             console.log(ex)
+            // Re-throw known HTTP exceptions (e.g. duplicate email)
+            if (ex instanceof BadRequestException) {
+                throw ex;
+            }
             // Database Exceptions
             if (ex instanceof PrismaClientKnownRequestError) {
                 if (ex.code == PrismaErrorCodes.UNIQUE_CONSTRAINT_ERROR) {
@@ -180,19 +220,44 @@ export class AuthService {
             if (!user.isActive || !user.company.isActive) {
                 throw new ForbiddenException(ResponseMessages.ACCOUNT_SUSPENDED);
             }
-            if (await argon.verify(user.hash, body.password)) {
-                delete user.hash;
-                const payload = { sub: user.id, email: user.email, companyId: user.company.id };
-                const access_token = await this.jwtService.signAsync(payload);
-                // save token to users table
-                await this.databaseService.user.update({
-                    where: { id: user.id },
-                    data: { activeAuthToken: access_token }
-                });
-                return { user, access_token };
-            } else {
+
+            if (!await argon.verify(user.hash, body.password)) {
                 throw new NotFoundException(ResponseMessages.INVALID_CREDENTIALS);
             }
+
+            delete user.hash;
+
+            // Check if trial expired and no card on file → deactivate
+            if (
+                user.trialEndsAt &&
+                new Date(user.trialEndsAt) < new Date() &&
+                !user.cardOnFile &&
+                user.accountStatus === 'active'
+            ) {
+                await this.databaseService.user.update({
+                    where: { id: user.id },
+                    data: { accountStatus: 'inactive' }
+                });
+                user.accountStatus = 'inactive';
+            }
+
+            const payload = { sub: user.id, email: user.email, companyId: user.company.id };
+            const access_token = await this.jwtService.signAsync(payload);
+            // save token to users table
+            await this.databaseService.user.update({
+                where: { id: user.id },
+                data: { activeAuthToken: access_token }
+            });
+
+            // Return top-level trial/billing fields so frontend can check before redirect
+            return {
+                user,
+                access_token,
+                account_status: user.accountStatus,
+                card_on_file: user.cardOnFile ?? false,
+                trial_ends_at: user.trialEndsAt,
+                plan: user.plan,
+            };
         } catch (ex) {
             // Database Exceptions
             console.log(ex);

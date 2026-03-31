@@ -8,6 +8,8 @@ import { ConfigService } from '@nestjs/config';
 import { AWSService, SendgridService } from 'src/core/services';
 import { StripeService } from 'src/core/services/stripe.service';
 import { PaymentMethodDTO } from './validators/payment-method';
+import { ActivateSubscriptionDTO } from './validators/activate-subscription';
+import { PlanType } from '@prisma/client';
 import { BuilderPlanTypes } from 'src/core/utils/builder-plan-types';
 import { ProfitCalculationType } from 'src/core/utils/company';
 import { marginCalculation, markupCalculation } from 'src/core/utils/profit-calculation';
@@ -486,7 +488,39 @@ export class CompanyService {
     }
 
     async getBuilderSubscriptionInfo(user: User) {
-        return this.stripeService.getBuilderSubscriptionInfo(user)
+        try {
+            const userData = await this.databaseService.user.findUnique({
+                where: { id: user.id },
+                select: {
+                    plan: true,
+                    accountStatus: true,
+                    trialEndsAt: true,
+                    planStartsAt: true,
+                    planExpiresAt: true,
+                    cardOnFile: true,
+                    subscriptionId: true,
+                }
+            });
+
+            if (!userData) {
+                return null;
+            }
+
+            return {
+                builderSubscription: {
+                    plan: userData.plan || 'yearly',
+                    account_status: userData.accountStatus || 'active',
+                    trial_ends_at: userData.trialEndsAt,
+                    plan_starts_at: userData.planStartsAt,
+                    plan_expires_at: userData.planExpiresAt,
+                    card_on_file: userData.cardOnFile,
+                    subscription_id: userData.subscriptionId,
+                }
+            };
+        } catch (error) {
+            console.log('getBuilderSubscriptionInfo error:', error);
+            return null;
+        }
     }
 
     async getUploadLogoSignedUrl(user: User, companyId: number, body: UploadLogoDTO) {
@@ -544,7 +578,7 @@ export class CompanyService {
                 const profitCalType = company.profitCalculationType
                 // Check is plan updated or not
                 let sentPlanUpdateMessage = false;
-                if (company.planType !== body.planType) {
+                if (company.planType !== body.planType && user.subscriptionId) {
                     let planAmount = 0;
                     const planType = body.planType == BuilderPlanTypes.MONTHLY ? 'month' : 'year';
 
@@ -572,7 +606,7 @@ export class CompanyService {
                                 planAmount
                             }
                         });
-                        // Update sign-now plan
+                        // Update sign-here plan
                         if(company.signNowSubscriptionId) {
                             let price = 0;
                             planType == 'month'
@@ -634,11 +668,14 @@ export class CompanyService {
                 let data = await this.databaseService.seoSettings.findMany();
                 let seoSettings = data[0];
                 let signNowResponse = { status: null, message: "" };
+
                 if (body.signNowPlanStatus) {
+                    // SignHere = Included
                     let signNowPlanAmount = 0;
                     company.planType == BuilderPlanTypes.MONTHLY
                         ? signNowPlanAmount = seoSettings.signNowMonthlyAmount.toNumber()
                         : signNowPlanAmount = seoSettings.signNowYearlyAmount.toNumber()
+
                     // Check plan already exist and active
                     if (company.signNowSubscriptionId) {
                         let planInfo = await this.stripeService.isSignNowCancelled(company.signNowSubscriptionId);
@@ -646,38 +683,80 @@ export class CompanyService {
                             return; // Active subscription already exist
                         }
                     }
-                    let subscriptionRes = await this.stripeService.createBuilderSignNowSubscriptionAfterSignup(company, builder, signNowPlanAmount);
-                    if (subscriptionRes.status) {
-                        await this.databaseService.company.update({
-                            where: { id: companyId},
-                            data: {
-                                signNowStripeProductId: subscriptionRes.productId,
-                                signNowSubscriptionId: subscriptionRes.subscriptionId
-                            }
-                        })
+
+                    if (builder.cardOnFile && builder.stripeCustomerId) {
+                        // User has card on file — create active SignHere subscription immediately
+                        let subscriptionRes = await this.stripeService.createBuilderSignNowSubscriptionAfterSignup(company, builder, signNowPlanAmount);
+                        if (subscriptionRes.status) {
+                            await this.databaseService.company.update({
+                                where: { id: companyId },
+                                data: {
+                                    signNowStripeProductId: subscriptionRes.productId,
+                                    signNowSubscriptionId: subscriptionRes.subscriptionId
+                                }
+                            });
+                            
+                            signNowResponse.status = true;
+                            signNowResponse.message = "Sign here subscription added.";
+                        } else {
+                            signNowResponse.status = false;
+                            signNowResponse.message = "Failed to add sign here subscription.";
+                        }
+                    } else if (builder.stripeCustomerId) {
+                        // User is on trial (no card) — create SignHere trial subscription
+                        const signNowPlanType = company.planType == BuilderPlanTypes.MONTHLY
+                            ? BuilderPlanTypes.MONTHLY
+                            : BuilderPlanTypes.YEARLY;
+                        const signNowRes = await this.stripeService.createBuilderSignNowSubscription(
+                            { companyName: company.name, name: builder.name, signNowPlanType },
+                            builder.stripeCustomerId,
+                            signNowPlanAmount,
+                        );
+                        if (signNowRes.status) {
+                            await this.databaseService.company.update({
+                                where: { id: companyId },
+                                data: {
+                                    signNowStripeProductId: signNowRes.productId,
+                                    signNowSubscriptionId: signNowRes.subscriptionId
+                                }
+                            });
+                           
+                            signNowResponse.status = true;
+                            signNowResponse.message = "Sign here trial subscription added.";
+                        } else {
+                            signNowResponse.status = false;
+                            signNowResponse.message = "Failed to add sign here subscription.";
+                        }
+                    } else {
+                        // No Stripe customer at all — cannot create subscription yet
                         signNowResponse.status = true;
-                        signNowResponse.message = "Sign here subscription added.";
+                        signNowResponse.message = "SignHere will be added when your trial ends and payment is set up.";
                     }
-                    else {
-                        signNowResponse.status = false;
-                        signNowResponse.message = "Failed to add sign here subscription.";
-                    }
-                } 
+                }
                 else {
-                    // Check plan already exist and active
-                    if (company.signNowSubscriptionId) {
-                        let planInfo = await this.stripeService.isSignNowCancelled(company.signNowSubscriptionId);
+                    // SignHere = Not Included — cancel if exists
+                    const signHereSubId = company.signNowSubscriptionId;
+                    if (signHereSubId) {
+                        let planInfo = await this.stripeService.isSignNowCancelled(signHereSubId);
                         if (planInfo.status) {
                             // Cancel subscription
-                            let status = await this.stripeService.removeSubscription(company.signNowSubscriptionId);
-                            if(status) {
+                            let status = await this.stripeService.removeSubscription(signHereSubId);
+                            if (status) {
+                                
+                                await this.databaseService.company.update({
+                                    where: { id: companyId },
+                                    data: {
+                                        signNowSubscriptionId: null,
+                                        signNowStripeProductId: null,
+                                    }
+                                });
                                 signNowResponse.status = true;
                                 signNowResponse.message = "Sign here subscription cancelled.";
                             } else {
                                 signNowResponse.status = false;
                                 signNowResponse.message = "Failed to cancel sign here subscription.";
                             }
-                        } 
+                        }
                     }
                 }
 
@@ -710,7 +789,29 @@ export class CompanyService {
     // Set default payment method in stripe
     async setDefaultPaymentMethod(user: User, body: PaymentMethodDTO) {
         if (user.stripeCustomerId) {
-            return this.stripeService.setDefaultPaymentMethod(user.stripeCustomerId, body.paymentMethodId);
+            const result = await this.stripeService.setDefaultPaymentMethod(user.stripeCustomerId, body.paymentMethodId);
+
+            // Resume paused Stripe subscription if it exists
+            if (user.subscriptionId) {
+                await this.stripeService.resumeSubscription(user.subscriptionId, body.paymentMethodId);
+            }
+
+            // After successful card save, activate account and set plan dates
+            const now = new Date();
+            const planExpiresAt = new Date(now);
+            planExpiresAt.setFullYear(planExpiresAt.getFullYear() + 1);
+
+            await this.databaseService.user.update({
+                where: { id: user.id },
+                data: {
+                    cardOnFile: true,
+                    accountStatus: 'active',
+                    planStartsAt: now,
+                    planExpiresAt: planExpiresAt,
+                }
+            });
+
+            return { ...result, card_on_file: true, account_status: 'active' };
         }
         throw new InternalServerErrorException();
     }
@@ -820,11 +921,11 @@ export class CompanyService {
                     userType: UserTypes.BUILDER
                 }
             });
-            // Remove subscription from stripe
+            // Remove main subscription from stripe
             if (builder.subscriptionId) {
                 await this.stripeService.removeSubscription(builder.subscriptionId);
             }
-            // Cancel sign-now subscription
+            // Cancel sign-now subscription from company table
             let company = await this.databaseService.company.findFirst({
                 where: { id: user.companyId, isDeleted: false }
             });
@@ -846,10 +947,11 @@ export class CompanyService {
             // Cancel employee subscription
             let employees = await this.databaseService.user.findMany({
                 where: {
-                    isActive: true,
+                    accountStatus: 'inactive',
                     isDeleted: false,
                     companyId: user.companyId,
-                    userType: UserTypes.EMPLOYEE
+                    userType: UserTypes.EMPLOYEE,
+                    cardOnFile: false,
                 }
             });
             if (employees.length > 0) {
@@ -859,8 +961,10 @@ export class CompanyService {
                     }
                 }
             }
-            await this.sendMailToAdmin(company, builder);
-            return { message: ResponseMessages.SUCCESSFUL }
+            if (company) {
+                // await this.sendMailToAdmin(company, builder);
+            }
+            return { message: ResponseMessages.SUCCESSFUL, account_status: 'inactive' }
         } catch (error) {
             console.log(error)
             throw new InternalServerErrorException({
@@ -877,20 +981,8 @@ export class CompanyService {
             });
             let data = await this.databaseService.seoSettings.findMany();
             let seoSettings = data[0];
-            let isSignNowCancelled = false;
-            if (company.signNowSubscriptionId) {
-                let res = await this.stripeService.isSignNowCancelled(company.signNowSubscriptionId);
-                if (res.status) {
-                    isSignNowCancelled = false;
-                } else {
-                    isSignNowCancelled = true;
-                }
-            }
-            else {
-                isSignNowCancelled = true;
-            }
             const { signNowMonthlyAmount, signNowYearlyAmount } = seoSettings;
-            return { signNowPlanPriceInfo: { signNowMonthlyAmount, signNowYearlyAmount }, isSignNowCancelled }
+            return { signNowPlanPriceInfo: { signNowMonthlyAmount, signNowYearlyAmount }, isSignNowCancelled: false }
         } catch (error) {
             console.log(error);
         }
@@ -951,6 +1043,91 @@ export class CompanyService {
                 error: "An unexpected error occured.",
                 errorDetails: error.message
             })
+        }
+    }
+
+    // Activate subscription: resume paused subscriptions or create new ones after cancellation
+    async activateSubscription(user: User, companyId: number, body: ActivateSubscriptionDTO) {
+        try {
+            if (user.userType !== UserTypes.BUILDER && user.userType !== UserTypes.ADMIN) {
+                throw new ForbiddenException("Action Not Allowed");
+            }
+            if (user.userType === UserTypes.BUILDER && user.companyId !== companyId) {
+                throw new ForbiddenException("Action Not Allowed");
+            }
+
+            const company = await this.databaseService.company.findUniqueOrThrow({
+                where: { id: companyId, isActive: true, isDeleted: false }
+            });
+
+            // Get plan pricing from DB
+            const seoData = await this.databaseService.seoSettings.findMany();
+            const seoSettings = seoData[0];
+            const planAmount = body.planType === BuilderPlanTypes.MONTHLY
+                ? seoSettings.monthlyPlanAmount.toNumber()
+                : seoSettings.yearlyPlanAmount.toNumber();
+            const signNowPlanAmount = body.planType === BuilderPlanTypes.MONTHLY
+                ? seoSettings.signNowMonthlyAmount.toNumber()
+                : seoSettings.signNowYearlyAmount.toNumber();
+
+            const res = await this.stripeService.activateSubscription(
+                user,
+                body,
+                company.signNowSubscriptionId,
+                planAmount,
+                signNowPlanAmount,
+            );
+
+            // Update user record with new subscription dates and status
+            const now = new Date();
+            const planExpiresAt = new Date(now);
+            if (body.planType === BuilderPlanTypes.MONTHLY) {
+                planExpiresAt.setMonth(planExpiresAt.getMonth() + 1);
+            } else {
+                planExpiresAt.setFullYear(planExpiresAt.getFullYear() + 1);
+            }
+
+            const userUpdateData: any = {
+                cardOnFile: true,
+                accountStatus: 'active',
+                planStartsAt: now,
+                planExpiresAt: planExpiresAt,
+                plan: body.planType,
+            };
+
+           
+            // Update company with new SignHere subscription if created
+            if (res.isNewSubscription && res.signHereSubscriptionId) {
+                await this.databaseService.company.update({
+                    where: { id: companyId },
+                    data: {
+                        signNowSubscriptionId: res.signHereSubscriptionId,
+                        signNowStripeProductId: res.signHereProductId,
+                        planType: body.planType === BuilderPlanTypes.MONTHLY ? 'MONTHLY' : 'YEARLY',
+                    },
+                });
+            }
+
+            return {
+                status: true,
+                message: res.isNewSubscription
+                    ? 'Subscription reactivated successfully'
+                    : 'Subscription activated successfully',
+                account_status: 'active',
+                plan: body.planType,
+                plan_starts_at: now,
+                plan_expires_at: planExpiresAt,
+            };
+
+        } catch (error) {
+            console.log('activateSubscription error:', error);
+            if (error instanceof ForbiddenException || error instanceof BadRequestException) {
+                throw error;
+            }
+            throw new InternalServerErrorException({
+                error: 'An unexpected error occurred.',
+                errorDetails: error.message,
+            });
         }
     }
 }

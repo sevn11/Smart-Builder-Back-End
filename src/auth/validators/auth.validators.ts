@@ -1,4 +1,3 @@
-import { Optional } from '@nestjs/common';
 import { IsEmail, IsNotEmpty, IsString, IsOptional, IsEnum, ValidateIf } from 'class-validator'
 import { BuilderPlanTypes } from 'src/core/utils/builder-plan-types';
 
@@ -21,26 +20,27 @@ export class SignUpDTO {
   companyName: string;
 
   @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   address?: string
 
   @IsString()
   @IsNotEmpty()
-  zipcode?: string
+  zipcode: string
 
   @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   phoneNumber?: string
 
   @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   paymentMethodId?: string
 
   @IsEnum(BuilderPlanTypes)
-  planType: BuilderPlanTypes;
+  @IsOptional()
+  planType?: BuilderPlanTypes;
 
   @ValidateIf((o) => o.signNowPlanType && o.signNowPlanType !== '' && o.signNowPlanType != null)
-  @Optional()
+  @IsOptional()
   @IsEnum(BuilderPlanTypes)
   signNowPlanType: BuilderPlanTypes;
 
