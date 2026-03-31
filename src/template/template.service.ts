@@ -185,7 +185,22 @@ export class TemplateService {
             }
 
             const clientCategories = await this.databaseService.clientCategory.findMany({
-                where: { isDeleted: false, clientTemplateId: template.id, customerId: job.customerId, jobId: job.id, companyId, ...whereClause },
+                where: { isDeleted: false, clientTemplateId: template.id, customerId: job.customerId, jobId: job.id, companyId, 
+                    OR: [
+                        { ...whereClause },
+                        {
+                            ClientTemplateQuestion: {
+                                some: {
+                                    isDeleted: false,
+                                    clientTemplateId: template.id,
+                                    jobId: job.id,
+                                    customerId: job.customerId,
+                                    ...whereClause,
+                                }
+                            }
+                        }
+                    ]
+                 },
                 include: {
                     ClientTemplateQuestion: {
                         where: { isDeleted: false, clientTemplateId: template.id, jobId: job.id, customerId: job.customerId, ...whereClause },
