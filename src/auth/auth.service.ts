@@ -142,7 +142,7 @@ export class AuthService {
             }
 
             // Send mail to admin
-            // await this.sendMailToAdmin(user);
+            await this.sendMailToAdmin(user);
 
             return { status: true, user, access_token };
         } catch (ex) {
