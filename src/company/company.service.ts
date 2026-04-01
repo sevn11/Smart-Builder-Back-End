@@ -962,7 +962,7 @@ export class CompanyService {
                 }
             }
             if (company) {
-                // await this.sendMailToAdmin(company, builder);
+                await this.sendMailToAdmin(company, builder);
             }
             return { message: ResponseMessages.SUCCESSFUL, account_status: 'inactive' }
         } catch (error) {
