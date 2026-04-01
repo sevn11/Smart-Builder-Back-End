@@ -598,7 +598,7 @@ export class AuthService {
             admin: "",
             companyName: user.company.name ?? "",
             email: user.email ?? "",
-            address: user.company.address ?? "",
+            address: user.company.address ?? " -- ",
             zipCode: user.company.zipcode ?? "",
             phoneNumber: user.company.phoneNumber ?? "",
         }
