@@ -60,6 +60,21 @@ export class WebhooksService {
                   body.data.previous_attributes?.pause_collection !== undefined &&
                   body.data.object.pause_collection === null;
 
+            const isTrialEnded =
+                body.type === 'customer.subscription.updated' &&
+                body.data.previous_attributes?.status === 'trialing' &&
+                body.data.object.status !== 'trialing';
+
+            // Handle trial ended
+            if (user && isTrialEnded) {
+                await this.databaseService.user.update({
+                    where: { id: user.id },
+                    data: {
+                        planExpiresAt: new Date(),
+                    }
+                });
+            }
+
             // Handle paused status (trial expired without payment method)
             if (user && isPaused) {
                 let pausedDate = new Date();

@@ -801,16 +801,6 @@ export class CompanyService {
             const planExpiresAt = new Date(now);
             planExpiresAt.setFullYear(planExpiresAt.getFullYear() + 1);
 
-            await this.databaseService.user.update({
-                where: { id: user.id },
-                data: {
-                    cardOnFile: true,
-                    accountStatus: 'active',
-                    planStartsAt: now,
-                    planExpiresAt: planExpiresAt,
-                }
-            });
-
             return { ...result, card_on_file: true, account_status: 'active' };
         }
         throw new InternalServerErrorException();
@@ -923,7 +913,19 @@ export class CompanyService {
             });
             // Remove main subscription from stripe
             if (builder.subscriptionId) {
-                await this.stripeService.removeSubscription(builder.subscriptionId);
+                const isDeleted = await this.stripeService.removeSubscription(builder.subscriptionId);
+
+                if (isDeleted) {
+                    await this.databaseService.user.update({
+                        where: { id: user.id },
+                        data: {
+                            accountStatus: 'inactive',
+                            cardOnFile: false,
+                            trialEndsAt: null,
+                            planStartsAt: null,
+                        }
+                    });
+                }
             }
             // Cancel sign-now subscription from company table
             let company = await this.databaseService.company.findFirst({

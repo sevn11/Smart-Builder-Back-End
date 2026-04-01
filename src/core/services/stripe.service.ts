@@ -1020,6 +1020,15 @@ export class StripeService {
                     });
                 }
 
+                await this.databaseService.user.update({
+                    where: { id: user.id },
+                    data: {
+                        cardOnFile:true,
+                        accountStatus: 'active',
+                    },
+                });
+
+
                 console.log('Resumed paused subscription:', user.subscriptionId);
 
                 // Also resume SignHere subscription if paused
@@ -1080,6 +1089,17 @@ export class StripeService {
                 resultSubscriptionId = newSubscription.id;
                 resultProductId = product.id;
 
+                await this.databaseService.user.update({
+                    where: { id: user.id },
+                    data: {
+                        subscriptionId: newSubscription.id,
+                        productId: product.id,
+                        cardOnFile:true,
+                        accountStatus: 'active',
+                        planStartsAt: new Date((newSubscription.start_date || newSubscription.created) * 1000),
+                    },
+                });
+
                 // Also create new SignHere subscription
                 if (signNowPlanAmount > 0) {
                     try {
@@ -1137,6 +1157,15 @@ export class StripeService {
                 }
 
                 await this.StripeClient.subscriptions.update(user.subscriptionId, updatePayload);
+
+                await this.databaseService.user.update({
+                    where: { id: user.id },
+                    data: {
+                        cardOnFile:true,
+                        accountStatus: 'active',
+                    },
+                });
+
 
                 // Also update SignHere subscription payment method
                 if (signNowSubscriptionId) {
