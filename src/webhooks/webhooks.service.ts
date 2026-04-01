@@ -100,7 +100,7 @@ export class WebhooksService {
                         paymentDate: pausedDate,
                         paymentId: body.data.object.id,
                         amount: 0,
-                        status: 'paused',
+                        status: 'Resumed',
                         response: body.data.object
                     }
                 });

@@ -10,7 +10,7 @@ import { BuilderPlanTypes } from "../utils/builder-plan-types";
 import { UserTypes } from "../utils";
 import { DemoUserDTO } from "src/admin/validators/add-demo-user";
 import { WINSTON_MODULE_PROVIDER } from "nest-winston";
-
+import { PlanType } from "src/company/validators/activate-subscription";
 
 @Injectable()
 export class StripeService {
@@ -828,7 +828,8 @@ export class StripeService {
                 status: true,
                 stripeCustomerId: customer.id,
                 subscriptionId: subscription.id,
-                productId : productId
+                productId : productId,
+                trialEndsAt: new Date(subscription.trial_end * 1000),
             };
         } catch (error) {
             if (customer) {
@@ -842,7 +843,7 @@ export class StripeService {
         }
     }
 
-    async createTrialBuilderSignNowSubscription(company: any, stripeCustomerId: any, signNowPlanAmount: number) {
+    async createTrialBuilderSignNowSubscription(company: any, bodyName: string, stripeCustomerId: any, signNowPlanAmount: number, trialEndsAt?: Date) {
         try {
 
             let yearlyAmount: number;
@@ -851,7 +852,7 @@ export class StripeService {
 
             // Create new product in stripe
             const product = await this.StripeClient.products.create({
-                name: `${company.companyName || company.name}-SignHere`
+                name: `${company.companyName}-${bodyName}-SignHere`
             });
 
             const productId = product.id;
@@ -868,7 +869,6 @@ export class StripeService {
                         },
                     },
                 }],
-                trial_period_days: 30,
                 payment_behavior: 'default_incomplete',
                 payment_settings: {
                     save_default_payment_method: 'on_subscription',
@@ -878,6 +878,9 @@ export class StripeService {
                         missing_payment_method: 'pause',
                     },
                 },
+                trial_end: trialEndsAt 
+                    ? Math.floor(trialEndsAt.getTime() / 1000) 
+                    : Math.floor((Date.now() + 30 * 24 * 60 * 60 * 1000) / 1000),
             };
 
             const subscription = await this.StripeClient.subscriptions.create(subscriptionPayload);
@@ -953,9 +956,6 @@ export class StripeService {
     signNowPlanAmount: number,
     ) {
         try {
-            if (!user?.stripeCustomerId) {
-                throw new Error('Customer ID missing');
-            }
 
             if (!body?.paymentMethodId) {
                 throw new Error('Payment method is required');
@@ -964,7 +964,7 @@ export class StripeService {
             const customerId = user.stripeCustomerId;
             const paymentMethodId = body.paymentMethodId;
             const promoCode = body.promoCode;
-            const planType = body.planType === BuilderPlanTypes.MONTHLY ? 'month' : 'year';
+            const planType = body.planType === PlanType.MONTHLY ? 'month' : 'year';
 
             // Attach payment method to customer
             try {

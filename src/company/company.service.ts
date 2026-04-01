@@ -1063,10 +1063,10 @@ export class CompanyService {
             // Get plan pricing from DB
             const seoData = await this.databaseService.seoSettings.findMany();
             const seoSettings = seoData[0];
-            const planAmount = body.planType === BuilderPlanTypes.MONTHLY
+            const planAmount = body.planType === PlanType.MONTHLY
                 ? seoSettings.monthlyPlanAmount.toNumber()
                 : seoSettings.yearlyPlanAmount.toNumber();
-            const signNowPlanAmount = body.planType === BuilderPlanTypes.MONTHLY
+            const signNowPlanAmount = body.planType === PlanType.MONTHLY
                 ? seoSettings.signNowMonthlyAmount.toNumber()
                 : seoSettings.signNowYearlyAmount.toNumber();
 
@@ -1081,20 +1081,11 @@ export class CompanyService {
             // Update user record with new subscription dates and status
             const now = new Date();
             const planExpiresAt = new Date(now);
-            if (body.planType === BuilderPlanTypes.MONTHLY) {
+            if (body.planType === PlanType.MONTHLY) {
                 planExpiresAt.setMonth(planExpiresAt.getMonth() + 1);
             } else {
                 planExpiresAt.setFullYear(planExpiresAt.getFullYear() + 1);
             }
-
-            const userUpdateData: any = {
-                cardOnFile: true,
-                accountStatus: 'active',
-                planStartsAt: now,
-                planExpiresAt: planExpiresAt,
-                plan: body.planType,
-            };
-
            
             // Update company with new SignHere subscription if created
             if (res.isNewSubscription && res.signHereSubscriptionId) {
@@ -1103,7 +1094,7 @@ export class CompanyService {
                     data: {
                         signNowSubscriptionId: res.signHereSubscriptionId,
                         signNowStripeProductId: res.signHereProductId,
-                        planType: body.planType === BuilderPlanTypes.MONTHLY ? 'MONTHLY' : 'YEARLY',
+                        planType: body.planType === PlanType.MONTHLY ? 'MONTHLY' : 'YEARLY',
                     },
                 });
             }

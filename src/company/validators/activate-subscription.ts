@@ -1,13 +1,18 @@
-import { IsBoolean, IsNotEmpty, IsOptional, IsString } from "class-validator";
+import { IsBoolean, IsNotEmpty, IsOptional, IsString, IsEnum } from "class-validator";
+
+export enum PlanType {
+    MONTHLY = "MONTHLY",
+    YEARLY = "YEARLY",
+}
 
 export class ActivateSubscriptionDTO {
     @IsString()
     @IsNotEmpty()
     paymentMethodId: string;
 
-    @IsString()
+    @IsEnum(PlanType)
     @IsNotEmpty()
-    planType: string; // "MONTHLY" | "YEARLY"
+    planType: PlanType;
 
     @IsString()
     @IsOptional()

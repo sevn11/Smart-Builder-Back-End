@@ -39,7 +39,44 @@ export class AuthService {
             const now = new Date();
             const trialEndsAt = new Date(now);
             trialEndsAt.setDate(trialEndsAt.getDate() + 30);
+                
+            const seoSettings = await this.databaseService.seoSettings.findFirst();
+            const yearlyPlanAmount = seoSettings.yearlyPlanAmount.toNumber();
+            const signNowYearlyAmount = seoSettings.signNowYearlyAmount.toNumber();
 
+            const response = await this.stripeService.createTrialSubscription(
+                body.email,
+                body.name,
+                body.phoneNumber,
+                yearlyPlanAmount,
+                body
+            );
+
+            if (!response.status) {
+                throw new BadRequestException(response.message || 'Failed to create Stripe subscription');
+            }
+
+            const signNowBody = {
+                ...body,
+                signNowPlanType: BuilderPlanTypes.YEARLY,
+            };
+
+            const signNowSubscriptionResponse = await this.stripeService.createTrialBuilderSignNowSubscription(
+                signNowBody,
+                body.name,
+                response.stripeCustomerId,
+                signNowYearlyAmount,
+                response.trialEndsAt,
+            );
+
+            let signNowSubStatus = true;
+
+            if (!signNowSubscriptionResponse.status) {
+                signNowSubStatus = false;
+            }
+
+
+                
             const user = await this.databaseService.user.create({
                 data: {
                     email: body.email.toLowerCase(),
@@ -49,13 +86,13 @@ export class AuthService {
                     tosAcceptanceTime: new Date().toISOString(),
                     isTosAccepted: true,
                     tosVersion: HelperFunctions.getTosVersion(),
-                    stripeCustomerId: null,
-                    productId: null,
-                    subscriptionId: null,
-                    plan: 'yearly',
+                    stripeCustomerId: response.stripeCustomerId,
+                    productId: response.productId,
+                    subscriptionId: response.subscriptionId,
+                    plan: 'YEARLY',
                     accountStatus: 'active',
                     planStartsAt: now,
-                    trialEndsAt: trialEndsAt,
+                    trialEndsAt: response.trialEndsAt,
                     cardOnFile: false,
                     company: {
                         create: {
@@ -64,6 +101,8 @@ export class AuthService {
                             zipcode: body.zipcode,
                             phoneNumber: body.phoneNumber,
                             planType: 'YEARLY',
+                            signNowSubscriptionId: signNowSubscriptionResponse.subscriptionId,
+                            signNowStripeProductId: signNowSubscriptionResponse.productId,
                         }
                     },
                     PermissionSet: {
@@ -93,73 +132,6 @@ export class AuthService {
                     }
                 }
             });
-            // Create Stripe trial subscriptions (non-blocking)
-            try {
-                console.log('=== STRIPE REGISTRATION START ===');
-                const seoSettings = await this.databaseService.seoSettings.findFirst();
-                const yearlyPlanAmount = seoSettings.yearlyPlanAmount.toNumber();
-                const signNowYearlyAmount = seoSettings.signNowYearlyAmount.toNumber();
-
-                // Create main subscription with trial
-                const response = await this.stripeService.createTrialSubscription(
-                    user.email,
-                    body.name,
-                    body.phoneNumber,
-                    yearlyPlanAmount,
-                    body
-                );
-
-                if (response.status) {
-                    let signNowSubscriptionResponse = null;
-                    let signNowSubStatus = true;
-
-                    // Always create SignNow at registration with YEARLY plan
-                    const signNowBody = {
-                        ...body,
-                        signNowPlanType: BuilderPlanTypes.YEARLY,
-                    };
-
-                    signNowSubscriptionResponse = await this.stripeService.createTrialBuilderSignNowSubscription(
-                        signNowBody,
-                        response.stripeCustomerId,
-                        signNowYearlyAmount,
-                    );
-
-                    if (!signNowSubscriptionResponse.status) {
-                        signNowSubStatus = false;
-                    }
-
-                    // Save both IDs to DB
-                    await this.databaseService.user.update({
-                        where: { id: user.id },
-                        data: {
-                            stripeCustomerId: response.stripeCustomerId,
-                            subscriptionId: response.subscriptionId,
-                            
-                            trialEndsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-                            accountStatus: 'active',
-                            productId: response.productId,
-                            plan: 'YEARLY',
-                            cardOnFile: false,
-                        },
-                    });
-
-                    // Update company with SignHere subscription info
-                    if (signNowSubStatus && user.companyId) {
-                        await this.databaseService.company.update({
-                            where: { id: user.companyId },
-                            data: {
-                                signNowSubscriptionId: signNowSubscriptionResponse.subscriptionId,
-                                signNowStripeProductId: signNowSubscriptionResponse.productId,
-                            },
-                        });
-                    }
-                } else {
-                    console.error('Stripe trial creation failed, registration continues:', response.message);
-                }
-            } catch (stripeError) {
-                console.error('Stripe integration error during signup, registration continues:', stripeError);
-            }
 
             const payload = { sub: user.id, email: user.email, companyId: user.company.id };
             const access_token = await this.jwtService.signAsync(payload);
