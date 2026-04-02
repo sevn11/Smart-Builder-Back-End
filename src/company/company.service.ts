@@ -460,7 +460,7 @@ export class CompanyService {
                         isDeleted: false
                     }
                 });
-                let company: any = {...companyData};
+                let company: any = { ...companyData };
                 if (companyData.signNowSubscriptionId) {
                     let res = await this.stripeService.isSignNowCancelled(companyData.signNowSubscriptionId);
                     company.signNowPlanStatus = res.status;
@@ -607,7 +607,7 @@ export class CompanyService {
                             }
                         });
                         // Update sign-here plan
-                        if(company.signNowSubscriptionId) {
+                        if (company.signNowSubscriptionId) {
                             let price = 0;
                             planType == 'month'
                                 ? price = seoSettings.signNowMonthlyAmount.toNumber()
@@ -695,7 +695,7 @@ export class CompanyService {
                                     signNowSubscriptionId: subscriptionRes.subscriptionId
                                 }
                             });
-                            
+
                             signNowResponse.status = true;
                             signNowResponse.message = "Sign here subscription added.";
                         } else {
@@ -720,7 +720,7 @@ export class CompanyService {
                                     signNowSubscriptionId: signNowRes.subscriptionId
                                 }
                             });
-                           
+
                             signNowResponse.status = true;
                             signNowResponse.message = "Sign here trial subscription added.";
                         } else {
@@ -742,7 +742,7 @@ export class CompanyService {
                             // Cancel subscription
                             let status = await this.stripeService.removeSubscription(signHereSubId);
                             if (status) {
-                                
+
                                 await this.databaseService.company.update({
                                     where: { id: companyId },
                                     data: {
@@ -976,7 +976,7 @@ export class CompanyService {
         }
     }
 
-    async getSignNowPlanInfo(user:User, companyId: number) {
+    async getSignNowPlanInfo(user: User, companyId: number) {
         try {
             let company = await this.databaseService.company.findUniqueOrThrow({
                 where: { id: companyId, isDeleted: false }
@@ -1008,7 +1008,7 @@ export class CompanyService {
             planType: company.planType ?? "",
             planAmount: formatNumberWithCommas(company.planAmount) ?? "",
         }
-    
+
         if (admins.length > 0) {
             const emailPromises = admins.map(admin => {
                 templateData.admin = admin.name;
@@ -1018,7 +1018,7 @@ export class CompanyService {
                     templateData,
                 );
             });
-    
+
             await Promise.all(emailPromises);
         }
     }
@@ -1088,7 +1088,7 @@ export class CompanyService {
             } else {
                 planExpiresAt.setFullYear(planExpiresAt.getFullYear() + 1);
             }
-           
+
             // Update company with new SignHere subscription if created
             if (res.isNewSubscription && res.signHereSubscriptionId) {
                 await this.databaseService.company.update({

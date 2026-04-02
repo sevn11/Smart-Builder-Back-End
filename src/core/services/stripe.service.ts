@@ -755,10 +755,24 @@ export class StripeService {
     // Resume a paused Stripe subscription with a payment method
     async resumeSubscription(subscriptionId: string, paymentMethodId: string) {
         try {
-            await this.StripeClient.subscriptions.update(subscriptionId, {
-                pause_collection: '',
-                default_payment_method: paymentMethodId,
-            } as any);
+            const subscription = await this.StripeClient.subscriptions.retrieve(subscriptionId);
+
+            if (subscription.status === 'paused') {
+                // Subscription paused by Stripe (e.g. trial ended with no payment method)
+                await this.StripeClient.subscriptions.resume(subscriptionId, {
+                    billing_cycle_anchor: 'now',
+                });
+                await this.StripeClient.subscriptions.update(subscriptionId, {
+                    default_payment_method: paymentMethodId,
+                });
+            } else {
+                // Subscription paused via pause_collection
+                await this.StripeClient.subscriptions.update(subscriptionId, {
+                    pause_collection: '',
+                    default_payment_method: paymentMethodId,
+                } as any);
+            }
+
             console.log('Stripe subscription resumed:', subscriptionId);
             return { status: true };
         } catch (error) {
@@ -1007,11 +1021,15 @@ export class StripeService {
             let resultProductId = user.productId;
 
             if (subscriptionStatus === 'paused') {
-                // PAUSED subscription → Resume it
+                // PAUSED subscription (e.g. trial ended with no payment method) → Resume it
+                await this.StripeClient.subscriptions.resume(user.subscriptionId, {
+                    billing_cycle_anchor: 'now',
+                });
+
+                // Set default payment method on the resumed subscription
                 await this.StripeClient.subscriptions.update(user.subscriptionId, {
-                    pause_collection: '',
                     default_payment_method: paymentMethodId,
-                } as any);
+                });
 
                 // Apply promo code if provided
                 if (promoCode) {
@@ -1023,11 +1041,10 @@ export class StripeService {
                 await this.databaseService.user.update({
                     where: { id: user.id },
                     data: {
-                        cardOnFile:true,
+                        cardOnFile: true,
                         accountStatus: 'active',
                     },
                 });
-
 
                 console.log('Resumed paused subscription:', user.subscriptionId);
 
@@ -1036,10 +1053,12 @@ export class StripeService {
                     try {
                         const signNowSub = await this.StripeClient.subscriptions.retrieve(signNowSubscriptionId);
                         if (signNowSub.status === 'paused') {
+                            await this.StripeClient.subscriptions.resume(signNowSubscriptionId, {
+                                billing_cycle_anchor: 'now',
+                            });
                             await this.StripeClient.subscriptions.update(signNowSubscriptionId, {
-                                pause_collection: '',
                                 default_payment_method: paymentMethodId,
-                            } as any);
+                            });
                             console.log('Resumed paused SignHere subscription:', signNowSubscriptionId);
                         }
                     } catch (error) {

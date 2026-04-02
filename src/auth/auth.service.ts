@@ -39,7 +39,7 @@ export class AuthService {
             const now = new Date();
             const trialEndsAt = new Date(now);
             trialEndsAt.setDate(trialEndsAt.getDate() + 30);
-                
+
             const seoSettings = await this.databaseService.seoSettings.findFirst();
             const yearlyPlanAmount = seoSettings.yearlyPlanAmount.toNumber();
             const signNowYearlyAmount = seoSettings.signNowYearlyAmount.toNumber();
@@ -76,7 +76,7 @@ export class AuthService {
             }
 
 
-                
+
             const user = await this.databaseService.user.create({
                 data: {
                     email: body.email.toLowerCase(),
@@ -380,7 +380,7 @@ export class AuthService {
     }
 
     // Copying all master templates to new builder
-    private async prepareBuilderTemplateData (user: any) {
+    private async prepareBuilderTemplateData(user: any) {
         // Get all master templates
         let masterTemplates = await this.databaseService.masterQuestionnaireTemplate.findMany({
             where: { isDeleted: false }
@@ -421,8 +421,8 @@ export class AuthService {
 
             // Handle project estimator template
             if (
-                mTemplate.masterProjectEstimatorTemplateId && 
-                builderTemplate.id && 
+                mTemplate.masterProjectEstimatorTemplateId &&
+                builderTemplate.id &&
                 builderProjectEstimatorTemplate.id
             ) {
                 await this.handleBuilderEstimatorTemplate(mTemplate.id, builderProjectEstimatorTemplate.id, user);
@@ -432,14 +432,14 @@ export class AuthService {
     }
 
     // Copy questionnaire template and selection template to builder from admin
-    private async handleBuilderQuestionnaireTemplate (mTemplateId: number, builderTemplateId: number, user: any) {
+    private async handleBuilderQuestionnaireTemplate(mTemplateId: number, builderTemplateId: number, user: any) {
         const mQuestionnaireTemplate = await this.databaseService.masterQuestionnaireTemplate.findUnique({
             where: { id: mTemplateId, isDeleted: false },
             include: {
                 masterTemplateCategories: {
                     where: { masterQuestionnaireTemplateId: mTemplateId, isDeleted: false },
                     orderBy: { id: "asc" },
-                    include: { masterQuestions: { where: { isDeleted: false}, orderBy: { id: "asc" } } }
+                    include: { masterQuestions: { where: { isDeleted: false }, orderBy: { id: "asc" } } }
                 }
             }
         });
@@ -460,10 +460,10 @@ export class AuthService {
                         phaseId: mCategory.phaseId,
                         linkToQuestionnaire: mCategory.linkToQuestionnaire,
                         isCompanyCategory: true,
-                        companyId: user.company.id, 
+                        companyId: user.company.id,
                         questionnaireOrder: mCategory.questionnaireOrder,
                         initialOrder: mCategory.initialOrder,
-                        paintOrder: mCategory.paintOrder 
+                        paintOrder: mCategory.paintOrder
                     }
                 });
 
@@ -475,9 +475,9 @@ export class AuthService {
         });
     }
 
-    private async createBuilderTemplateQuestions (
-        tx: Omit<PrismaClient<Prisma.PrismaClientOptions, never, DefaultArgs>, 
-        "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">,
+    private async createBuilderTemplateQuestions(
+        tx: Omit<PrismaClient<Prisma.PrismaClientOptions, never, DefaultArgs>,
+            "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">,
         mQuestions: any[],
         categoryId: number,
         builderTemplateId: number
@@ -499,11 +499,11 @@ export class AuthService {
                 }
             })
         }))
-    }   
+    }
 
 
     // Copy project estimator template to builder from admin
-    private async handleBuilderEstimatorTemplate (mTemplateId: number, builderProjectEstimatorTemplateId: number, user: any) {
+    private async handleBuilderEstimatorTemplate(mTemplateId: number, builderProjectEstimatorTemplateId: number, user: any) {
         const template = await this.databaseService.masterProjectEstimatorTemplate.findUnique({
             where: { id: mTemplateId, isDeleted: false },
             include: {
@@ -602,7 +602,7 @@ export class AuthService {
             zipCode: user.company.zipcode ?? "",
             phoneNumber: user.company.phoneNumber ?? "",
         }
-    
+
         if (admins.length > 0) {
             const emailPromises = admins.map(admin => {
                 templateData.admin = admin.name;
@@ -612,7 +612,7 @@ export class AuthService {
                     templateData,
                 );
             });
-    
+
             await Promise.all(emailPromises);
         }
     }
