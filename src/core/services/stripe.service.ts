@@ -367,7 +367,7 @@ export class StripeService {
     }
 
     // Function to create new subscription for sign now
-    async createBuilderSignNowSubscription(body: any, stripeCustomerId: string, planAmount: number, isDemoUser?: boolean) {
+    async createBuilderSignNowSubscription(body: any, stripeCustomerId: string, planAmount: number, isDemoUser?: boolean, subscriptionId?: string) {
         try {
             const signNowPlanType = body.signNowPlanType == BuilderPlanTypes.MONTHLY ? 'month' : 'year';
 
@@ -375,6 +375,13 @@ export class StripeService {
             const product = await this.StripeClient.products.create({
                 name: `${body.companyName || body.name}-SignHere`
             });
+            
+            let builderSubDetails = await this.StripeClient.subscriptions.retrieve(subscriptionId);
+
+            if(!builderSubDetails){
+                return;
+            } 
+
 
             // Create a price for the product
             const price = await this.StripeClient.prices.create({
@@ -388,10 +395,14 @@ export class StripeService {
             const subscriptionPayload: Stripe.SubscriptionCreateParams = {
                 customer: stripeCustomerId,
                 items: [{ price: price.id }],
-                trial_end: trialEndDate,
                 payment_behavior: 'default_incomplete',
                 proration_behavior: 'none',
             };
+            const now = Math.floor(Date.now() / 1000);
+
+            if (builderSubDetails.trial_end && builderSubDetails.trial_end > now) {
+                subscriptionPayload.trial_end = builderSubDetails.trial_end;
+            }
 
             // Apply coupon for demo builders
             let coupon: string;
@@ -485,7 +496,7 @@ export class StripeService {
                     customer: customer.id,
                     items: [{ price: price.id }],
                     proration_behavior: 'none',
-                    automatic_tax: { enabled: true },
+                    // automatic_tax: { enabled: true },
                 };
                 if (builderSubscription.trial_end > now) {
                     // Adding signnow subscription within builder's trial period
@@ -581,13 +592,13 @@ export class StripeService {
                         id: subscription.items.data[0].id,
                         price: newPrice.id,
                     }],
-                    trial_end: newPlanStartDate,
-                    proration_behavior: 'none'
+                    // trial_end: newPlanStartDate,
+                    // proration_behavior: 'none'
                 }
             )
             return { status: true };
         } catch (error) {
-            console.log("change plan error", error);
+            console.log("change plan error :- ", error);
             return { status: false };
         }
     }
@@ -675,7 +686,7 @@ export class StripeService {
             const isTrialActive = subscription.trial_end && subscription.trial_end > Math.floor(Date.now() / 1000);
 
             let newProduct = employee ? employee.productId : user.productId;
-            console.log(employee)
+            // console.log("Employee",employee)
 
             // Create new price in stripe
             let newPrice = await this.StripeClient.prices.create({
@@ -694,8 +705,8 @@ export class StripeService {
                         id: subscription.items.data[0].id,
                         price: newPrice.id,
                     }],
-                    trial_end: newPlanStartDate,
-                    proration_behavior: 'none'
+                    // trial_end: newPlanStartDate,
+                    // proration_behavior: 'none'
                 }
             )
             return { status: true };
@@ -812,6 +823,8 @@ export class StripeService {
             
             productId = product.id;
 
+            const trialEndDate = Math.floor(Date.now() / 1000) + 60;
+
             let subscriptionPayload: Stripe.SubscriptionCreateParams = {
                 customer: customer.id,
                 items: [{
@@ -824,16 +837,15 @@ export class StripeService {
                         },
                     },
                 }],
-                trial_period_days: 30,
-                payment_behavior: 'default_incomplete',
-                payment_settings: {
-                    save_default_payment_method: 'on_subscription',
-                },
+                // payment_settings: {
+                //     save_default_payment_method: 'on_subscription',
+                // },
                 trial_settings: {
                     end_behavior: {
                         missing_payment_method: 'pause',
                     },
                 },
+                trial_end: trialEndDate,
             };
 
             const subscription = await this.StripeClient.subscriptions.create(subscriptionPayload);
@@ -843,7 +855,7 @@ export class StripeService {
                 stripeCustomerId: customer.id,
                 subscriptionId: subscription.id,
                 productId : productId,
-                trialEndsAt: new Date(subscription.trial_end * 1000),
+                trialEndsAt: new Date(trialEndDate * 1000),
             };
         } catch (error) {
             if (customer) {
@@ -1020,16 +1032,27 @@ export class StripeService {
             let resultSubscriptionId = user.subscriptionId;
             let resultProductId = user.productId;
 
-            if (subscriptionStatus === 'paused') {
-                // PAUSED subscription (e.g. trial ended with no payment method) → Resume it
+            if (subscriptionStatus === 'paused' || subscriptionStatus === 'incomplete') {
+
+                // Set default payment method on the resumed subscription
                 await this.StripeClient.subscriptions.resume(user.subscriptionId, {
                     billing_cycle_anchor: 'now',
                 });
 
-                // Set default payment method on the resumed subscription
-                await this.StripeClient.subscriptions.update(user.subscriptionId, {
-                    default_payment_method: paymentMethodId,
-                });
+                // Step 5 — Pay the latest invoice immediately
+                const subscription = await this.StripeClient.subscriptions.retrieve(
+                    user.subscriptionId,
+                    { expand: ['latest_invoice'] }
+                );
+                const latestInvoice = subscription.latest_invoice as Stripe.Invoice;
+                if (latestInvoice && latestInvoice.status === 'open') {
+                    await this.StripeClient.invoices.pay(latestInvoice.id, {
+                        payment_method: paymentMethodId,
+                    });
+                    console.log('Invoice paid:', latestInvoice.id);
+                }
+
+
 
                 // Apply promo code if provided
                 if (promoCode) {
@@ -1038,28 +1061,29 @@ export class StripeService {
                     });
                 }
 
-                await this.databaseService.user.update({
-                    where: { id: user.id },
-                    data: {
-                        cardOnFile: true,
-                        accountStatus: 'active',
-                    },
-                });
-
-                console.log('Resumed paused subscription:', user.subscriptionId);
 
                 // Also resume SignHere subscription if paused
                 if (signNowSubscriptionId) {
                     try {
                         const signNowSub = await this.StripeClient.subscriptions.retrieve(signNowSubscriptionId);
-                        if (signNowSub.status === 'paused') {
+                        
+                        if (signNowSub.status === 'paused' || signNowSub.status === 'incomplete') {
+                            
                             await this.StripeClient.subscriptions.resume(signNowSubscriptionId, {
                                 billing_cycle_anchor: 'now',
                             });
-                            await this.StripeClient.subscriptions.update(signNowSubscriptionId, {
-                                default_payment_method: paymentMethodId,
-                            });
-                            console.log('Resumed paused SignHere subscription:', signNowSubscriptionId);
+
+                            // Step 5 — Pay the latest invoice immediately
+                            const subscription = await this.StripeClient.subscriptions.retrieve(
+                                signNowSubscriptionId,
+                                { expand: ['latest_invoice'] }
+                            );
+                            const latestInvoice = subscription.latest_invoice as Stripe.Invoice;
+                            if (latestInvoice && latestInvoice.status === 'open') {
+                                await this.StripeClient.invoices.pay(latestInvoice.id, {
+                                    payment_method: paymentMethodId,
+                                });
+                            }
                         }
                     } catch (error) {
                         console.error('Failed to resume SignHere subscription:', error);

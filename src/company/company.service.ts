@@ -711,6 +711,8 @@ export class CompanyService {
                             { companyName: company.name, name: builder.name, signNowPlanType },
                             builder.stripeCustomerId,
                             signNowPlanAmount,
+                            builder.isDemoUser,
+                            builder.subscriptionId
                         );
                         if (signNowRes.status) {
                             await this.databaseService.company.update({
@@ -915,17 +917,6 @@ export class CompanyService {
             if (builder.subscriptionId) {
                 const isDeleted = await this.stripeService.removeSubscription(builder.subscriptionId);
 
-                if (isDeleted) {
-                    await this.databaseService.user.update({
-                        where: { id: user.id },
-                        data: {
-                            accountStatus: 'inactive',
-                            cardOnFile: false,
-                            trialEndsAt: null,
-                            planStartsAt: null,
-                        }
-                    });
-                }
             }
             // Cancel sign-now subscription from company table
             let company = await this.databaseService.company.findFirst({

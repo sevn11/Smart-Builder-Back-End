@@ -42,6 +42,47 @@ export class WebhooksService {
 
 
     async handleStripeWebhook(body: any) {
+        if(body.type === "customer.subscription.deleted"){
+
+            const invoice = body.data.object;
+            const customerId = invoice;
+            const user = await this.databaseService.user.findFirst({
+                where: { subscriptionId: invoice.id }
+            });
+            
+            if (user) {
+                await this.databaseService.user.update({
+                    where: { id: user.id },
+                    data: {
+                        accountStatus: 'inactive',
+                        subscriptionId: null,
+                        cardOnFile: false,
+                        trialEndsAt: null,
+                        planStartsAt: null,
+                    }
+                });
+            }
+        }
+
+        if (body.type === 'payment_intent.succeeded') {
+
+            const invoice = body.data.object;
+            const customerId = invoice.customer;
+            const user = await this.databaseService.user.findFirst({
+                where: { stripeCustomerId: customerId }
+            });
+
+            if (user) {
+                console.log(user)
+                await this.databaseService.user.update({
+                    where: { id: user.id },
+                    data: {
+                        accountStatus: 'active',
+                        cardOnFile: true,
+                    }
+                });
+            }
+        }
         // Handle subscription status changes (canceled, paused)
         if (body.type == 'customer.subscription.updated' || body.type == 'customer.subscription.deleted' || body.type == 'customer.subscription.paused') {
             let subscriptionId = body.data.object.id;
