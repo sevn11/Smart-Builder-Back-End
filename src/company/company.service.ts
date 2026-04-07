@@ -766,7 +766,7 @@ export class CompanyService {
                     } else {
                         // No active subscription (canceled) or no Stripe customer — SignHere will be set up on reactivation
                         signNowResponse.status = true;
-                        signNowResponse.message = "SignHere will be included when the subscription is reactivated.";
+                        signNowResponse.message = "Please include the signhere subscription after activating the account.";
                     }
                 }
                 else {

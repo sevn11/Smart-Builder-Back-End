@@ -56,7 +56,7 @@ export class UserService {
                         });
                         userObj.accountStatus = 'inactive';
                     }
-                } catch {}
+                } catch { }
             }
 
             return userObj;
@@ -165,7 +165,7 @@ export class UserService {
                     company: true
                 }
             });
-            
+
             if (
                 userData &&
                 userData.company &&
@@ -193,11 +193,11 @@ export class UserService {
                 where: { userId: user.id },
                 select: { fullAccess: true, projectAccess: true }
             });
-    
+
             if (!userProjectPermission) {
                 return { hasProjectAccess: false };
             }
-    
+
             if (userProjectPermission.fullAccess) {
                 return { hasProjectAccess: true };
             }
@@ -205,7 +205,7 @@ export class UserService {
                 // If user has global project access, no need to check project
                 return { hasProjectAccess: true };
             }
-    
+
             const projectWithPermission = await this.databaseService.job.findFirst({
                 where: {
                     id: jobId,
@@ -218,7 +218,7 @@ export class UserService {
 
             const hasProjectAccess = !!projectWithPermission;
             return { hasProjectAccess };
-    
+
         } catch (error) {
             console.error('checkProjectAccess error:', error);
             return { hasProjectAccess: false };

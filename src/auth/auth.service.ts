@@ -199,7 +199,7 @@ export class AuthService {
             // Fetch trial_end live from Stripe (builders only — for trial expiry check)
             let trialEndsAt: Date | null = null;
             let subscriptionStatus: string | null = null;
-            if (user.subscriptionId && user.userType !== UserTypes.EMPLOYEE) {
+            if (user.subscriptionId) {
                 try {
                     const subInfo = await this.stripeService.getBuilderSubscriptionInfo(user);
                     if (subInfo?.builderSubscription?.trial_end) {

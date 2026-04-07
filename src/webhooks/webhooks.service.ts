@@ -124,7 +124,7 @@ export class WebhooksService {
 
             // Handle paused status (trial expired without payment method)
             // Employees are paused when builder hasn't paid — they are handled by the builder's reactivation flow
-            if (user && isPaused && user.userType !== 'Employee') {
+            if (user && isPaused) {
                 let pausedDate = new Date();
 
                 await this.databaseService.user.update({
