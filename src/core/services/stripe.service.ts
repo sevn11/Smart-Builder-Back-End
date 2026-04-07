@@ -1,14 +1,16 @@
-import { Injectable, InternalServerErrorException } from "@nestjs/common";
+import { Inject, Injectable, InternalServerErrorException, LoggerService } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { User } from "@prisma/client";
 import { SignUpDTO } from "src/auth/validators";
 import { AddUserDTO } from "src/company/validators";
+import { ActivateSubscriptionDTO } from "src/company/validators/activate-subscription";
 import { DatabaseService } from "src/database/database.service";
 import Stripe from "stripe";
 import { BuilderPlanTypes } from "../utils/builder-plan-types";
 import { UserTypes } from "../utils";
 import { DemoUserDTO } from "src/admin/validators/add-demo-user";
-
+import { WINSTON_MODULE_PROVIDER } from "nest-winston";
+import { PlanType } from "src/company/validators/activate-subscription";
 
 @Injectable()
 export class StripeService {
@@ -17,7 +19,8 @@ export class StripeService {
 
     constructor(
         private readonly config: ConfigService,
-        private databaseService: DatabaseService
+        private databaseService: DatabaseService,
+        @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: LoggerService
     ) {
         this.StripeClient = new Stripe(config.get('STRIPE_API_KEY'))
         this.stripeTaxRateId = config.get('STRIPE_TAX_RATE_ID')
@@ -71,6 +74,9 @@ export class StripeService {
                 items: [{ price: price.id }],
                 proration_behavior: 'none',
                 automatic_tax: { enabled: true },
+                trial_settings: {
+                    end_behavior: { missing_payment_method: 'pause' },
+                },
             };
             if (builderSubscription.trial_end > now) {
                 // Adding employee subscription within builder's trial period
@@ -87,6 +93,7 @@ export class StripeService {
                 coupon = await this.createCoupon();
                 subscriptionPayload.coupon = coupon;
             }
+            console.log("Subscription payload :- ", subscriptionPayload)
             subscription = await this.StripeClient.subscriptions.create(subscriptionPayload);
 
             return { status: true, subscriptionId: subscription.id, productId: product.id, message: "Subscription added" };
@@ -109,6 +116,23 @@ export class StripeService {
             }
         }
 
+    }
+
+    // Function to detach (delete) default payment method from a stripe customer
+    async deleteDefaultPaymentMethod(customerId: string) {
+        try {
+            const customer = await this.StripeClient.customers.retrieve(customerId);
+            if (customer.deleted !== true) {
+                const defaultPaymentMethodId = customer.invoice_settings?.default_payment_method;
+                if (defaultPaymentMethodId) {
+                    await this.StripeClient.paymentMethods.detach(defaultPaymentMethodId as string);
+                }
+            }
+            return { status: true };
+        } catch (error) {
+            console.log("Error deleting default payment method", error);
+            return { status: false, message: error.message };
+        }
     }
 
     // Function to set default payment method to a stripe customer
@@ -277,7 +301,7 @@ export class StripeService {
         let customer: Stripe.Customer;
         try {
             const planType = body.planType == BuilderPlanTypes.MONTHLY ? 'month' : 'year'
-
+            console.log("body", body);
             // Create new customer in stripe
             customer = await this.StripeClient.customers.create({
                 name: body.name,
@@ -314,7 +338,7 @@ export class StripeService {
                 product: product.id,
                 tax_behavior: 'exclusive'
             });
-            const trialEndDate = Math.floor((new Date().getTime() + 30 * 24 * 60 * 60 * 1000) / 1000);
+            const trialEndDate = Math.floor(Date.now() / 1000) + 120; // TODO: change to 30 days for production (30 * 24 * 60 * 60)
 
             // Create a subscription for the new employee
             let subscriptionPayload: Stripe.SubscriptionCreateParams = {
@@ -347,7 +371,7 @@ export class StripeService {
     }
 
     // Function to create new subscription for sign now
-    async createBuilderSignNowSubscription(body: any, stripeCustomerId: string, planAmount: number, isDemoUser?: boolean, promoCode?: string, promoCodeInfo?: any, addonCouponId?: string) {
+    async createBuilderSignNowSubscription(body: any, stripeCustomerId: string, planAmount: number, isDemoUser?: boolean, subscriptionId?: string) {
         try {
             const signNowPlanType = body.signNowPlanType == BuilderPlanTypes.MONTHLY ? 'month' : 'year';
 
@@ -356,6 +380,13 @@ export class StripeService {
                 name: `${body.companyName || body.name}-SignHere`
             });
 
+            let builderSubDetails = await this.StripeClient.subscriptions.retrieve(subscriptionId);
+
+            if (!builderSubDetails) {
+                return;
+            }
+
+
             // Create a price for the product
             const price = await this.StripeClient.prices.create({
                 unit_amount: planAmount * 100,
@@ -363,38 +394,29 @@ export class StripeService {
                 recurring: { interval: signNowPlanType },
                 product: product.id,
             });
-            const trialEndDate = Math.floor((new Date().getTime() + 30 * 24 * 60 * 60 * 1000) / 1000);
+            const now = Math.floor(Date.now() / 1000);
 
             const subscriptionPayload: Stripe.SubscriptionCreateParams = {
                 customer: stripeCustomerId,
                 items: [{ price: price.id }],
-                trial_end: trialEndDate,
+                payment_behavior: 'default_incomplete',
                 proration_behavior: 'none',
-                automatic_tax: { enabled: true },
+                trial_settings: {
+                    end_behavior: {
+                        missing_payment_method: 'pause',
+                    },
+                },
             };
+
+            if (builderSubDetails.trial_end && builderSubDetails.trial_end > now) {
+                subscriptionPayload.trial_end = builderSubDetails.trial_end;
+            }
 
             // Apply coupon for demo builders
             let coupon: string;
             if (isDemoUser) {
                 coupon = await this.createCoupon();
                 subscriptionPayload.coupon = coupon;
-            }
-
-            if (promoCode && promoCodeInfo) {
-
-                if (promoCodeInfo.percentOff) {
-                    subscriptionPayload.promotion_code = promoCodeInfo.promotionCodeId;
-                }
-                else if (promoCodeInfo.amountOff) {
-
-                    const discountValue = promoCodeInfo.amountOff / 100;
-
-                    const remainingPromoValue = discountValue - (promoCodeInfo.builderPlanAmount || 0);
-
-                    if (remainingPromoValue > 0) {
-                        subscriptionPayload.coupon = addonCouponId;
-                    }
-                }
             }
             // Create a subscription for sign-now
             const subscription = await this.StripeClient.subscriptions.create(subscriptionPayload);
@@ -410,7 +432,7 @@ export class StripeService {
             console.log(error);
             return {
                 status: false,
-                message: "Failed to create SignHere subscription"
+                message: error?.message ?? "Failed to create SignHere subscription"
             }
         }
     }
@@ -482,7 +504,10 @@ export class StripeService {
                     customer: customer.id,
                     items: [{ price: price.id }],
                     proration_behavior: 'none',
-                    automatic_tax: { enabled: true },
+                    // automatic_tax: { enabled: true },
+                    trial_settings: {
+                        end_behavior: { missing_payment_method: 'pause' },
+                    },
                 };
                 if (builderSubscription.trial_end > now) {
                     // Adding signnow subscription within builder's trial period
@@ -529,6 +554,9 @@ export class StripeService {
                 billing_cycle_anchor: billingCycleAnchor,
                 proration_behavior: prorationBehavious,
                 automatic_tax: { enabled: true },
+                trial_settings: {
+                    end_behavior: { missing_payment_method: 'pause' },
+                },
             };
 
             if (trialEnd) {
@@ -569,22 +597,22 @@ export class StripeService {
                 product: company.signNowStripeProductId,
             });
 
-            const newPlanStartDate = isTrialActive ? subscription.trial_end : subscription.current_period_end;
-
-            // Updating builder subscription / plan
-            await this.StripeClient.subscriptions.update(company.signNowSubscriptionId,
-                {
-                    items: [{
-                        id: subscription.items.data[0].id,
-                        price: newPrice.id,
-                    }],
-                    trial_end: newPlanStartDate,
-                    proration_behavior: 'none'
-                }
-            )
+            // Updating SignHere subscription / plan
+            const signNowUpdatePayload: Stripe.SubscriptionUpdateParams = {
+                items: [{
+                    id: subscription.items.data[0].id,
+                    price: newPrice.id,
+                }],
+                proration_behavior: 'none',
+            };
+            // Only preserve trial_end if subscription is still in an active trial
+            if (isTrialActive) {
+                signNowUpdatePayload.trial_end = subscription.trial_end;
+            }
+            await this.StripeClient.subscriptions.update(company.signNowSubscriptionId, signNowUpdatePayload);
             return { status: true };
         } catch (error) {
-            console.log("change plan error", error);
+            console.log("change plan error :- ", error);
             return { status: false };
         }
     }
@@ -639,7 +667,7 @@ export class StripeService {
                 recurring: { interval: planType },
                 product: product.id,
             });
-            const trialEndDate = Math.floor((new Date().getTime() + 30 * 24 * 60 * 60 * 1000) / 1000);
+            const trialEndDate = Math.floor(Date.now() / 1000) + 120; // TODO: change to 30 days for production (30 * 24 * 60 * 60)
             const trialEndDateObj = new Date(trialEndDate * 1000);
 
             const subscription = await this.StripeClient.subscriptions.create({
@@ -671,6 +699,8 @@ export class StripeService {
             let subscription = await this.StripeClient.subscriptions.retrieve(employee ? employee.subscriptionId : user.subscriptionId);
             const isTrialActive = subscription.trial_end && subscription.trial_end > Math.floor(Date.now() / 1000);
 
+            let newProduct = employee ? employee.productId : user.productId;
+
             // Create new price in stripe
             let newPrice = await this.StripeClient.prices.create({
                 unit_amount: planAmount,
@@ -679,20 +709,20 @@ export class StripeService {
                 product: employee ? employee.productId : user.productId,
             });
 
-            const newPlanStartDate = isTrialActive ? subscription.trial_end : subscription.current_period_end;
-
             // Updating builder subscription / plan
-            await this.StripeClient.subscriptions.update(employee ? employee.subscriptionId : user.subscriptionId,
-                {
-                    items: [{
-                        id: subscription.items.data[0].id,
-                        price: newPrice.id,
-                    }],
-                    trial_end: newPlanStartDate,
-                    proration_behavior: 'none'
-                }
-            )
-            return { status: true };
+            const updatePayload: Stripe.SubscriptionUpdateParams = {
+                items: [{
+                    id: subscription.items.data[0].id,
+                    price: newPrice.id,
+                }],
+                proration_behavior: 'none',
+            };
+            // Only preserve trial_end if subscription is still in an active trial
+            if (isTrialActive) {
+                updatePayload.trial_end = subscription.trial_end;
+            }
+            const updatedSub = await this.StripeClient.subscriptions.update(employee ? employee.subscriptionId : user.subscriptionId, updatePayload);
+            return { status: true, current_period_start: updatedSub.current_period_start, current_period_end: updatedSub.current_period_end };
         } catch (error) {
             console.log("change plan error", error)
             return { status: false };
@@ -700,15 +730,18 @@ export class StripeService {
     }
 
     // Function to get builder subscription info
-    async getBuilderSubscriptionInfo(user: User) {
+    async getBuilderSubscriptionInfo(user: Pick<User, 'subscriptionId'>) {
         try {
-            let subscription = await this.StripeClient.subscriptions.retrieve(user.subscriptionId);
+            let subscription = await this.StripeClient.subscriptions.retrieve(user.subscriptionId, {
+                expand: ['default_payment_method']
+            });
             if (subscription) {
                 const builderSubscription = {
                     subscription_status: subscription.status,
                     trial_end: subscription.trial_end,
                     current_period_start: subscription.current_period_start,
-                    current_period_end: subscription.current_period_end
+                    current_period_end: subscription.current_period_end,
+                    has_payment_method: !!subscription.default_payment_method,
                 };
                 return { builderSubscription };
             } else {
@@ -732,12 +765,199 @@ export class StripeService {
         }
     }
 
+    // Pause a Stripe subscription (void invoices during pause)
+    async pauseSubscription(subscriptionId: string) {
+        try {
+            await this.StripeClient.subscriptions.update(subscriptionId, {
+                pause_collection: { behavior: 'void' },
+            });
+            console.log('Stripe subscription paused:', subscriptionId);
+            return { status: true };
+        } catch (error) {
+            console.error('Failed to pause Stripe subscription:', error);
+            return { status: false, message: error?.message ?? 'Failed to pause subscription' };
+        }
+    }
+
+    // Resume a paused Stripe subscription with a payment method
+    async resumeSubscription(subscriptionId: string, paymentMethodId: string) {
+        try {
+            const subscription = await this.StripeClient.subscriptions.retrieve(subscriptionId);
+
+            if (subscription.status === 'paused') {
+                // Subscription paused by Stripe (e.g. trial ended with no payment method)
+                await this.StripeClient.subscriptions.resume(subscriptionId, {
+                    billing_cycle_anchor: 'now',
+                });
+                await this.StripeClient.subscriptions.update(subscriptionId, {
+                    default_payment_method: paymentMethodId,
+                });
+            } else {
+                // Subscription paused via pause_collection
+                await this.StripeClient.subscriptions.update(subscriptionId, {
+                    pause_collection: '',
+                    default_payment_method: paymentMethodId,
+                } as any);
+            }
+
+            console.log('Stripe subscription resumed:', subscriptionId);
+            return { status: true };
+        } catch (error) {
+            console.error('Failed to resume Stripe subscription:', error);
+            return { status: false, message: error?.message ?? 'Failed to resume subscription' };
+        }
+    }
+
+    // Create Stripe customer + trial subscription (no payment method required)
+    async createTrialSubscription(email: string, name: string, phone?: string, planAmount?: number, body?: any, promoCode?: string) {
+        let customer: Stripe.Customer;
+        console.log(body, 'bodyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy');
+        try {
+            let yearlyAmount: number;
+            if (planAmount !== undefined) {
+                yearlyAmount = Math.round(planAmount * 100); // convert to cents
+            } else {
+                // Fallback: get yearly plan amount from DB
+                const seoSettings = await this.databaseService.seoSettings.findFirst();
+                if (!seoSettings || !seoSettings.yearlyPlanAmount) {
+                    console.error('seo_settings not found or yearlyPlanAmount is missing');
+                    return { status: false, message: 'Plan pricing not configured in DB' };
+                }
+                yearlyAmount = Math.round(Number(seoSettings.yearlyPlanAmount) * 100);
+            }
+
+            customer = await this.StripeClient.customers.create({
+                email,
+                name,
+                phone: phone || undefined,
+                metadata: {
+                    referralCode: body?.referralCode || '',
+                },
+                address: {
+                    line1: body?.address || '',
+                    country: 'US',
+                    postal_code: body?.zipcode,
+                },
+                tax: {
+                    validate_location: 'immediately',
+                }
+            });
+
+            let productId: string;
+
+            const product = await this.StripeClient.products.create({
+                name: `${body.companyName}-${name}`
+            });
+
+            productId = product.id;
+
+            const trialEndDate = Math.floor(Date.now() / 1000) + 120; // TODO: change to 30 days for production (30 * 24 * 60 * 60)
+
+            let subscriptionPayload: Stripe.SubscriptionCreateParams = {
+                customer: customer.id,
+                items: [{
+                    price_data: {
+                        currency: 'usd',
+                        product: productId,
+                        unit_amount: yearlyAmount,
+                        recurring: {
+                            interval: 'year',
+                        },
+                    },
+                }],
+                payment_behavior: 'default_incomplete',
+                payment_settings: {
+                    save_default_payment_method: 'on_subscription',
+                },
+                trial_settings: {
+                    end_behavior: {
+                        missing_payment_method: 'pause',
+                    },
+                },
+                trial_end: trialEndDate,
+            };
+
+            const subscription = await this.StripeClient.subscriptions.create(subscriptionPayload);
+
+            return {
+                status: true,
+                stripeCustomerId: customer.id,
+                subscriptionId: subscription.id,
+                productId: productId,
+                trialEndsAt: new Date(trialEndDate * 1000),
+            };
+        } catch (error) {
+            if (customer) {
+                try {
+                    await this.StripeClient.customers.del(customer.id);
+                } catch (cleanupError) {
+                    console.error('Failed to cleanup Stripe customer:', cleanupError);
+                }
+            }
+            return { status: false, message: error?.message ?? 'Stripe subscription creation failed' };
+        }
+    }
+
+    async createTrialBuilderSignNowSubscription(company: any, bodyName: string, stripeCustomerId: any, signNowPlanAmount: number, trialEndsAt?: Date) {
+        try {
+
+            let yearlyAmount: number;
+
+            yearlyAmount = Math.round(Number(signNowPlanAmount) * 100);
+
+            // Create new product in stripe
+            const product = await this.StripeClient.products.create({
+                name: `${company.companyName}-${bodyName}-SignHere`
+            });
+
+            const productId = product.id;
+
+            let subscriptionPayload: Stripe.SubscriptionCreateParams = {
+                customer: stripeCustomerId,
+                items: [{
+                    price_data: {
+                        currency: 'usd',
+                        product: productId,
+                        unit_amount: yearlyAmount,
+                        recurring: {
+                            interval: 'year',
+                        },
+                    },
+                }],
+                payment_behavior: 'default_incomplete',
+                payment_settings: {
+                    save_default_payment_method: 'on_subscription',
+                },
+                trial_settings: {
+                    end_behavior: {
+                        missing_payment_method: 'pause',
+                    },
+                },
+                trial_end: trialEndsAt
+                    ? Math.floor(trialEndsAt.getTime() / 1000)
+                    : Math.floor((Date.now() + 30 * 24 * 60 * 60 * 1000) / 1000),
+            };
+
+            const subscription = await this.StripeClient.subscriptions.create(subscriptionPayload);
+
+            return {
+                status: true,
+                stripeCustomerId: stripeCustomerId,
+                subscriptionId: subscription.id,
+                productId: productId,
+            };
+        }
+        catch (error) {
+            return { status: false, message: error?.message ?? 'Stripe subscription creation failed' };
+        }
+    }
+
     // Function to get promo code information
     async getPromoCodeInfo(promo_code: string) {
         try {
             const promotionCodes = await this.StripeClient.promotionCodes.list({
                 limit: 100,
-                code: promo_code
+                code: promo_code.trim().toUpperCase()
             });
             let promoCodeInfo = promotionCodes.data[0];
             if (!promoCodeInfo || !promoCodeInfo.coupon.valid) {
@@ -783,75 +1003,347 @@ export class StripeService {
         }
     }
 
-    async getPromoCodeById(promoCodeId: string) {
+    async activateSubscription(
+        user: User,
+        body: ActivateSubscriptionDTO,
+        signNowSubscriptionId: string,
+        planAmount: number,
+        signNowPlanAmount: number,
+    ) {
         try {
-            const promo = await this.StripeClient.promotionCodes.retrieve(promoCodeId);
 
-            if (!promo || !promo.active) {
-                return {
-                    status: false,
-                    info: null,
-                    message: "Promo code is inactive or invalid",
+            if (!body?.paymentMethodId) {
+                throw new Error('Payment method is required');
+            }
+
+            const customerId = user.stripeCustomerId;
+            const paymentMethodId = body.paymentMethodId;
+            const promoCode = body.promoCode;
+            const planType = body.planType === PlanType.MONTHLY ? 'month' : 'year';
+
+            // Attach payment method to customer
+            try {
+                await this.StripeClient.paymentMethods.attach(paymentMethodId, {
+                    customer: customerId,
+                });
+            } catch (error: any) {
+                const msg = error?.message?.toLowerCase() || '';
+                const alreadyAttached =
+                    msg.includes('already attached') ||
+                    msg.includes('previously used') ||
+                    error?.code === 'resource_already_exists';
+                if (!alreadyAttached) {
+                    throw error;
+                }
+            }
+
+            await this.StripeClient.customers.update(customerId, {
+                invoice_settings: {
+                    default_payment_method: paymentMethodId,
+                },
+            });
+
+            // Check current subscription status to decide: resume paused OR create new
+            let mainSubscription: Stripe.Subscription | null = null;
+            let subscriptionStatus: string | null = null;
+
+            if (user.subscriptionId) {
+                try {
+                    mainSubscription = await this.StripeClient.subscriptions.retrieve(user.subscriptionId);
+                    subscriptionStatus = mainSubscription.status;
+                } catch (error) {
+                    // Subscription not found in Stripe (deleted or invalid)
+                    mainSubscription = null;
+                    subscriptionStatus = null;
+                }
+            }
+
+            let resultSubscriptionId = user.subscriptionId;
+            let resultProductId = user.productId;
+
+            if (subscriptionStatus === 'paused') {
+
+                // Apply discounts BEFORE resuming so Stripe includes them in the invoice it creates on resume
+                if (promoCode) {
+                    await this.StripeClient.subscriptions.update(user.subscriptionId, {
+                        discounts: [{ promotion_code: promoCode }],
+                    });
+                }
+
+                // Resume — Stripe creates a new invoice that will include the discount applied above
+                await this.StripeClient.subscriptions.resume(user.subscriptionId, {
+                    billing_cycle_anchor: 'now',
+                });
+
+                // Pay the latest invoice immediately
+                const subscription = await this.StripeClient.subscriptions.retrieve(
+                    user.subscriptionId,
+                    { expand: ['latest_invoice'] }
+                );
+                const latestInvoice = subscription.latest_invoice as Stripe.Invoice;
+                if (latestInvoice && latestInvoice.status === 'open') {
+                    try {
+                        await this.StripeClient.invoices.pay(latestInvoice.id, {
+                            payment_method: paymentMethodId,
+                        });
+                        console.log('Invoice paid:', latestInvoice.id);
+                    } catch (payError) {
+                        // Payment failed — re-pause to rollback the resume so Stripe stays consistent with DB
+                        await this.StripeClient.subscriptions.update(user.subscriptionId, {
+                            pause_collection: { behavior: 'mark_uncollectible' },
+                        });
+                        throw payError;
+                    }
+                }
+
+                // Directly update DB — do not rely solely on webhook for cardOnFile/accountStatus
+                await this.databaseService.user.update({
+                    where: { id: user.id },
+                    data: {
+                        cardOnFile: true,
+                        accountStatus: 'active',
+                        ...(promoCode && { referralCodeApplied: true }),
+                    },
+                });
+
+                // Also resume SignHere subscription if paused
+                if (signNowSubscriptionId) {
+                    try {
+                        const signNowSub = await this.StripeClient.subscriptions.retrieve(signNowSubscriptionId);
+
+                        if (signNowSub.status === 'paused') {
+                            await this.StripeClient.subscriptions.resume(signNowSubscriptionId, {
+                                billing_cycle_anchor: 'now',
+                            });
+                            const resumedSub = await this.StripeClient.subscriptions.retrieve(
+                                signNowSubscriptionId,
+                                { expand: ['latest_invoice'] }
+                            );
+                            const latestInvoice = resumedSub.latest_invoice as Stripe.Invoice;
+                            if (latestInvoice && latestInvoice.status === 'open') {
+                                await this.StripeClient.invoices.pay(latestInvoice.id, {
+                                    payment_method: paymentMethodId,
+                                });
+                            }
+                        } else if (signNowSub.status === 'incomplete') {
+                            // Cannot resume — pay the open invoice directly to activate
+                            const incompleteSub = await this.StripeClient.subscriptions.retrieve(
+                                signNowSubscriptionId,
+                                { expand: ['latest_invoice'] }
+                            );
+                            const latestInvoice = incompleteSub.latest_invoice as Stripe.Invoice;
+                            if (latestInvoice && latestInvoice.status === 'open') {
+                                await this.StripeClient.invoices.pay(latestInvoice.id, {
+                                    payment_method: paymentMethodId,
+                                });
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Failed to resume SignHere subscription:', error);
+                    }
+                }
+
+                // Resume all paused employee subscriptions, update payment method, and pay outstanding invoices
+                if (user.companyId) {
+                    const employees = await this.databaseService.user.findMany({
+                        where: {
+                            companyId: user.companyId,
+                            userType: UserTypes.EMPLOYEE,
+                            isDeleted: false,
+                        },
+                        select: { id: true, subscriptionId: true },
+                    });
+
+                    for (const employee of employees) {
+                        if (employee.subscriptionId) {
+                            try {
+                                const empSub = await this.StripeClient.subscriptions.retrieve(
+                                    employee.subscriptionId,
+                                    { expand: ['latest_invoice'] }
+                                );
+                                if (empSub.status === 'paused') {
+                                    await this.StripeClient.subscriptions.update(employee.subscriptionId, {
+                                        default_payment_method: paymentMethodId,
+                                    });
+                                    await this.StripeClient.subscriptions.resume(employee.subscriptionId, {
+                                        billing_cycle_anchor: 'now',
+                                    });
+                                    const resumedEmpSub = await this.StripeClient.subscriptions.retrieve(
+                                        employee.subscriptionId,
+                                        { expand: ['latest_invoice'] }
+                                    );
+                                    const empInvoice = resumedEmpSub.latest_invoice as Stripe.Invoice;
+                                    if (empInvoice && empInvoice.status === 'open') {
+                                        await this.StripeClient.invoices.pay(empInvoice.id, {
+                                            payment_method: paymentMethodId,
+                                        });
+                                    }
+                                }
+                            } catch (error) {
+                                console.error(`Failed to resume employee subscription ${employee.subscriptionId}:`, error);
+                            }
+                        }
+                    }
+
+                    await this.databaseService.user.updateMany({
+                        where: {
+                            companyId: user.companyId,
+                            userType: UserTypes.EMPLOYEE,
+                            isDeleted: false,
+                        },
+                        data: { accountStatus: 'active' },
+                    });
+                }
+
+            } else if (!mainSubscription || subscriptionStatus === 'canceled' || subscriptionStatus === 'incomplete_expired') {
+                // CANCELED or NO subscription → Create a brand new subscription
+                const amountInCents = Math.round(planAmount * 100);
+
+                // Create new product
+                const customer = await this.StripeClient.customers.retrieve(customerId) as Stripe.Customer;
+                const product = await this.StripeClient.products.create({
+                    name: `${customer.name || user.email}-Reactivation`,
+                });
+                // Create price for the product
+                const price = await this.StripeClient.prices.create({
+                    unit_amount: amountInCents,
+                    currency: 'usd',
+                    recurring: { interval: planType as Stripe.PriceCreateParams.Recurring.Interval },
+                    product: product.id,
+                    tax_behavior: 'exclusive',
+                });
+
+
+                let subscriptionPayload: Stripe.SubscriptionCreateParams = {
+                    customer: customerId,
+                    items: [{
+                        price_data: {
+                            currency: 'usd',
+                            product: product.id,
+                            unit_amount: amountInCents,
+                            recurring: { interval: planType as Stripe.PriceCreateParams.Recurring.Interval },
+                        },
+                    }],
+                    payment_settings: {
+                        save_default_payment_method: 'on_subscription',
+                    },
                 };
+
+                if (promoCode) {
+                    subscriptionPayload.promotion_code = promoCode;
+                }
+
+                const newSubscription = await this.StripeClient.subscriptions.create(subscriptionPayload);
+                resultSubscriptionId = newSubscription.id;
+                resultProductId = product.id;
+
+                try {
+                    await this.databaseService.user.update({
+                        where: { id: user.id },
+                        data: {
+                            subscriptionId: newSubscription.id,
+                            productId: product.id,
+                            cardOnFile: true,
+                            accountStatus: 'active',
+                            ...(promoCode && { referralCodeApplied: true }),
+                        },
+                    });
+                } catch (dbError) {
+                    // DB failed — cancel the Stripe subscription to prevent an orphaned live subscription
+                    await this.StripeClient.subscriptions.cancel(newSubscription.id);
+                    throw dbError;
+                }
+
+                // Also create new SignHere subscription
+                if (signNowPlanAmount > 0) {
+                    try {
+                        const signNowProduct = await this.StripeClient.products.create({
+                            name: `${customer.name || user.email}-SignHere-Reactivation`,
+                        });
+
+                        const signNowPrice = await this.StripeClient.prices.create({
+                            unit_amount: Math.round(signNowPlanAmount * 100),
+                            currency: 'usd',
+                            recurring: { interval: planType as Stripe.PriceCreateParams.Recurring.Interval },
+                            product: signNowProduct.id,
+                        });
+
+                        const signNowSub = await this.StripeClient.subscriptions.create({
+                            customer: customerId,
+                            items: [{ price: signNowPrice.id }],
+                            default_payment_method: paymentMethodId,
+                            proration_behavior: 'none',
+                        });
+
+                        console.log('Created new SignHere subscription:', signNowSub.id);
+
+                        return {
+                            status: true,
+                            subscriptionId: resultSubscriptionId,
+                            productId: resultProductId,
+                            signHereSubscriptionId: signNowSub.id,
+                            signHereProductId: signNowProduct.id,
+                            isNewSubscription: true,
+                        };
+                    } catch (error) {
+                        console.error('Failed to create new SignHere subscription:', error);
+                    }
+                }
+
+                return {
+                    status: true,
+                    subscriptionId: resultSubscriptionId,
+                    productId: resultProductId,
+                    signHereSubscriptionId: null,
+                    signHereProductId: null,
+                    isNewSubscription: true,
+                };
+
+            } else {
+                // ACTIVE or TRIALING subscription → Just update payment method and promo
+                const updatePayload: Stripe.SubscriptionUpdateParams = {
+                    default_payment_method: paymentMethodId,
+                    proration_behavior: 'none',
+                };
+
+                if (promoCode) {
+                    updatePayload.discounts = [{ promotion_code: promoCode }];
+                }
+
+                await this.StripeClient.subscriptions.update(user.subscriptionId, updatePayload);
+
+                await this.databaseService.user.update({
+                    where: { id: user.id },
+                    data: {
+                        cardOnFile: true,
+                        accountStatus: 'active',
+                    },
+                });
+
+
+                // Also update SignHere subscription payment method
+                if (signNowSubscriptionId) {
+                    try {
+                        await this.StripeClient.subscriptions.update(signNowSubscriptionId, {
+                            default_payment_method: paymentMethodId,
+                        });
+                    } catch (error) {
+                        console.error('Failed to update SignHere subscription payment method:', error);
+                    }
+                }
             }
 
             return {
                 status: true,
-                info: {
-                    promotionCodeId: promo.id,
-                    code: promo.code,
-                    couponId: promo.coupon?.id,
-                    percentOff: promo.coupon?.percent_off ?? null,
-                    amountOff: promo.coupon?.amount_off ?? null,
-                    currency: promo.coupon?.currency ?? null,
-                    duration: promo.coupon?.duration ?? null,
-                },
+                subscriptionId: resultSubscriptionId,
+                productId: resultProductId,
+                signHereSubscriptionId: signNowSubscriptionId,
+                signHereProductId: null,
+                isNewSubscription: false,
             };
         } catch (error) {
-            return {
-                status: false,
-                info: null,
-                message: "Promo code not found in Stripe",
-            };
-        }
-    }
-
-
-    async couponsCreate(promoCodeInfo?: any) {
-
-        try {
-
-            const discountValue = promoCodeInfo.amountOff / 100;
-
-            const remainingPromoValue = discountValue - (promoCodeInfo.builderPlanAmount || 0);
-
-            const couponParams = {
-                amount_off: Math.round(remainingPromoValue * 100),
-                currency: promoCodeInfo.currency || 'usd',
-                duration: promoCodeInfo.duration || 'once',
-            };
-            const existingCoupons = await this.StripeClient.coupons.list({
-                limit: 100,
-            });
-            let signNowCoupon = existingCoupons.data.find(coupon =>
-                coupon.amount_off === couponParams.amount_off &&
-                coupon.currency === couponParams.currency &&
-                coupon.duration === couponParams.duration &&
-                coupon.valid === true
-            );
-
-            if (!signNowCoupon) {
-                signNowCoupon = await this.StripeClient.coupons.create({
-                    amount_off: Math.round(remainingPromoValue * 100),
-                    currency: promoCodeInfo.currency || 'usd',
-                    duration: promoCodeInfo.duration || 'once',
-                    name: `Addon : ${promoCodeInfo.name || promoCodeInfo.code}`,
-                });
-            }
-
-            return signNowCoupon;
-        } catch (error) {
-            throw new Error("Failed to fetch Coupon");
+            console.error('Stripe activateSubscription error:', error);
+            throw error;
         }
     }
 }

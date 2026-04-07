@@ -8,8 +8,8 @@ import { PrismaErrorCodes, HelperFunctions, ResponseMessages, UserTypes } from '
 import { SendgridService } from 'src/core/services';
 import { ConfigService } from '@nestjs/config';
 import { StripeService } from 'src/core/services/stripe.service';
-import { BuilderPlanTypes } from 'src/core/utils/builder-plan-types';
 import { Prisma, PrismaClient, User } from '@prisma/client';
+import { BuilderPlanTypes } from 'src/core/utils/builder-plan-types';
 
 
 @Injectable()
@@ -32,157 +32,130 @@ export class AuthService {
                 }
             });
             if (existingUser) {
-                throw new BadRequestException();
+                throw new BadRequestException(ResponseMessages.UNIQUE_EMAIL_ERROR);
             }
 
-            let data = await this.databaseService.seoSettings.findMany();
-            let seoSettings = data[0];
+            const hash = await argon.hash(body.password);
 
-            let planAmount = 0;
-            body.planType == BuilderPlanTypes.MONTHLY
-                ? planAmount = seoSettings.monthlyPlanAmount.toNumber()
-                : planAmount = seoSettings.yearlyPlanAmount.toNumber()
+            const seoSettings = await this.databaseService.seoSettings.findFirst();
+            const yearlyPlanAmount = seoSettings.yearlyPlanAmount.toNumber();
+            const signNowYearlyAmount = seoSettings.signNowYearlyAmount.toNumber();
 
-            if (data) {
-                // Create new customer and add card details inside stripe
-                let promoCode: string;
-                let promoCodeInfo: any = null;
+            const response = await this.stripeService.createTrialSubscription(
+                body.email,
+                body.name,
+                body.phoneNumber,
+                yearlyPlanAmount,
+                body
+            );
 
-                if (body.promoCode) {
-                    promoCode = body.promoCode;
+            if (!response.status) {
+                throw new BadRequestException(response.message || 'Failed to create Stripe subscription');
+            }
 
-                    const promoResult = promoCode.startsWith("promo_")
-                        ? await this.stripeService.getPromoCodeById(promoCode)
-                        : await this.stripeService.getPromoCodeInfo(promoCode);
+            const signNowBody = {
+                ...body,
+                signNowPlanType: BuilderPlanTypes.YEARLY,
+            };
 
-                    if (promoResult.status) {
-                        promoCodeInfo = promoResult.info;
-                        promoCodeInfo.builderPlanAmount = planAmount;
-                    }
-                }
-                let addOnCoupon = null;
+            const signNowSubscriptionResponse = await this.stripeService.createTrialBuilderSignNowSubscription(
+                signNowBody,
+                body.name,
+                response.stripeCustomerId,
+                signNowYearlyAmount,
+                response.trialEndsAt,
+            );
 
-                if (promoCode && promoCodeInfo) {
-                    if (promoCodeInfo.amountOff) {
-                        const discountValue = promoCodeInfo.amountOff / 100;
-                        const remainingPromoValue = discountValue - (promoCodeInfo.builderPlanAmount || 0);
+            let signNowSubStatus = true;
 
-                        if (remainingPromoValue > 0) {
+            if (!signNowSubscriptionResponse.status) {
+                signNowSubStatus = false;
+            }
 
-                            addOnCoupon = await this.stripeService.couponsCreate(promoCodeInfo);
-
-                            if (!addOnCoupon) {
-                                throw new BadRequestException("Failed to fetch Coupon, Please try again later");
-                            }
+            const user = await this.databaseService.user.create({
+                data: {
+                    email: body.email.toLowerCase(),
+                    hash,
+                    name: body.name,
+                    userType: UserTypes.BUILDER,
+                    tosAcceptanceTime: new Date().toISOString(),
+                    isTosAccepted: true,
+                    tosVersion: HelperFunctions.getTosVersion(),
+                    stripeCustomerId: response.stripeCustomerId,
+                    productId: response.productId,
+                    subscriptionId: response.subscriptionId,
+                    accountStatus: 'active',
+                    cardOnFile: false,
+                    referralCode: body.referralCode ? body.referralCode.trim().toUpperCase() : null,
+                    referralCodeApplied: false,
+                    company: {
+                        create: {
+                            name: body.companyName,
+                            address: body.address,
+                            zipcode: body.zipcode,
+                            phoneNumber: body.phoneNumber,
+                            planType: 'YEARLY',
+                            signNowSubscriptionId: signNowSubscriptionResponse.subscriptionId,
+                            signNowStripeProductId: signNowSubscriptionResponse.productId,
+                        }
+                    },
+                    PermissionSet: {
+                        create: {
+                            fullAccess: true,
+                            viewOnly: false
                         }
                     }
-                }
-                let response = await this.stripeService.createBuilderSubscription(body, planAmount, promoCode);
-                if (response.status) {
-                    let signNowSubscriptionResponse = null;
-                    let signNowSubStatus = true;
-                    // Create a SignNow subscription if the builder chooses a plan
-                    if (body.signNowPlanType && Object.values(BuilderPlanTypes).includes(body.signNowPlanType)) {
-                        let signNowPlanAmount = 0;
-                        body.signNowPlanType == BuilderPlanTypes.MONTHLY
-                            ? signNowPlanAmount = seoSettings.signNowMonthlyAmount.toNumber()
-                            : signNowPlanAmount = seoSettings.signNowYearlyAmount.toNumber()
-
-                        signNowSubscriptionResponse = await this.stripeService.createBuilderSignNowSubscription(body, response.stripeCustomerId, signNowPlanAmount, false, promoCode, promoCodeInfo, addOnCoupon?.id);
-                        if (!signNowSubscriptionResponse.status) {
-                            signNowSubStatus = false
-                        }
-                    }
-                    const hash = await argon.hash(body.password);
-                    const user = await this.databaseService.user.create({
-                        data: {
-                            email: body.email.toLowerCase(),
-                            hash,
-                            name: body.name,
-                            userType: UserTypes.BUILDER,
-                            tosAcceptanceTime: new Date().toISOString(),
-                            isTosAccepted: true,
-                            tosVersion: HelperFunctions.getTosVersion(),
-                            stripeCustomerId: response.stripeCustomerId,
-                            productId: response.productId,
-                            subscriptionId: response.subscriptionId,
-                            company: {
-                                create: {
-                                    name: body.companyName,
-                                    address: body.address,
-                                    zipcode: body.zipcode,
-                                    phoneNumber: body.phoneNumber,
-                                    planType: body.planType,
-                                    planAmount,
-                                    extraFee: seoSettings.additionalEmployeeFee,
-                                    signNowSubscriptionId: signNowSubscriptionResponse?.subscriptionId || null,
-                                    signNowStripeProductId: signNowSubscriptionResponse?.productId || null,
-                                }
-                            },
-                            PermissionSet: {
-                                create: {
-                                    fullAccess: true,
-                                    viewOnly: false
-                                }
-                            }
-                        },
+                },
+                omit: {
+                    hash: true,
+                    invitationToken: true,
+                    passwordResetCode: true,
+                    isDeleted: true
+                },
+                include: {
+                    company: {
                         omit: {
-                            hash: true,
-                            invitationToken: true,
-                            passwordResetCode: true,
                             isDeleted: true
-                        },
-                        include: {
-                            company: {
-                                omit: {
-                                    isDeleted: true
-                                }
-                            },
-                            PermissionSet: {
-                                omit: {
-                                    userId: true,
-                                    isDeleted: true,
-                                }
-                            }
                         }
-                    });
-                    const payload = { sub: user.id, email: user.email, companyId: user.company.id };
-                    const access_token = await this.jwtService.signAsync(payload);
-
-                    // Copy master templates to builder
-                    if (user.companyId) {
-                        await this.prepareBuilderTemplateData(user);
+                    },
+                    PermissionSet: {
+                        omit: {
+                            userId: true,
+                            isDeleted: true,
+                        }
                     }
-
-                    // Send mail to admin
-                    await this.sendMailToAdmin(user);
-
-                    return { status: true, user, access_token, signNowSubStatus };
                 }
-                else {
-                    return response;
-                }
-            } else {
-                throw new InternalServerErrorException()
+            });
+
+            const payload = { sub: user.id, email: user.email, companyId: user.company.id };
+            const access_token = await this.jwtService.signAsync(payload);
+
+            // Copy master templates to builder
+            if (user.companyId) {
+                await this.prepareBuilderTemplateData(user);
             }
+
+            // Send mail to admin
+            // await this.sendMailToAdmin(user, body.referralCode);
+
+            return { status: true, user, access_token };
         } catch (ex) {
             console.log(ex)
+            // Re-throw known HTTP exceptions (e.g. duplicate email)
+            if (ex instanceof BadRequestException) {
+                throw ex;
+            }
             // Database Exceptions
             if (ex instanceof PrismaClientKnownRequestError) {
                 if (ex.code == PrismaErrorCodes.UNIQUE_CONSTRAINT_ERROR) {
                     throw new BadRequestException(ResponseMessages.UNIQUE_EMAIL_ERROR);
                 }
             }
-
-            if (ex.message == "Failed to fetch Coupon") {
-                throw new BadRequestException("Failed to fetch promo code, Please try again later");
-            }
             throw new InternalServerErrorException()
         }
     }
 
     async login(body: SignInDTO) {
-        console.log(body);
         try {
             const user = await this.databaseService.user.findUniqueOrThrow({
                 where: {
@@ -212,19 +185,65 @@ export class AuthService {
             if (!user.isActive || !user.company.isActive) {
                 throw new ForbiddenException(ResponseMessages.ACCOUNT_SUSPENDED);
             }
-            if (await argon.verify(user.hash, body.password)) {
-                delete user.hash;
-                const payload = { sub: user.id, email: user.email, companyId: user.company.id };
-                const access_token = await this.jwtService.signAsync(payload);
-                // save token to users table
-                await this.databaseService.user.update({
-                    where: { id: user.id },
-                    data: { activeAuthToken: access_token }
-                });
-                return { user, access_token };
-            } else {
+
+            if (!user.hash) {
                 throw new NotFoundException(ResponseMessages.INVALID_CREDENTIALS);
             }
+
+            if (!await argon.verify(user.hash, body.password)) {
+                throw new NotFoundException(ResponseMessages.INVALID_CREDENTIALS);
+            }
+
+            delete user.hash;
+
+            // Fetch trial_end live from Stripe (builders only — for trial expiry check)
+            let trialEndsAt: Date | null = null;
+            let subscriptionStatus: string | null = null;
+            if (user.subscriptionId) {
+                try {
+                    const subInfo = await this.stripeService.getBuilderSubscriptionInfo(user);
+                    if (subInfo?.builderSubscription?.trial_end) {
+                        trialEndsAt = new Date(subInfo.builderSubscription.trial_end * 1000);
+                    }
+                    if (subInfo?.builderSubscription?.subscription_status) {
+                        subscriptionStatus = subInfo.builderSubscription.subscription_status;
+                    }
+                } catch { }
+            }
+
+            // Check if trial expired and no card on file → deactivate (builders only)
+            // Employees: accountStatus is maintained by webhooks and the sync script — do not override here
+            if (
+                user.userType !== UserTypes.EMPLOYEE &&
+                trialEndsAt &&
+                trialEndsAt < new Date() &&
+                !user.cardOnFile &&
+                user.accountStatus === 'active'
+            ) {
+                await this.databaseService.user.update({
+                    where: { id: user.id },
+                    data: { accountStatus: 'inactive' }
+                });
+                user.accountStatus = 'inactive';
+            }
+
+            const payload = { sub: user.id, email: user.email, companyId: user.company.id };
+            const access_token = await this.jwtService.signAsync(payload);
+            // save token to users table
+            await this.databaseService.user.update({
+                where: { id: user.id },
+                data: { activeAuthToken: access_token }
+            });
+
+            // Return top-level trial/billing fields so frontend can check before redirect
+            return {
+                user,
+                access_token,
+                account_status: user.accountStatus,
+                card_on_file: user.cardOnFile ?? false,
+                trial_ends_at: trialEndsAt,
+                plan: user.company?.planType,
+            };
         } catch (ex) {
             // Database Exceptions
             console.log(ex);
@@ -281,7 +300,7 @@ export class AuthService {
             console.log(error);
             if (error instanceof PrismaClientKnownRequestError) {
                 if (error.code == PrismaErrorCodes.NOT_FOUND)
-                    throw new BadRequestException(ResponseMessages.USER_NOT_FOUND);
+                    return { message: ResponseMessages.PASSWORD_RESET_CODE_SENT }
                 throw new InternalServerErrorException();
             } else {
                 throw new InternalServerErrorException();
@@ -375,7 +394,7 @@ export class AuthService {
     }
 
     // Copying all master templates to new builder
-    private async prepareBuilderTemplateData (user: any) {
+    private async prepareBuilderTemplateData(user: any) {
         // Get all master templates
         let masterTemplates = await this.databaseService.masterQuestionnaireTemplate.findMany({
             where: { isDeleted: false }
@@ -416,8 +435,8 @@ export class AuthService {
 
             // Handle project estimator template
             if (
-                mTemplate.masterProjectEstimatorTemplateId && 
-                builderTemplate.id && 
+                mTemplate.masterProjectEstimatorTemplateId &&
+                builderTemplate.id &&
                 builderProjectEstimatorTemplate.id
             ) {
                 await this.handleBuilderEstimatorTemplate(mTemplate.id, builderProjectEstimatorTemplate.id, user);
@@ -427,14 +446,14 @@ export class AuthService {
     }
 
     // Copy questionnaire template and selection template to builder from admin
-    private async handleBuilderQuestionnaireTemplate (mTemplateId: number, builderTemplateId: number, user: any) {
+    private async handleBuilderQuestionnaireTemplate(mTemplateId: number, builderTemplateId: number, user: any) {
         const mQuestionnaireTemplate = await this.databaseService.masterQuestionnaireTemplate.findUnique({
             where: { id: mTemplateId, isDeleted: false },
             include: {
                 masterTemplateCategories: {
                     where: { masterQuestionnaireTemplateId: mTemplateId, isDeleted: false },
                     orderBy: { id: "asc" },
-                    include: { masterQuestions: { where: { isDeleted: false}, orderBy: { id: "asc" } } }
+                    include: { masterQuestions: { where: { isDeleted: false }, orderBy: { id: "asc" } } }
                 }
             }
         });
@@ -455,10 +474,10 @@ export class AuthService {
                         phaseId: mCategory.phaseId,
                         linkToQuestionnaire: mCategory.linkToQuestionnaire,
                         isCompanyCategory: true,
-                        companyId: user.company.id, 
+                        companyId: user.company.id,
                         questionnaireOrder: mCategory.questionnaireOrder,
                         initialOrder: mCategory.initialOrder,
-                        paintOrder: mCategory.paintOrder 
+                        paintOrder: mCategory.paintOrder
                     }
                 });
 
@@ -470,9 +489,9 @@ export class AuthService {
         });
     }
 
-    private async createBuilderTemplateQuestions (
-        tx: Omit<PrismaClient<Prisma.PrismaClientOptions, never, DefaultArgs>, 
-        "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">,
+    private async createBuilderTemplateQuestions(
+        tx: Omit<PrismaClient<Prisma.PrismaClientOptions, never, DefaultArgs>,
+            "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">,
         mQuestions: any[],
         categoryId: number,
         builderTemplateId: number
@@ -494,11 +513,11 @@ export class AuthService {
                 }
             })
         }))
-    }   
+    }
 
 
     // Copy project estimator template to builder from admin
-    private async handleBuilderEstimatorTemplate (mTemplateId: number, builderProjectEstimatorTemplateId: number, user: any) {
+    private async handleBuilderEstimatorTemplate(mTemplateId: number, builderProjectEstimatorTemplateId: number, user: any) {
         const template = await this.databaseService.masterProjectEstimatorTemplate.findUnique({
             where: { id: mTemplateId, isDeleted: false },
             include: {
@@ -561,7 +580,7 @@ export class AuthService {
     // Fn to get promocode information
     async getDiscountDetails(promo_code: string) {
         try {
-            const response = await this.stripeService.getPromoCodeInfo(promo_code);
+            const response = await this.stripeService.getPromoCodeInfo(promo_code.trim().toUpperCase());
 
             if (!response.status) {
                 throw new BadRequestException({ message: response.message });
@@ -581,7 +600,7 @@ export class AuthService {
         }
     }
 
-    private async sendMailToAdmin(user: any) {
+    private async sendMailToAdmin(user: any, referralCode?: string) {
         const admins = await this.databaseService.user.findMany({
             where: {
                 userType: UserTypes.ADMIN,
@@ -589,15 +608,21 @@ export class AuthService {
             }
         });
 
+        const VALID_REFERRAL_CODES = (this.config.get('VALID_REFERRAL_CODES') || '')
+            .split(',')
+            .map((c: string) => c.trim().toUpperCase());
+        const isValidReferral = referralCode && VALID_REFERRAL_CODES.includes(referralCode.trim().toUpperCase());
+
         let templateData = {
             admin: "",
             companyName: user.company.name ?? "",
             email: user.email ?? "",
-            address: user.company.address ?? "",
+            address: user.company.address ?? " -- ",
             zipCode: user.company.zipcode ?? "",
             phoneNumber: user.company.phoneNumber ?? "",
+            ohbaReferral: isValidReferral ? 'Yes' : 'No',
         }
-    
+
         if (admins.length > 0) {
             const emailPromises = admins.map(admin => {
                 templateData.admin = admin.name;
@@ -607,7 +632,7 @@ export class AuthService {
                     templateData,
                 );
             });
-    
+
             await Promise.all(emailPromises);
         }
     }

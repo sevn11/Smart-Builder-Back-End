@@ -40,6 +40,25 @@ export class UserService {
                     }
                 }
             });
+
+            // Check if trial expired and no card on file → deactivate (builders only)
+            // Employees: accountStatus is managed by webhooks and sync script — never override here
+            if (userObj && userObj.userType !== 'Employee' && !userObj.cardOnFile && userObj.accountStatus === 'active' && userObj.subscriptionId) {
+                try {
+                    const subInfo = await this.stripeService.getBuilderSubscriptionInfo(user);
+                    const trialEnd = subInfo?.builderSubscription?.trial_end
+                        ? new Date(subInfo.builderSubscription.trial_end * 1000)
+                        : null;
+                    if (trialEnd && trialEnd < new Date()) {
+                        await this.databaseService.user.update({
+                            where: { id: user.id },
+                            data: { accountStatus: 'inactive' }
+                        });
+                        userObj.accountStatus = 'inactive';
+                    }
+                } catch { }
+            }
+
             return userObj;
         } catch (error) {
             throw new InternalServerErrorException()
@@ -146,7 +165,7 @@ export class UserService {
                     company: true
                 }
             });
-            
+
             if (
                 userData &&
                 userData.company &&
@@ -174,11 +193,11 @@ export class UserService {
                 where: { userId: user.id },
                 select: { fullAccess: true, projectAccess: true }
             });
-    
+
             if (!userProjectPermission) {
                 return { hasProjectAccess: false };
             }
-    
+
             if (userProjectPermission.fullAccess) {
                 return { hasProjectAccess: true };
             }
@@ -186,14 +205,20 @@ export class UserService {
                 // If user has global project access, no need to check project
                 return { hasProjectAccess: true };
             }
-    
-            const projectWithPermission = await this.databaseService.job.findUnique({
-                where: { id: jobId, userId: user.id }
+
+            const projectWithPermission = await this.databaseService.job.findFirst({
+                where: {
+                    id: jobId,
+                    OR: [
+                        { userId: user.id },
+                        { companyId: user.companyId },
+                    ],
+                }
             });
-    
+
             const hasProjectAccess = !!projectWithPermission;
             return { hasProjectAccess };
-    
+
         } catch (error) {
             console.error('checkProjectAccess error:', error);
             return { hasProjectAccess: false };

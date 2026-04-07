@@ -60,12 +60,12 @@ export class CustomerService {
                         isDeleted: false
                     },
                     include: {
-                      jobs: {
-                        where: {
-                          id: jobId,
-                          isDeleted: false,
+                        jobs: {
+                            where: {
+                                id: jobId,
+                                isDeleted: false,
+                            },
                         },
-                      },
                     },
                 });
                 return { customer }
@@ -195,9 +195,9 @@ export class CustomerService {
                 });
                 // reflect the change in google calendar for each (if already synced)
                 for (let job of jobs) {
-                    if(job.eventId) {
+                    if (job.eventId) {
                         let event = await this.googleService.getEventFromGoogleCalendar(user, job);
-                        if(event) {
+                        if (event) {
                             await this.googleService.syncToCalendar(user.id, job, job.eventId);
                         }
                     }
