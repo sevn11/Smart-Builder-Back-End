@@ -123,7 +123,8 @@ export class WebhooksService {
             // Trial ended — no date written to DB; Stripe is source of truth for dates
 
             // Handle paused status (trial expired without payment method)
-            if (user && isPaused) {
+            // Employees are paused when builder hasn't paid — they are handled by the builder's reactivation flow
+            if (user && isPaused && user.userType !== 'Employee') {
                 let pausedDate = new Date();
 
                 await this.databaseService.user.update({

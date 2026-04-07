@@ -41,8 +41,9 @@ export class UserService {
                 }
             });
 
-            // Check if trial expired and no card on file → deactivate (live Stripe fetch, no DB date)
-            if (userObj && !userObj.cardOnFile && userObj.accountStatus === 'active' && userObj.subscriptionId) {
+            // Check if trial expired and no card on file → deactivate (builders only)
+            // Employees: accountStatus is managed by webhooks and sync script — never override here
+            if (userObj && userObj.userType !== 'Employee' && !userObj.cardOnFile && userObj.accountStatus === 'active' && userObj.subscriptionId) {
                 try {
                     const subInfo = await this.stripeService.getBuilderSubscriptionInfo(user);
                     const trialEnd = subInfo?.builderSubscription?.trial_end

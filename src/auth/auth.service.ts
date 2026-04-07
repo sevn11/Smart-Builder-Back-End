@@ -156,7 +156,6 @@ export class AuthService {
     }
 
     async login(body: SignInDTO) {
-        console.log(body);
         try {
             const user = await this.databaseService.user.findUniqueOrThrow({
                 where: {
@@ -197,10 +196,10 @@ export class AuthService {
 
             delete user.hash;
 
-            // Fetch trial_end and subscription_status live from Stripe
+            // Fetch trial_end live from Stripe (builders only — for trial expiry check)
             let trialEndsAt: Date | null = null;
             let subscriptionStatus: string | null = null;
-            if (user.subscriptionId) {
+            if (user.subscriptionId && user.userType !== UserTypes.EMPLOYEE) {
                 try {
                     const subInfo = await this.stripeService.getBuilderSubscriptionInfo(user);
                     if (subInfo?.builderSubscription?.trial_end) {
@@ -209,29 +208,16 @@ export class AuthService {
                     if (subInfo?.builderSubscription?.subscription_status) {
                         subscriptionStatus = subInfo.builderSubscription.subscription_status;
                     }
-
                 } catch { }
             }
 
             // Check if trial expired and no card on file → deactivate (builders only)
+            // Employees: accountStatus is maintained by webhooks and the sync script — do not override here
             if (
                 user.userType !== UserTypes.EMPLOYEE &&
                 trialEndsAt &&
                 trialEndsAt < new Date() &&
                 !user.cardOnFile &&
-                user.accountStatus === 'active'
-            ) {
-                await this.databaseService.user.update({
-                    where: { id: user.id },
-                    data: { accountStatus: 'inactive' }
-                });
-                user.accountStatus = 'inactive';
-            }
-
-            // Check if employee subscription is paused in Stripe → deactivate
-            if (
-                user.userType === UserTypes.EMPLOYEE &&
-                subscriptionStatus === 'paused' &&
                 user.accountStatus === 'active'
             ) {
                 await this.databaseService.user.update({
