@@ -36,10 +36,10 @@ model User {
 
   plan              String?  @default("yearly") @map("plan")
   accountStatus     String?  @default("active") @map("account_status")
-  trialEndsAt       DateTime? @map("trial_ends_at")
-  planStartsAt      DateTime? @map("plan_starts_at")
-  planExpiresAt     DateTime? @map("plan_expires_at")
   cardOnFile        Boolean? @default(false) @map("card_on_file")
+
+  referralCode        String?  @map("referral_code")
+  referralCodeApplied Boolean  @default(false) @map("referral_code_applied")
 
   passwordResetCode Int?    @map("password_reset_code")
   invitationToken   String? @map("invitation_token")

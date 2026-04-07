@@ -47,6 +47,10 @@ export class SignUpDTO {
   @IsString()
   @IsOptional()
   promoCode: string;
+
+  @IsString()
+  @IsOptional()
+  referralCode?: string;
 }
 
 

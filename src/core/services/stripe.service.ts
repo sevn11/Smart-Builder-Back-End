@@ -74,6 +74,9 @@ export class StripeService {
                 items: [{ price: price.id }],
                 proration_behavior: 'none',
                 automatic_tax: { enabled: true },
+                trial_settings: {
+                    end_behavior: { missing_payment_method: 'pause' },
+                },
             };
             if (builderSubscription.trial_end > now) {
                 // Adding employee subscription within builder's trial period
@@ -90,6 +93,7 @@ export class StripeService {
                 coupon = await this.createCoupon();
                 subscriptionPayload.coupon = coupon;
             }
+            console.log("Subscription payload :- ", subscriptionPayload)
             subscription = await this.StripeClient.subscriptions.create(subscriptionPayload);
 
             return { status: true, subscriptionId: subscription.id, productId: product.id, message: "Subscription added" };
@@ -297,7 +301,7 @@ export class StripeService {
         let customer: Stripe.Customer;
         try {
             const planType = body.planType == BuilderPlanTypes.MONTHLY ? 'month' : 'year'
-
+            console.log("body", body);
             // Create new customer in stripe
             customer = await this.StripeClient.customers.create({
                 name: body.name,
@@ -334,7 +338,7 @@ export class StripeService {
                 product: product.id,
                 tax_behavior: 'exclusive'
             });
-            const trialEndDate = Math.floor((new Date().getTime() + 30 * 24 * 60 * 60 * 1000) / 1000);
+            const trialEndDate = Math.floor(Date.now() / 1000) + 600; // TODO: change to 30 days for production (30 * 24 * 60 * 60)
 
             // Create a subscription for the new employee
             let subscriptionPayload: Stripe.SubscriptionCreateParams = {
@@ -375,12 +379,12 @@ export class StripeService {
             const product = await this.StripeClient.products.create({
                 name: `${body.companyName || body.name}-SignHere`
             });
-            
+
             let builderSubDetails = await this.StripeClient.subscriptions.retrieve(subscriptionId);
 
-            if(!builderSubDetails){
+            if (!builderSubDetails) {
                 return;
-            } 
+            }
 
 
             // Create a price for the product
@@ -390,15 +394,19 @@ export class StripeService {
                 recurring: { interval: signNowPlanType },
                 product: product.id,
             });
-            const trialEndDate = Math.floor((new Date().getTime() + 30 * 24 * 60 * 60 * 1000) / 1000);
+            const now = Math.floor(Date.now() / 1000);
 
             const subscriptionPayload: Stripe.SubscriptionCreateParams = {
                 customer: stripeCustomerId,
                 items: [{ price: price.id }],
                 payment_behavior: 'default_incomplete',
                 proration_behavior: 'none',
+                trial_settings: {
+                    end_behavior: {
+                        missing_payment_method: 'pause',
+                    },
+                },
             };
-            const now = Math.floor(Date.now() / 1000);
 
             if (builderSubDetails.trial_end && builderSubDetails.trial_end > now) {
                 subscriptionPayload.trial_end = builderSubDetails.trial_end;
@@ -497,6 +505,9 @@ export class StripeService {
                     items: [{ price: price.id }],
                     proration_behavior: 'none',
                     // automatic_tax: { enabled: true },
+                    trial_settings: {
+                        end_behavior: { missing_payment_method: 'pause' },
+                    },
                 };
                 if (builderSubscription.trial_end > now) {
                     // Adding signnow subscription within builder's trial period
@@ -543,6 +554,9 @@ export class StripeService {
                 billing_cycle_anchor: billingCycleAnchor,
                 proration_behavior: prorationBehavious,
                 automatic_tax: { enabled: true },
+                trial_settings: {
+                    end_behavior: { missing_payment_method: 'pause' },
+                },
             };
 
             if (trialEnd) {
@@ -583,19 +597,19 @@ export class StripeService {
                 product: company.signNowStripeProductId,
             });
 
-            const newPlanStartDate = isTrialActive ? subscription.trial_end : subscription.current_period_end;
-
-            // Updating builder subscription / plan
-            await this.StripeClient.subscriptions.update(company.signNowSubscriptionId,
-                {
-                    items: [{
-                        id: subscription.items.data[0].id,
-                        price: newPrice.id,
-                    }],
-                    // trial_end: newPlanStartDate,
-                    // proration_behavior: 'none'
-                }
-            )
+            // Updating SignHere subscription / plan
+            const signNowUpdatePayload: Stripe.SubscriptionUpdateParams = {
+                items: [{
+                    id: subscription.items.data[0].id,
+                    price: newPrice.id,
+                }],
+                proration_behavior: 'none',
+            };
+            // Only preserve trial_end if subscription is still in an active trial
+            if (isTrialActive) {
+                signNowUpdatePayload.trial_end = subscription.trial_end;
+            }
+            await this.StripeClient.subscriptions.update(company.signNowSubscriptionId, signNowUpdatePayload);
             return { status: true };
         } catch (error) {
             console.log("change plan error :- ", error);
@@ -653,7 +667,7 @@ export class StripeService {
                 recurring: { interval: planType },
                 product: product.id,
             });
-            const trialEndDate = Math.floor((new Date().getTime() + 30 * 24 * 60 * 60 * 1000) / 1000);
+            const trialEndDate = Math.floor(Date.now() / 1000) + 600; // TODO: change to 30 days for production (30 * 24 * 60 * 60)
             const trialEndDateObj = new Date(trialEndDate * 1000);
 
             const subscription = await this.StripeClient.subscriptions.create({
@@ -686,7 +700,6 @@ export class StripeService {
             const isTrialActive = subscription.trial_end && subscription.trial_end > Math.floor(Date.now() / 1000);
 
             let newProduct = employee ? employee.productId : user.productId;
-            // console.log("Employee",employee)
 
             // Create new price in stripe
             let newPrice = await this.StripeClient.prices.create({
@@ -696,20 +709,20 @@ export class StripeService {
                 product: employee ? employee.productId : user.productId,
             });
 
-            const newPlanStartDate = isTrialActive ? subscription.trial_end : subscription.current_period_end;
-
             // Updating builder subscription / plan
-            await this.StripeClient.subscriptions.update(employee ? employee.subscriptionId : user.subscriptionId,
-                {
-                    items: [{
-                        id: subscription.items.data[0].id,
-                        price: newPrice.id,
-                    }],
-                    // trial_end: newPlanStartDate,
-                    // proration_behavior: 'none'
-                }
-            )
-            return { status: true };
+            const updatePayload: Stripe.SubscriptionUpdateParams = {
+                items: [{
+                    id: subscription.items.data[0].id,
+                    price: newPrice.id,
+                }],
+                proration_behavior: 'none',
+            };
+            // Only preserve trial_end if subscription is still in an active trial
+            if (isTrialActive) {
+                updatePayload.trial_end = subscription.trial_end;
+            }
+            const updatedSub = await this.StripeClient.subscriptions.update(employee ? employee.subscriptionId : user.subscriptionId, updatePayload);
+            return { status: true, current_period_start: updatedSub.current_period_start, current_period_end: updatedSub.current_period_end };
         } catch (error) {
             console.log("change plan error", error)
             return { status: false };
@@ -717,7 +730,7 @@ export class StripeService {
     }
 
     // Function to get builder subscription info
-    async getBuilderSubscriptionInfo(user: User) {
+    async getBuilderSubscriptionInfo(user: Pick<User, 'subscriptionId'>) {
         try {
             let subscription = await this.StripeClient.subscriptions.retrieve(user.subscriptionId);
             if (subscription) {
@@ -795,6 +808,7 @@ export class StripeService {
     // Create Stripe customer + trial subscription (no payment method required)
     async createTrialSubscription(email: string, name: string, phone?: string, planAmount?: number, body?: any, promoCode?: string) {
         let customer: Stripe.Customer;
+        console.log(body, 'bodyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy');
         try {
             let yearlyAmount: number;
             if (planAmount !== undefined) {
@@ -813,17 +827,28 @@ export class StripeService {
                 email,
                 name,
                 phone: phone || undefined,
+                metadata: {
+                    referralCode: body?.referralCode || '',
+                },
+                address: {
+                    line1: body?.address || '',
+                    country: 'US',
+                    postal_code: body?.zipcode,
+                },
+                tax: {
+                    validate_location: 'immediately',
+                }
             });
 
             let productId: string;
 
             const product = await this.StripeClient.products.create({
-                    name: `${body.companyName}-${name}`
-                });
-            
+                name: `${body.companyName}-${name}`
+            });
+
             productId = product.id;
 
-            const trialEndDate = Math.floor(Date.now() / 1000) + 60;
+            const trialEndDate = Math.floor(Date.now() / 1000) + 600; // TODO: change to 30 days for production (30 * 24 * 60 * 60)
 
             let subscriptionPayload: Stripe.SubscriptionCreateParams = {
                 customer: customer.id,
@@ -837,9 +862,10 @@ export class StripeService {
                         },
                     },
                 }],
-                // payment_settings: {
-                //     save_default_payment_method: 'on_subscription',
-                // },
+                payment_behavior: 'default_incomplete',
+                payment_settings: {
+                    save_default_payment_method: 'on_subscription',
+                },
                 trial_settings: {
                     end_behavior: {
                         missing_payment_method: 'pause',
@@ -854,7 +880,7 @@ export class StripeService {
                 status: true,
                 stripeCustomerId: customer.id,
                 subscriptionId: subscription.id,
-                productId : productId,
+                productId: productId,
                 trialEndsAt: new Date(trialEndDate * 1000),
             };
         } catch (error) {
@@ -873,7 +899,7 @@ export class StripeService {
         try {
 
             let yearlyAmount: number;
-          
+
             yearlyAmount = Math.round(Number(signNowPlanAmount) * 100);
 
             // Create new product in stripe
@@ -904,8 +930,8 @@ export class StripeService {
                         missing_payment_method: 'pause',
                     },
                 },
-                trial_end: trialEndsAt 
-                    ? Math.floor(trialEndsAt.getTime() / 1000) 
+                trial_end: trialEndsAt
+                    ? Math.floor(trialEndsAt.getTime() / 1000)
                     : Math.floor((Date.now() + 30 * 24 * 60 * 60 * 1000) / 1000),
             };
 
@@ -919,7 +945,7 @@ export class StripeService {
             };
         }
         catch (error) {
-           return { status: false, message: error?.message ?? 'Stripe subscription creation failed' };
+            return { status: false, message: error?.message ?? 'Stripe subscription creation failed' };
         }
     }
 
@@ -928,7 +954,7 @@ export class StripeService {
         try {
             const promotionCodes = await this.StripeClient.promotionCodes.list({
                 limit: 100,
-                code: promo_code
+                code: promo_code.trim().toUpperCase()
             });
             let promoCodeInfo = promotionCodes.data[0];
             if (!promoCodeInfo || !promoCodeInfo.coupon.valid) {
@@ -975,11 +1001,11 @@ export class StripeService {
     }
 
     async activateSubscription(
-    user: User,
-    body: ActivateSubscriptionDTO,
-    signNowSubscriptionId: string,
-    planAmount: number,
-    signNowPlanAmount: number,
+        user: User,
+        body: ActivateSubscriptionDTO,
+        signNowSubscriptionId: string,
+        planAmount: number,
+        signNowPlanAmount: number,
     ) {
         try {
 
@@ -1032,53 +1058,78 @@ export class StripeService {
             let resultSubscriptionId = user.subscriptionId;
             let resultProductId = user.productId;
 
-            if (subscriptionStatus === 'paused' || subscriptionStatus === 'incomplete') {
+            if (subscriptionStatus === 'paused') {
 
-                // Set default payment method on the resumed subscription
-                await this.StripeClient.subscriptions.resume(user.subscriptionId, {
-                    billing_cycle_anchor: 'now',
-                });
-
-                // Step 5 — Pay the latest invoice immediately
-                const subscription = await this.StripeClient.subscriptions.retrieve(
-                    user.subscriptionId,
-                    { expand: ['latest_invoice'] }
-                );
-                const latestInvoice = subscription.latest_invoice as Stripe.Invoice;
-                if (latestInvoice && latestInvoice.status === 'open') {
-                    await this.StripeClient.invoices.pay(latestInvoice.id, {
-                        payment_method: paymentMethodId,
-                    });
-                    console.log('Invoice paid:', latestInvoice.id);
-                }
-
-
-
-                // Apply promo code if provided
+                // Apply discounts BEFORE resuming so Stripe includes them in the invoice it creates on resume
                 if (promoCode) {
                     await this.StripeClient.subscriptions.update(user.subscriptionId, {
                         discounts: [{ promotion_code: promoCode }],
                     });
                 }
 
+                // Resume — Stripe creates a new invoice that will include the discount applied above
+                await this.StripeClient.subscriptions.resume(user.subscriptionId, {
+                    billing_cycle_anchor: 'now',
+                });
+
+                // Pay the latest invoice immediately
+                const subscription = await this.StripeClient.subscriptions.retrieve(
+                    user.subscriptionId,
+                    { expand: ['latest_invoice'] }
+                );
+                const latestInvoice = subscription.latest_invoice as Stripe.Invoice;
+                if (latestInvoice && latestInvoice.status === 'open') {
+                    try {
+                        await this.StripeClient.invoices.pay(latestInvoice.id, {
+                            payment_method: paymentMethodId,
+                        });
+                        console.log('Invoice paid:', latestInvoice.id);
+                    } catch (payError) {
+                        // Payment failed — re-pause to rollback the resume so Stripe stays consistent with DB
+                        await this.StripeClient.subscriptions.update(user.subscriptionId, {
+                            pause_collection: { behavior: 'mark_uncollectible' },
+                        });
+                        throw payError;
+                    }
+                }
+
+                // Directly update DB — do not rely solely on webhook for cardOnFile/accountStatus
+                await this.databaseService.user.update({
+                    where: { id: user.id },
+                    data: {
+                        cardOnFile: true,
+                        accountStatus: 'active',
+                        plan: body.planType,
+                        ...(promoCode && { referralCodeApplied: true }),
+                    },
+                });
 
                 // Also resume SignHere subscription if paused
                 if (signNowSubscriptionId) {
                     try {
                         const signNowSub = await this.StripeClient.subscriptions.retrieve(signNowSubscriptionId);
-                        
-                        if (signNowSub.status === 'paused' || signNowSub.status === 'incomplete') {
-                            
+
+                        if (signNowSub.status === 'paused') {
                             await this.StripeClient.subscriptions.resume(signNowSubscriptionId, {
                                 billing_cycle_anchor: 'now',
                             });
-
-                            // Step 5 — Pay the latest invoice immediately
-                            const subscription = await this.StripeClient.subscriptions.retrieve(
+                            const resumedSub = await this.StripeClient.subscriptions.retrieve(
                                 signNowSubscriptionId,
                                 { expand: ['latest_invoice'] }
                             );
-                            const latestInvoice = subscription.latest_invoice as Stripe.Invoice;
+                            const latestInvoice = resumedSub.latest_invoice as Stripe.Invoice;
+                            if (latestInvoice && latestInvoice.status === 'open') {
+                                await this.StripeClient.invoices.pay(latestInvoice.id, {
+                                    payment_method: paymentMethodId,
+                                });
+                            }
+                        } else if (signNowSub.status === 'incomplete') {
+                            // Cannot resume — pay the open invoice directly to activate
+                            const incompleteSub = await this.StripeClient.subscriptions.retrieve(
+                                signNowSubscriptionId,
+                                { expand: ['latest_invoice'] }
+                            );
+                            const latestInvoice = incompleteSub.latest_invoice as Stripe.Invoice;
                             if (latestInvoice && latestInvoice.status === 'open') {
                                 await this.StripeClient.invoices.pay(latestInvoice.id, {
                                     payment_method: paymentMethodId,
@@ -1088,6 +1139,58 @@ export class StripeService {
                     } catch (error) {
                         console.error('Failed to resume SignHere subscription:', error);
                     }
+                }
+
+                // Resume all paused employee subscriptions, update payment method, and pay outstanding invoices
+                if (user.companyId) {
+                    const employees = await this.databaseService.user.findMany({
+                        where: {
+                            companyId: user.companyId,
+                            userType: UserTypes.EMPLOYEE,
+                            isDeleted: false,
+                        },
+                        select: { id: true, subscriptionId: true },
+                    });
+
+                    for (const employee of employees) {
+                        if (employee.subscriptionId) {
+                            try {
+                                const empSub = await this.StripeClient.subscriptions.retrieve(
+                                    employee.subscriptionId,
+                                    { expand: ['latest_invoice'] }
+                                );
+                                if (empSub.status === 'paused') {
+                                    await this.StripeClient.subscriptions.update(employee.subscriptionId, {
+                                        default_payment_method: paymentMethodId,
+                                    });
+                                    await this.StripeClient.subscriptions.resume(employee.subscriptionId, {
+                                        billing_cycle_anchor: 'now',
+                                    });
+                                    const resumedEmpSub = await this.StripeClient.subscriptions.retrieve(
+                                        employee.subscriptionId,
+                                        { expand: ['latest_invoice'] }
+                                    );
+                                    const empInvoice = resumedEmpSub.latest_invoice as Stripe.Invoice;
+                                    if (empInvoice && empInvoice.status === 'open') {
+                                        await this.StripeClient.invoices.pay(empInvoice.id, {
+                                            payment_method: paymentMethodId,
+                                        });
+                                    }
+                                }
+                            } catch (error) {
+                                console.error(`Failed to resume employee subscription ${employee.subscriptionId}:`, error);
+                            }
+                        }
+                    }
+
+                    await this.databaseService.user.updateMany({
+                        where: {
+                            companyId: user.companyId,
+                            userType: UserTypes.EMPLOYEE,
+                            isDeleted: false,
+                        },
+                        data: { accountStatus: 'active' },
+                    });
                 }
 
             } else if (!mainSubscription || subscriptionStatus === 'canceled' || subscriptionStatus === 'incomplete_expired') {
@@ -1108,7 +1211,7 @@ export class StripeService {
                     tax_behavior: 'exclusive',
                 });
 
-             
+
                 let subscriptionPayload: Stripe.SubscriptionCreateParams = {
                     customer: customerId,
                     items: [{
@@ -1132,16 +1235,23 @@ export class StripeService {
                 resultSubscriptionId = newSubscription.id;
                 resultProductId = product.id;
 
-                await this.databaseService.user.update({
-                    where: { id: user.id },
-                    data: {
-                        subscriptionId: newSubscription.id,
-                        productId: product.id,
-                        cardOnFile:true,
-                        accountStatus: 'active',
-                        planStartsAt: new Date((newSubscription.start_date || newSubscription.created) * 1000),
-                    },
-                });
+                try {
+                    await this.databaseService.user.update({
+                        where: { id: user.id },
+                        data: {
+                            subscriptionId: newSubscription.id,
+                            productId: product.id,
+                            cardOnFile: true,
+                            accountStatus: 'active',
+                            plan: body.planType,
+                            ...(promoCode && { referralCodeApplied: true }),
+                        },
+                    });
+                } catch (dbError) {
+                    // DB failed — cancel the Stripe subscription to prevent an orphaned live subscription
+                    await this.StripeClient.subscriptions.cancel(newSubscription.id);
+                    throw dbError;
+                }
 
                 // Also create new SignHere subscription
                 if (signNowPlanAmount > 0) {
@@ -1204,7 +1314,7 @@ export class StripeService {
                 await this.databaseService.user.update({
                     where: { id: user.id },
                     data: {
-                        cardOnFile:true,
+                        cardOnFile: true,
                         accountStatus: 'active',
                     },
                 });

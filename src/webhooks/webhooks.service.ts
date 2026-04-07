@@ -42,14 +42,14 @@ export class WebhooksService {
 
 
     async handleStripeWebhook(body: any) {
-        if(body.type === "customer.subscription.deleted"){
+        if (body.type === "customer.subscription.deleted") {
 
             const invoice = body.data.object;
             const customerId = invoice;
             const user = await this.databaseService.user.findFirst({
                 where: { subscriptionId: invoice.id }
             });
-            
+
             if (user) {
                 await this.databaseService.user.update({
                     where: { id: user.id },
@@ -57,8 +57,6 @@ export class WebhooksService {
                         accountStatus: 'inactive',
                         subscriptionId: null,
                         cardOnFile: false,
-                        trialEndsAt: null,
-                        planStartsAt: null,
                     }
                 });
             }
@@ -66,55 +64,63 @@ export class WebhooksService {
 
         if (body.type === 'payment_intent.succeeded') {
 
-            const invoice = body.data.object;
-            const customerId = invoice.customer;
+            const paymentIntent = body.data.object;
+            const customerId = paymentIntent.customer;
             const user = await this.databaseService.user.findFirst({
                 where: { stripeCustomerId: customerId }
             });
 
             if (user) {
-                console.log(user)
                 await this.databaseService.user.update({
                     where: { id: user.id },
-                    data: {
-                        accountStatus: 'active',
-                        cardOnFile: true,
-                    }
+                    data: { accountStatus: 'active', cardOnFile: true }
                 });
+            }
+        }
+        // invoice.paid fires for every successful subscription payment (builder and employee).
+        // The invoice carries subscription directly, so we can find and activate the exact
+        // subscriber — employees share the builder's stripeCustomerId so customer-based
+        // lookups miss them entirely.
+        if (body.type === 'invoice.paid') {
+            const invoice = body.data.object;
+            const subscriptionId = invoice.subscription;
+
+            if (subscriptionId) {
+                const user = await this.databaseService.user.findFirst({
+                    where: { subscriptionId }
+                });
+                if (user && user.accountStatus !== 'active') {
+                    await this.databaseService.user.update({
+                        where: { id: user.id },
+                        data: { accountStatus: 'active' }
+                    });
+                }
             }
         }
         // Handle subscription status changes (canceled, paused)
         if (body.type == 'customer.subscription.updated' || body.type == 'customer.subscription.deleted' || body.type == 'customer.subscription.paused') {
             let subscriptionId = body.data.object.id;
             let subscriptionStatus = body.data.object.status;
-
             // Find user by main subscription or sign-here subscription
             let user = await this.databaseService.user.findFirst({
                 where: { subscriptionId }
             });
-
+            console.log('subscription_status', subscriptionStatus)
             console.log(user)
-            const isPaused = body.data.object.pause_collection !== null && 
-                 body.data.object.pause_collection !== undefined;
-            
+            const isPaused = body.data.object.pause_collection !== null &&
+                body.data.object.pause_collection !== undefined;
+
             const isResumed = body.data.previous_attributes?.pause_collection !== null &&
-                  body.data.previous_attributes?.pause_collection !== undefined &&
-                  body.data.object.pause_collection === null;
+                body.data.previous_attributes?.pause_collection !== undefined &&
+                body.data.object.pause_collection === null;
+            const isActive = subscriptionStatus === 'active' && !isPaused;
 
             const isTrialEnded =
                 body.type === 'customer.subscription.updated' &&
                 body.data.previous_attributes?.status === 'trialing' &&
                 body.data.object.status !== 'trialing';
 
-            // Handle trial ended
-            if (user && isTrialEnded) {
-                await this.databaseService.user.update({
-                    where: { id: user.id },
-                    data: {
-                        planExpiresAt: new Date(),
-                    }
-                });
-            }
+            // Trial ended — no date written to DB; Stripe is source of truth for dates
 
             // Handle paused status (trial expired without payment method)
             if (user && isPaused) {
@@ -163,6 +169,15 @@ export class WebhooksService {
                 return;
             }
 
+            if (user && isActive) {
+                await this.databaseService.user.update({
+                    where: { id: user.id },
+                    data: {
+                        accountStatus: 'active',
+                    }
+                });
+            }
+
 
             // Handle canceled status
             if (user && subscriptionStatus == "canceled") {
@@ -203,7 +218,7 @@ export class WebhooksService {
                         }
                     });
                 }
-                // Make user inactive
+                // Make user inactive and clear subscriptionId
                 await this.databaseService.user.update({
                     where: {
                         id: user.id
@@ -211,6 +226,7 @@ export class WebhooksService {
                     data: {
                         accountStatus: 'inactive',
                         cardOnFile: false,
+                        subscriptionId: null,
                     }
                 });
                 return;

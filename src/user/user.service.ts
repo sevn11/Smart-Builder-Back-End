@@ -41,19 +41,21 @@ export class UserService {
                 }
             });
 
-            // Check if trial expired and no card on file → deactivate
-            if (
-                userObj &&
-                userObj.trialEndsAt &&
-                new Date(userObj.trialEndsAt) < new Date() &&
-                !userObj.cardOnFile &&
-                userObj.accountStatus === 'active'
-            ) {
-                await this.databaseService.user.update({
-                    where: { id: user.id },
-                    data: { accountStatus: 'inactive' }
-                });
-                userObj.accountStatus = 'inactive';
+            // Check if trial expired and no card on file → deactivate (live Stripe fetch, no DB date)
+            if (userObj && !userObj.cardOnFile && userObj.accountStatus === 'active' && userObj.subscriptionId) {
+                try {
+                    const subInfo = await this.stripeService.getBuilderSubscriptionInfo(user);
+                    const trialEnd = subInfo?.builderSubscription?.trial_end
+                        ? new Date(subInfo.builderSubscription.trial_end * 1000)
+                        : null;
+                    if (trialEnd && trialEnd < new Date()) {
+                        await this.databaseService.user.update({
+                            where: { id: user.id },
+                            data: { accountStatus: 'inactive' }
+                        });
+                        userObj.accountStatus = 'inactive';
+                    }
+                } catch {}
             }
 
             return userObj;
@@ -203,10 +205,16 @@ export class UserService {
                 return { hasProjectAccess: true };
             }
     
-            const projectWithPermission = await this.databaseService.job.findUnique({
-                where: { id: jobId, userId: user.id }
+            const projectWithPermission = await this.databaseService.job.findFirst({
+                where: {
+                    id: jobId,
+                    OR: [
+                        { userId: user.id },
+                        { companyId: user.companyId },
+                    ],
+                }
             });
-    
+
             const hasProjectAccess = !!projectWithPermission;
             return { hasProjectAccess };
     

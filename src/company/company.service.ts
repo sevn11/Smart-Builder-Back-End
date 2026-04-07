@@ -18,6 +18,8 @@ import { formatNumberWithCommas } from 'src/core/utils/formatNumber';
 @Injectable()
 export class CompanyService {
 
+    private planChangeLocks = new Set<number>();
+
     constructor(
         private databaseService: DatabaseService,
         private readonly config: ConfigService,
@@ -494,9 +496,6 @@ export class CompanyService {
                 select: {
                     plan: true,
                     accountStatus: true,
-                    trialEndsAt: true,
-                    planStartsAt: true,
-                    planExpiresAt: true,
                     cardOnFile: true,
                     subscriptionId: true,
                 }
@@ -506,13 +505,33 @@ export class CompanyService {
                 return null;
             }
 
+            // Fetch live dates from Stripe — these are never stored in DB
+            let trialEndsAt: Date | null = null;
+            let planStartsAt: Date | null = null;
+            let planExpiresAt: Date | null = null;
+
+            if (userData.subscriptionId) {
+                try {
+                    const stripeInfo = await this.stripeService.getBuilderSubscriptionInfo(user);
+                    if (stripeInfo?.builderSubscription) {
+                        const sub = stripeInfo.builderSubscription;
+                        if (sub.trial_end) trialEndsAt = new Date(sub.trial_end * 1000);
+                        // Only expose paid subscription dates when user has an active card/plan
+                        if (userData.cardOnFile) {
+                            if (sub.current_period_start) planStartsAt = new Date(sub.current_period_start * 1000);
+                            if (sub.current_period_end) planExpiresAt = new Date(sub.current_period_end * 1000);
+                        }
+                    }
+                } catch { }
+            }
+
             return {
                 builderSubscription: {
                     plan: userData.plan || 'yearly',
                     account_status: userData.accountStatus || 'active',
-                    trial_ends_at: userData.trialEndsAt,
-                    plan_starts_at: userData.planStartsAt,
-                    plan_expires_at: userData.planExpiresAt,
+                    trial_ends_at: trialEndsAt,
+                    plan_starts_at: planStartsAt,
+                    plan_expires_at: planExpiresAt,
                     card_on_file: userData.cardOnFile,
                     subscription_id: userData.subscriptionId,
                 }
@@ -578,65 +597,83 @@ export class CompanyService {
                 const profitCalType = company.profitCalculationType
                 // Check is plan updated or not
                 let sentPlanUpdateMessage = false;
+                let planChangeDates: { current_period_start?: number; current_period_end?: number } = {};
+
                 if (company.planType !== body.planType && user.subscriptionId) {
-                    let planAmount = 0;
-                    const planType = body.planType == BuilderPlanTypes.MONTHLY ? 'month' : 'year';
+                    if (this.planChangeLocks.has(user.id)) {
+                        throw new BadRequestException('A plan change is already in progress. Please wait.');
+                    }
+                    this.planChangeLocks.add(user.id);
+                    try {
+                        let planAmount = 0;
+                        const planType = body.planType == BuilderPlanTypes.MONTHLY ? 'month' : 'year';
 
-                    let data = await this.databaseService.seoSettings.findMany();
-                    let seoSettings = data[0];
-                    body.planType == BuilderPlanTypes.MONTHLY
-                        ? planAmount = seoSettings.monthlyPlanAmount.toNumber()
-                        : planAmount = seoSettings.yearlyPlanAmount.toNumber()
+                        let data = await this.databaseService.seoSettings.findMany();
+                        let seoSettings = data[0];
+                        body.planType == BuilderPlanTypes.MONTHLY
+                            ? planAmount = seoSettings.monthlyPlanAmount.toNumber()
+                            : planAmount = seoSettings.yearlyPlanAmount.toNumber()
 
-                    let res = await this.stripeService.changeUserSubscriptionType(user, planAmount * 100, planType);
+                        let res = await this.stripeService.changeUserSubscriptionType(user, planAmount * 100, planType);
 
-                    if (res.status) {
-                        // Update company with new price
-                        sentPlanUpdateMessage = true;
-                        company = await this.databaseService.company.update({
-                            where: {
-                                id: companyId,
-                                isActive: true,
-                                isDeleted: false
-                            },
-                            omit: {
-                                isDeleted: true
-                            },
-                            data: {
-                                planAmount
-                            }
-                        });
-                        // Update sign-here plan
-                        if (company.signNowSubscriptionId) {
-                            let price = 0;
-                            planType == 'month'
-                                ? price = seoSettings.signNowMonthlyAmount.toNumber()
-                                : price = seoSettings.signNowYearlyAmount.toNumber()
-
-                            await this.stripeService.changeSignNowSubscriptionPlanType(company, price * 100, planType);
-                        }
-                        // Update plan for each employee under builder
-                        let employees = await this.databaseService.user.findMany({
-                            where: {
-                                isActive: true,
-                                isDeleted: false,
-                                companyId: user.companyId,
-                                userType: UserTypes.EMPLOYEE
-                            }
-                        });
-                        if (employees.length > 0) {
-                            let builder = await this.databaseService.user.findFirst({
+                        if (res.status) {
+                            // Capture subscription dates returned directly from Stripe update
+                            if (res.current_period_start) planChangeDates.current_period_start = res.current_period_start;
+                            if (res.current_period_end) planChangeDates.current_period_end = res.current_period_end;
+                            // Update company with new price
+                            sentPlanUpdateMessage = true;
+                            company = await this.databaseService.company.update({
+                                where: {
+                                    id: companyId,
+                                    isActive: true,
+                                    isDeleted: false
+                                },
+                                omit: {
+                                    isDeleted: true
+                                },
+                                data: {
+                                    planAmount
+                                }
+                            });
+                            // Update user.plan to keep it in sync with company.planType
+                            await this.databaseService.user.update({
                                 where: { id: user.id },
-                                include: { company: true }
-                            })
-                            let feeAmount = builder.company.extraFee.toNumber() * 100;
-                            if (planType === 'year') {
-                                feeAmount *= 12;
+                                data: { plan: body.planType }
+                            });
+                            // Update sign-here plan
+                            if (company.signNowSubscriptionId) {
+                                let price = 0;
+                                planType == 'month'
+                                    ? price = seoSettings.signNowMonthlyAmount.toNumber()
+                                    : price = seoSettings.signNowYearlyAmount.toNumber()
+
+                                await this.stripeService.changeSignNowSubscriptionPlanType(company, price * 100, planType);
                             }
-                            for (const employee of employees) {
-                                await this.stripeService.changeUserSubscriptionType(user, feeAmount, planType, employee);
+                            // Update plan for each employee under builder
+                            let employees = await this.databaseService.user.findMany({
+                                where: {
+                                    isActive: true,
+                                    isDeleted: false,
+                                    companyId: user.companyId,
+                                    userType: UserTypes.EMPLOYEE
+                                }
+                            });
+                            if (employees.length > 0) {
+                                let builder = await this.databaseService.user.findFirst({
+                                    where: { id: user.id },
+                                    include: { company: true }
+                                })
+                                let feeAmount = builder.company.extraFee.toNumber() * 100;
+                                if (planType === 'year') {
+                                    feeAmount *= 12;
+                                }
+                                for (const employee of employees) {
+                                    await this.stripeService.changeUserSubscriptionType(user, feeAmount, planType, employee);
+                                }
                             }
                         }
+                    } finally {
+                        this.planChangeLocks.delete(user.id);
                     }
                 }
                 const { signNowPlanStatus, ...updatedBody } = body; // Filtering our sign-now plan status
@@ -702,7 +739,7 @@ export class CompanyService {
                             signNowResponse.status = false;
                             signNowResponse.message = "Failed to add sign here subscription.";
                         }
-                    } else if (builder.stripeCustomerId) {
+                    } else if (builder.stripeCustomerId && builder.subscriptionId) {
                         // User is on trial (no card) — create SignHere trial subscription
                         const signNowPlanType = company.planType == BuilderPlanTypes.MONTHLY
                             ? BuilderPlanTypes.MONTHLY
@@ -730,9 +767,9 @@ export class CompanyService {
                             signNowResponse.message = "Failed to add sign here subscription.";
                         }
                     } else {
-                        // No Stripe customer at all — cannot create subscription yet
+                        // No active subscription (canceled) or no Stripe customer — SignHere will be set up on reactivation
                         signNowResponse.status = true;
-                        signNowResponse.message = "SignHere will be added when your trial ends and payment is set up.";
+                        signNowResponse.message = "SignHere will be included when the subscription is reactivated.";
                     }
                 }
                 else {
@@ -763,7 +800,7 @@ export class CompanyService {
                 }
 
 
-                return { company, isPlanChanged: sentPlanUpdateMessage, signNowResponse }
+                return { company, isPlanChanged: sentPlanUpdateMessage, planChangeDates, signNowResponse }
             } else {
                 throw new ForbiddenException("Action Not Allowed");
             }
@@ -937,14 +974,12 @@ export class CompanyService {
                     console.log(error)
                 }
             }
-            // Cancel employee subscription
+            // Cancel ALL employee subscriptions regardless of their individual status
             let employees = await this.databaseService.user.findMany({
                 where: {
-                    accountStatus: 'inactive',
                     isDeleted: false,
                     companyId: user.companyId,
                     userType: UserTypes.EMPLOYEE,
-                    cardOnFile: false,
                 }
             });
             if (employees.length > 0) {
@@ -953,6 +988,15 @@ export class CompanyService {
                         await this.stripeService.removeSubscription(employee.subscriptionId);
                     }
                 }
+                // Immediately deactivate all employees in DB — don't wait for webhooks
+                await this.databaseService.user.updateMany({
+                    where: {
+                        companyId: user.companyId,
+                        userType: UserTypes.EMPLOYEE,
+                        isDeleted: false,
+                    },
+                    data: { accountStatus: 'inactive', subscriptionId: null, cardOnFile: false }
+                });
             }
             if (company) {
                 await this.sendMailToAdmin(company, builder);
@@ -1063,12 +1107,25 @@ export class CompanyService {
                 ? seoSettings.signNowMonthlyAmount.toNumber()
                 : seoSettings.signNowYearlyAmount.toNumber();
 
+            // Strip referral promo codes when plan is Monthly — they are yearly-only
+            const yearlyOnlyCodes = (this.config.get<string>('VALID_REFERRAL_CODES') || '')
+                .split(',')
+                .map(c => c.trim().toUpperCase())
+                .filter(Boolean);
+            if (
+                body.promoCode &&
+                yearlyOnlyCodes.includes(body.promoCode.toUpperCase()) &&
+                body.planType === PlanType.MONTHLY
+            ) {
+                body.promoCode = undefined;
+            }
+
             const res = await this.stripeService.activateSubscription(
                 user,
                 body,
-                company.signNowSubscriptionId,
+                body.signHere === false ? null : company.signNowSubscriptionId,
                 planAmount,
-                signNowPlanAmount,
+                body.signHere === false ? 0 : signNowPlanAmount,
             );
 
             // Update user record with new subscription dates and status
@@ -1105,6 +1162,61 @@ export class CompanyService {
 
         } catch (error) {
             console.log('activateSubscription error:', error);
+            if (error instanceof ForbiddenException || error instanceof BadRequestException) {
+                throw error;
+            }
+            throw new InternalServerErrorException({
+                error: 'An unexpected error occurred.',
+                errorDetails: error.message,
+            });
+        }
+    }
+
+    async getValidReferralCode(user: User, companyId: number) {
+        try {
+            if (user.userType !== UserTypes.BUILDER && user.userType !== UserTypes.ADMIN) {
+                throw new ForbiddenException("Action Not Allowed");
+            }
+            if (user.userType === UserTypes.BUILDER && user.companyId !== companyId) {
+                throw new ForbiddenException("Action Not Allowed");
+            }
+
+            const referralCode = await this.databaseService.user.findFirst({
+                where: {
+                    companyId,
+                    id: user.id,
+                    isActive: true,
+                    isDeleted: false,
+                    referralCode: {
+                        not: null,
+                    }
+                },
+                select: {
+                    id: true,
+                    referralCode: true,
+                    referralCodeApplied: true,
+                }
+            });
+
+            if (referralCode && referralCode.referralCode && !referralCode.referralCodeApplied) {
+                const response = await this.stripeService.getPromoCodeInfo(referralCode.referralCode);
+
+                if (!response.status) {
+                    return false;
+                }
+                return {
+                    success: true,
+                    name: response.info.name,
+                    discount: response.info.discount,
+                    promoCode: response.info.promo_code_id,
+                    couponId: response.info.coupon_id,
+                    duration: response.info.duration,
+                    message: response.message,
+                };
+            }
+
+        } catch (error) {
+            console.log('referral code error:', error);
             if (error instanceof ForbiddenException || error instanceof BadRequestException) {
                 throw error;
             }

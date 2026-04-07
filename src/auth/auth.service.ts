@@ -36,9 +36,6 @@ export class AuthService {
             }
 
             const hash = await argon.hash(body.password);
-            const now = new Date();
-            const trialEndsAt = new Date(now);
-            trialEndsAt.setDate(trialEndsAt.getDate() + 30);
 
             const seoSettings = await this.databaseService.seoSettings.findFirst();
             const yearlyPlanAmount = seoSettings.yearlyPlanAmount.toNumber();
@@ -75,8 +72,6 @@ export class AuthService {
                 signNowSubStatus = false;
             }
 
-
-
             const user = await this.databaseService.user.create({
                 data: {
                     email: body.email.toLowerCase(),
@@ -91,9 +86,9 @@ export class AuthService {
                     subscriptionId: response.subscriptionId,
                     plan: 'YEARLY',
                     accountStatus: 'active',
-                    planStartsAt: now,
-                    trialEndsAt: response.trialEndsAt,
                     cardOnFile: false,
+                    referralCode: body.referralCode ? body.referralCode.trim().toUpperCase() : null,
+                    referralCodeApplied: false,
                     company: {
                         create: {
                             name: body.companyName,
@@ -142,7 +137,7 @@ export class AuthService {
             }
 
             // Send mail to admin
-            await this.sendMailToAdmin(user);
+            await this.sendMailToAdmin(user, body.referralCode);
 
             return { status: true, user, access_token };
         } catch (ex) {
@@ -193,17 +188,50 @@ export class AuthService {
                 throw new ForbiddenException(ResponseMessages.ACCOUNT_SUSPENDED);
             }
 
+            if (!user.hash) {
+                throw new NotFoundException(ResponseMessages.INVALID_CREDENTIALS);
+            }
+
             if (!await argon.verify(user.hash, body.password)) {
                 throw new NotFoundException(ResponseMessages.INVALID_CREDENTIALS);
             }
 
             delete user.hash;
 
-            // Check if trial expired and no card on file → deactivate
+            // Fetch trial_end and subscription_status live from Stripe
+            let trialEndsAt: Date | null = null;
+            let subscriptionStatus: string | null = null;
+            if (user.subscriptionId) {
+                try {
+                    const subInfo = await this.stripeService.getBuilderSubscriptionInfo(user);
+                    if (subInfo?.builderSubscription?.trial_end) {
+                        trialEndsAt = new Date(subInfo.builderSubscription.trial_end * 1000);
+                    }
+                    if (subInfo?.builderSubscription?.subscription_status) {
+                        subscriptionStatus = subInfo.builderSubscription.subscription_status;
+                    }
+                } catch { }
+            }
+
+            // Check if trial expired and no card on file → deactivate (builders only)
             if (
-                user.trialEndsAt &&
-                new Date(user.trialEndsAt) < new Date() &&
+                user.userType !== UserTypes.EMPLOYEE &&
+                trialEndsAt &&
+                trialEndsAt < new Date() &&
                 !user.cardOnFile &&
+                user.accountStatus === 'active'
+            ) {
+                await this.databaseService.user.update({
+                    where: { id: user.id },
+                    data: { accountStatus: 'inactive' }
+                });
+                user.accountStatus = 'inactive';
+            }
+
+            // Check if employee subscription is paused in Stripe → deactivate
+            if (
+                user.userType === UserTypes.EMPLOYEE &&
+                subscriptionStatus === 'paused' &&
                 user.accountStatus === 'active'
             ) {
                 await this.databaseService.user.update({
@@ -227,7 +255,7 @@ export class AuthService {
                 access_token,
                 account_status: user.accountStatus,
                 card_on_file: user.cardOnFile ?? false,
-                trial_ends_at: user.trialEndsAt,
+                trial_ends_at: trialEndsAt,
                 plan: user.plan,
             };
         } catch (ex) {
@@ -566,7 +594,7 @@ export class AuthService {
     // Fn to get promocode information
     async getDiscountDetails(promo_code: string) {
         try {
-            const response = await this.stripeService.getPromoCodeInfo(promo_code);
+            const response = await this.stripeService.getPromoCodeInfo(promo_code.trim().toUpperCase());
 
             if (!response.status) {
                 throw new BadRequestException({ message: response.message });
@@ -586,13 +614,18 @@ export class AuthService {
         }
     }
 
-    private async sendMailToAdmin(user: any) {
+    private async sendMailToAdmin(user: any, referralCode?: string) {
         const admins = await this.databaseService.user.findMany({
             where: {
                 userType: UserTypes.ADMIN,
                 isDeleted: false,
             }
         });
+
+        const VALID_REFERRAL_CODES = (this.config.get('VALID_REFERRAL_CODES') || '')
+            .split(',')
+            .map((c: string) => c.trim().toUpperCase());
+        const isValidReferral = referralCode && VALID_REFERRAL_CODES.includes(referralCode.trim().toUpperCase());
 
         let templateData = {
             admin: "",
@@ -601,6 +634,7 @@ export class AuthService {
             address: user.company.address ?? " -- ",
             zipCode: user.company.zipcode ?? "",
             phoneNumber: user.company.phoneNumber ?? "",
+            ohbaReferral: isValidReferral ? 'Yes' : 'No',
         }
 
         if (admins.length > 0) {
