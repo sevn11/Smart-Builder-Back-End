@@ -84,7 +84,6 @@ export class AuthService {
                     stripeCustomerId: response.stripeCustomerId,
                     productId: response.productId,
                     subscriptionId: response.subscriptionId,
-                    plan: 'YEARLY',
                     accountStatus: 'active',
                     cardOnFile: false,
                     referralCode: body.referralCode ? body.referralCode.trim().toUpperCase() : null,
@@ -137,7 +136,7 @@ export class AuthService {
             }
 
             // Send mail to admin
-            await this.sendMailToAdmin(user, body.referralCode);
+            // await this.sendMailToAdmin(user, body.referralCode);
 
             return { status: true, user, access_token };
         } catch (ex) {
@@ -210,6 +209,7 @@ export class AuthService {
                     if (subInfo?.builderSubscription?.subscription_status) {
                         subscriptionStatus = subInfo.builderSubscription.subscription_status;
                     }
+
                 } catch { }
             }
 
@@ -256,7 +256,7 @@ export class AuthService {
                 account_status: user.accountStatus,
                 card_on_file: user.cardOnFile ?? false,
                 trial_ends_at: trialEndsAt,
-                plan: user.plan,
+                plan: user.company?.planType,
             };
         } catch (ex) {
             // Database Exceptions

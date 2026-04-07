@@ -34,9 +34,8 @@ model User {
   productId                String?  @map("product_id")
   isDemoUser               Boolean? @default(false) @map("is_demo_user")
 
-  plan              String?  @default("yearly") @map("plan")
-  accountStatus     String?  @default("active") @map("account_status")
-  cardOnFile        Boolean? @default(false) @map("card_on_file")
+  accountStatus       String?  @default("active") @map("account_status")
+  cardOnFile          Boolean? @default(false) @map("card_on_file")
 
   referralCode        String?  @map("referral_code")
   referralCodeApplied Boolean  @default(false) @map("referral_code_applied")

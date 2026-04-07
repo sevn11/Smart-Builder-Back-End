@@ -732,13 +732,16 @@ export class StripeService {
     // Function to get builder subscription info
     async getBuilderSubscriptionInfo(user: Pick<User, 'subscriptionId'>) {
         try {
-            let subscription = await this.StripeClient.subscriptions.retrieve(user.subscriptionId);
+            let subscription = await this.StripeClient.subscriptions.retrieve(user.subscriptionId, {
+                expand: ['default_payment_method']
+            });
             if (subscription) {
                 const builderSubscription = {
                     subscription_status: subscription.status,
                     trial_end: subscription.trial_end,
                     current_period_start: subscription.current_period_start,
-                    current_period_end: subscription.current_period_end
+                    current_period_end: subscription.current_period_end,
+                    has_payment_method: !!subscription.default_payment_method,
                 };
                 return { builderSubscription };
             } else {
@@ -1099,7 +1102,6 @@ export class StripeService {
                     data: {
                         cardOnFile: true,
                         accountStatus: 'active',
-                        plan: body.planType,
                         ...(promoCode && { referralCodeApplied: true }),
                     },
                 });
@@ -1243,7 +1245,6 @@ export class StripeService {
                             productId: product.id,
                             cardOnFile: true,
                             accountStatus: 'active',
-                            plan: body.planType,
                             ...(promoCode && { referralCodeApplied: true }),
                         },
                     });

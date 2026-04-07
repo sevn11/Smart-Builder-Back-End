@@ -494,10 +494,12 @@ export class CompanyService {
             const userData = await this.databaseService.user.findUnique({
                 where: { id: user.id },
                 select: {
-                    plan: true,
                     accountStatus: true,
                     cardOnFile: true,
                     subscriptionId: true,
+                    company: {
+                        select: { planType: true }
+                    }
                 }
             });
 
@@ -527,7 +529,7 @@ export class CompanyService {
 
             return {
                 builderSubscription: {
-                    plan: userData.plan || 'yearly',
+                    plan: userData.company?.planType || 'YEARLY',
                     account_status: userData.accountStatus || 'active',
                     trial_ends_at: trialEndsAt,
                     plan_starts_at: planStartsAt,
@@ -634,11 +636,6 @@ export class CompanyService {
                                 data: {
                                     planAmount
                                 }
-                            });
-                            // Update user.plan to keep it in sync with company.planType
-                            await this.databaseService.user.update({
-                                where: { id: user.id },
-                                data: { plan: body.planType }
                             });
                             // Update sign-here plan
                             if (company.signNowSubscriptionId) {
@@ -999,7 +996,7 @@ export class CompanyService {
                 });
             }
             if (company) {
-                await this.sendMailToAdmin(company, builder);
+                // await this.sendMailToAdmin(company, builder);
             }
             return { message: ResponseMessages.SUCCESSFUL, account_status: 'inactive' }
         } catch (error) {
