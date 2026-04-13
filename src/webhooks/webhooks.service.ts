@@ -116,8 +116,10 @@ export class WebhooksService {
                     });
                 }
             }
-            const isPaused = body.data.object.pause_collection !== null &&
-                body.data.object.pause_collection !== undefined;
+            // const isPaused = body.data.object.pause_collection !== null &&
+            //     body.data.object.pause_collection !== undefined;
+            const isPaused = body.data.object.status === 'paused' ||
+                                body.data.object.pause_collection != null;
 
             const isResumed = body.data.previous_attributes?.pause_collection !== null &&
                 body.data.previous_attributes?.pause_collection !== undefined &&
