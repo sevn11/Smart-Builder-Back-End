@@ -802,7 +802,7 @@ export class CompanyService {
                 throw new ForbiddenException("Action Not Allowed");
             }
         } catch (error) {
-            console.log(error)
+            console.log('error:', error)
             if (error instanceof ForbiddenException) {
                 throw error;
             }

@@ -188,7 +188,7 @@ export class StripeService {
             }
             return;
         } catch (error) {
-            console.log(error.message)
+            console.log('error', error.message)
             return new InternalServerErrorException();
         }
     }
@@ -203,7 +203,7 @@ export class StripeService {
             }
             return false;
         } catch (error) {
-            console.log(error)
+            console.log('error', error)
             return false;
         }
     }
@@ -218,7 +218,7 @@ export class StripeService {
             }
             return false;
         } catch (error) {
-            console.log(error);
+            console.log('error', error);
             return false;
         }
     }
@@ -241,7 +241,7 @@ export class StripeService {
             });
             return { status: true, message: 'Payment successfull' }
         } catch (error) {
-            console.log(error)
+            console.log('error', error)
             return { status: false, message: error.raw.message };
         }
     }
@@ -338,7 +338,7 @@ export class StripeService {
                 product: product.id,
                 tax_behavior: 'exclusive'
             });
-            const trialEndDate = Math.floor(Date.now() / 1000) + 120; // TODO: change to 30 days for production (30 * 24 * 60 * 60)
+            const trialEndDate = Math.floor(Date.now() / 1000) + 300; // TODO: change to 30 days for production (30 * 24 * 60 * 60)
 
             // Create a subscription for the new employee
             let subscriptionPayload: Stripe.SubscriptionCreateParams = {
@@ -361,7 +361,7 @@ export class StripeService {
                 message: "Subscription added"
             }
         } catch (error) {
-            console.log(error)
+            console.log('error', error)
             if (customer) {
                 // delete customer because payemnt failed
                 await this.StripeClient.customers.del(customer.id);
@@ -429,7 +429,7 @@ export class StripeService {
             }
         }
         catch (error) {
-            console.log(error);
+            console.log('error', error);
             return {
                 status: false,
                 message: error?.message ?? "Failed to create SignHere subscription"
@@ -579,7 +579,7 @@ export class StripeService {
                 productId: product.id,
             };
         } catch (error) {
-            console.log(error);
+            console.log('error', error);
             return { status: false, message: "Failed to add SignHere subscription" };
         }
     }
@@ -667,7 +667,7 @@ export class StripeService {
                 recurring: { interval: planType },
                 product: product.id,
             });
-            const trialEndDate = Math.floor(Date.now() / 1000) + 120; // TODO: change to 30 days for production (30 * 24 * 60 * 60)
+            const trialEndDate = Math.floor(Date.now() / 1000) + 300; // TODO: change to 30 days for production (30 * 24 * 60 * 60)
             const trialEndDateObj = new Date(trialEndDate * 1000);
 
             const subscription = await this.StripeClient.subscriptions.create({
@@ -760,7 +760,7 @@ export class StripeService {
                 name: user.name
             });
         } catch (error) {
-            console.log(error)
+            console.log('error', error)
             return false;
         }
     }
@@ -811,7 +811,7 @@ export class StripeService {
     // Create Stripe customer + trial subscription (no payment method required)
     async createTrialSubscription(email: string, name: string, phone?: string, planAmount?: number, body?: any, promoCode?: string) {
         let customer: Stripe.Customer;
-        console.log(body, 'bodyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy');
+
         try {
             let yearlyAmount: number;
             if (planAmount !== undefined) {
@@ -851,7 +851,7 @@ export class StripeService {
 
             productId = product.id;
 
-            const trialEndDate = Math.floor(Date.now() / 1000) + 120; // TODO: change to 30 days for production (30 * 24 * 60 * 60)
+            const trialEndDate = Math.floor(Date.now() / 1000) + 300; // TODO: change to 30 days for production (30 * 24 * 60 * 60)
 
             let subscriptionPayload: Stripe.SubscriptionCreateParams = {
                 customer: customer.id,
@@ -994,7 +994,7 @@ export class StripeService {
                 message: "Promo code applied successfully",
             };
         } catch (error) {
-            console.log(error)
+            console.log('error', error)
             return {
                 status: false,
                 info: null,

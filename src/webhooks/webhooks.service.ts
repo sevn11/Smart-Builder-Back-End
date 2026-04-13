@@ -105,8 +105,17 @@ export class WebhooksService {
             let user = await this.databaseService.user.findFirst({
                 where: { subscriptionId }
             });
-            console.log('subscription_status', subscriptionStatus)
-            console.log(user)
+
+            if (!user) {
+                let company = await this.databaseService.company.findFirst({
+                    where: { signNowSubscriptionId: subscriptionId }
+                });
+                if (company) {
+                    user = await this.databaseService.user.findFirst({
+                        where: { companyId: company.id, userType: UserTypes.BUILDER }
+                    });
+                }
+            }
             const isPaused = body.data.object.pause_collection !== null &&
                 body.data.object.pause_collection !== undefined;
 
