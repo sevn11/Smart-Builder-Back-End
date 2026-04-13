@@ -1217,12 +1217,7 @@ export class StripeService {
                 let subscriptionPayload: Stripe.SubscriptionCreateParams = {
                     customer: customerId,
                     items: [{
-                        price_data: {
-                            currency: 'usd',
-                            product: product.id,
-                            unit_amount: amountInCents,
-                            recurring: { interval: planType as Stripe.PriceCreateParams.Recurring.Interval },
-                        },
+                        price: price.id,
                     }],
                     payment_settings: {
                         save_default_payment_method: 'on_subscription',
