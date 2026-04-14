@@ -136,7 +136,7 @@ export class AuthService {
             }
 
             // Send mail to admin
-            // await this.sendMailToAdmin(user, body.referralCode);
+            await this.sendMailToAdmin(user, body.referralCode);
 
             return { status: true, user, access_token };
         } catch (ex) {
