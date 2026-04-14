@@ -134,7 +134,6 @@ export class AuthService {
             if (user.companyId) {
                 await this.prepareBuilderTemplateData(user);
             }
-
             // Send mail to admin
             await this.sendMailToAdmin(user, body.referralCode);
 
