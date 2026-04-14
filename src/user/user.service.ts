@@ -43,7 +43,8 @@ export class UserService {
 
             // Check if trial expired and no card on file → deactivate (builders only)
             // Employees: accountStatus is managed by webhooks and sync script — never override here
-            if (userObj && userObj.userType !== 'Employee' && !userObj.cardOnFile && userObj.accountStatus === 'active' && userObj.subscriptionId) {
+            // Demo users: subscription auto-activates via $0 invoice (100% coupon) — never deactivate them
+            if (userObj && userObj.userType !== 'Employee' && !userObj.isDemoUser && !userObj.cardOnFile && userObj.accountStatus === 'active' && userObj.subscriptionId) {
                 try {
                     const subInfo = await this.stripeService.getBuilderSubscriptionInfo(user);
                     const trialEnd = subInfo?.builderSubscription?.trial_end

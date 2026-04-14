@@ -212,8 +212,10 @@ export class AuthService {
 
             // Check if trial expired and no card on file → deactivate (builders only)
             // Employees: accountStatus is maintained by webhooks and the sync script — do not override here
+            // Demo users: subscription auto-activates via $0 invoice (100% coupon) — never deactivate them
             if (
                 user.userType !== UserTypes.EMPLOYEE &&
+                !user.isDemoUser &&
                 trialEndsAt &&
                 trialEndsAt < new Date() &&
                 !user.cardOnFile &&

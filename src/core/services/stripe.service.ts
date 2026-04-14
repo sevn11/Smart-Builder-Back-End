@@ -675,7 +675,13 @@ export class StripeService {
                 items: [{ price: price.id }],
                 trial_end: trialEndDate,
                 coupon: couponId,
-
+                // When trial ends, create a $0 invoice (covered by 100% coupon) and auto-pay it.
+                // This transitions the subscription to active without requiring a payment method.
+                trial_settings: {
+                    end_behavior: {
+                        missing_payment_method: 'create_invoice',
+                    },
+                },
             });
             return {
                 status: true,
@@ -1011,6 +1017,19 @@ export class StripeService {
         signNowPlanAmount: number,
     ) {
         try {
+
+            // Demo users have a 100% forever coupon — their subscription auto-activates when
+            // the trial ends via a $0 invoice. They cannot be paused, resumed, or cancelled.
+            if (user.isDemoUser) {
+                return {
+                    status: true,
+                    subscriptionId: user.subscriptionId,
+                    productId: user.productId,
+                    signHereSubscriptionId: signNowSubscriptionId,
+                    signHereProductId: null,
+                    isNewSubscription: false,
+                };
+            }
 
             if (!body?.paymentMethodId) {
                 throw new Error('Payment method is required');
