@@ -1225,7 +1225,9 @@ export class StripeService {
                 };
 
                 if (promoCode) {
-                    subscriptionPayload.promotion_code = promoCode;
+                    subscriptionPayload.discounts = [
+                        { promotion_code: promoCode },
+                    ];
                 }
 
                 const newSubscription = await this.StripeClient.subscriptions.create(subscriptionPayload);
