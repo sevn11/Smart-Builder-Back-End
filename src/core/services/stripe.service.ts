@@ -1312,6 +1312,7 @@ export class StripeService {
                     data: {
                         cardOnFile: true,
                         accountStatus: 'active',
+                        ...(promoCode && { referralCodeApplied: true }),
                     },
                 });
 
