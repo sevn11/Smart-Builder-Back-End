@@ -1080,7 +1080,11 @@ export class StripeService {
                     user.subscriptionId,
                     { expand: ['latest_invoice'] }
                 );
-                const latestInvoice = subscription.latest_invoice as Stripe.Invoice;
+                let latestInvoice = subscription.latest_invoice as Stripe.Invoice;
+                // Stripe may create the invoice as draft on resume — finalize it first so it becomes open
+                if (latestInvoice && latestInvoice.status === 'draft') {
+                    latestInvoice = await this.StripeClient.invoices.finalizeInvoice(latestInvoice.id);
+                }
                 if (latestInvoice && latestInvoice.status === 'open') {
                     try {
                         await this.StripeClient.invoices.pay(latestInvoice.id, {
@@ -1119,7 +1123,10 @@ export class StripeService {
                                 signNowSubscriptionId,
                                 { expand: ['latest_invoice'] }
                             );
-                            const latestInvoice = resumedSub.latest_invoice as Stripe.Invoice;
+                            let latestInvoice = resumedSub.latest_invoice as Stripe.Invoice;
+                            if (latestInvoice && latestInvoice.status === 'draft') {
+                                latestInvoice = await this.StripeClient.invoices.finalizeInvoice(latestInvoice.id);
+                            }
                             if (latestInvoice && latestInvoice.status === 'open') {
                                 await this.StripeClient.invoices.pay(latestInvoice.id, {
                                     payment_method: paymentMethodId,
@@ -1131,7 +1138,10 @@ export class StripeService {
                                 signNowSubscriptionId,
                                 { expand: ['latest_invoice'] }
                             );
-                            const latestInvoice = incompleteSub.latest_invoice as Stripe.Invoice;
+                            let latestInvoice = incompleteSub.latest_invoice as Stripe.Invoice;
+                            if (latestInvoice && latestInvoice.status === 'draft') {
+                                latestInvoice = await this.StripeClient.invoices.finalizeInvoice(latestInvoice.id);
+                            }
                             if (latestInvoice && latestInvoice.status === 'open') {
                                 await this.StripeClient.invoices.pay(latestInvoice.id, {
                                     payment_method: paymentMethodId,
@@ -1172,7 +1182,10 @@ export class StripeService {
                                         employee.subscriptionId,
                                         { expand: ['latest_invoice'] }
                                     );
-                                    const empInvoice = resumedEmpSub.latest_invoice as Stripe.Invoice;
+                                    let empInvoice = resumedEmpSub.latest_invoice as Stripe.Invoice;
+                                    if (empInvoice && empInvoice.status === 'draft') {
+                                        empInvoice = await this.StripeClient.invoices.finalizeInvoice(empInvoice.id);
+                                    }
                                     if (empInvoice && empInvoice.status === 'open') {
                                         await this.StripeClient.invoices.pay(empInvoice.id, {
                                             payment_method: paymentMethodId,
