@@ -1015,8 +1015,21 @@ export class CompanyService {
             });
             let data = await this.databaseService.seoSettings.findMany();
             let seoSettings = data[0];
+            let isSignNowCancelled = false;
+            if (company.signNowSubscriptionId) {
+                let res = await this.stripeService.isSignNowCancelled(company.signNowSubscriptionId);
+                console.log('SignNow subscription status:', res);
+                if (res.status) {
+                    isSignNowCancelled = false;
+                } else {
+                    isSignNowCancelled = true;
+                }
+            }
+            else {
+                isSignNowCancelled = true;
+            }
             const { signNowMonthlyAmount, signNowYearlyAmount } = seoSettings;
-            return { signNowPlanPriceInfo: { signNowMonthlyAmount, signNowYearlyAmount }, isSignNowCancelled: false }
+            return { signNowPlanPriceInfo: { signNowMonthlyAmount, signNowYearlyAmount }, isSignNowCancelled }
         } catch (error) {
             console.log(error);
         }

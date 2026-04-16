@@ -504,7 +504,7 @@ export class StripeService {
                     customer: customer.id,
                     items: [{ price: price.id }],
                     proration_behavior: 'none',
-                    // automatic_tax: { enabled: true },
+                    automatic_tax: { enabled: true },
                     trial_settings: {
                         end_behavior: { missing_payment_method: 'pause' },
                     },
@@ -779,7 +779,7 @@ export class StripeService {
             });
             console.log('Stripe subscription paused:', subscriptionId);
             return { status: true };
-        } catch (error) {
+        } catch (error: any) {
             console.error('Failed to pause Stripe subscription:', error);
             return { status: false, message: error?.message ?? 'Failed to pause subscription' };
         }
@@ -963,7 +963,7 @@ export class StripeService {
         try {
             const promotionCodes = await this.StripeClient.promotionCodes.list({
                 limit: 100,
-                code: promo_code.trim().toUpperCase()
+                code: promo_code
             });
             let promoCodeInfo = promotionCodes.data[0];
             if (!promoCodeInfo || !promoCodeInfo.coupon.valid) {
