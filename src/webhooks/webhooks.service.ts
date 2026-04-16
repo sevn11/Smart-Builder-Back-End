@@ -45,7 +45,6 @@ export class WebhooksService {
         if (body.type === "customer.subscription.deleted") {
 
             const invoice = body.data.object;
-            const customerId = invoice;
             const user = await this.databaseService.user.findFirst({
                 where: { subscriptionId: invoice.id }
             });

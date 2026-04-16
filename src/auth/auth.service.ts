@@ -581,7 +581,7 @@ export class AuthService {
     // Fn to get promocode information
     async getDiscountDetails(promo_code: string) {
         try {
-            const response = await this.stripeService.getPromoCodeInfo(promo_code.trim().toUpperCase());
+            const response = await this.stripeService.getPromoCodeInfo(promo_code);
 
             if (!response.status) {
                 throw new BadRequestException({ message: response.message });
