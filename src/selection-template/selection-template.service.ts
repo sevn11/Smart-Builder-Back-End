@@ -791,9 +791,63 @@ export class SelectionTemplateService {
             const orderBy = {
                 [templateType === TemplateType.SELECTION_INITIAL ? 'initialOrder' : 'paintOrder']: 'asc',
             };
-            const currentOrder = templateType === TemplateType.SELECTION_INITIAL
-                ? category.initialOrder
-                : category.paintOrder;
+            const orderField = templateType === TemplateType.SELECTION_INITIAL ? 'initialOrder' : 'paintOrder';
+            const linkField = templateType === TemplateType.SELECTION_INITIAL ? 'linkToInitalSelection' : 'linkToPaintSelection';
+            const linkFilter = {
+                [linkField]: true,
+            };
+
+            const allCategories = await this.databaseService.category.findMany({
+                where: {
+                    isDeleted: false,
+                    isCompanyCategory: true,
+                    questionnaireTemplateId: templateId,
+                    OR: [
+                        { ...linkFilter },
+                        {
+                            questions: {
+                                some: {
+                                    isDeleted: false,
+                                    ...linkFilter,
+                                }
+                            }
+                        }
+                    ]
+                },
+                orderBy: [{ [orderField]: 'asc' }, { id: 'asc' }],
+                select: { id: true, name: true, initialOrder: true, paintOrder: true, linkToInitalSelection: true, linkToPaintSelection: true },
+            });
+
+            const needsResequence = allCategories.some(
+                (cat, idx) => cat[orderField] !== idx + 1 || !cat[linkField]
+            );
+
+            if (needsResequence) {
+                await this.databaseService.$transaction(
+                    allCategories.map((cat, idx) =>
+                        this.databaseService.category.update({
+                            where: { id: cat.id },
+                            data: { [orderField]: idx + 1, [linkField]: true },
+                        })
+                    )
+                );
+
+                allCategories.forEach((cat, idx) => {
+                    const newOrder = idx + 1;
+                    if (cat[orderField] !== newOrder) {
+                        console.log(
+                            `[changeCategoryOrder][resequence] category.id=${cat.id} name="${cat.name}" ${orderField}: ${cat[orderField]} -> ${newOrder}`
+                        );
+                    }
+                });
+
+                const movedIdx = allCategories.findIndex(c => c.id === body.categoryId);
+                if (movedIdx >= 0) {
+                    category = { ...category, [orderField]: movedIdx + 1, [linkField]: true };
+                }
+            }
+
+            const currentOrder = category[orderField];
 
             if (currentOrder !== body.questionnaireOrder) {
                 const isIncreasingOrder = currentOrder > body.questionnaireOrder;
@@ -823,11 +877,26 @@ export class SelectionTemplateService {
                 omit: { companyId: true, isDeleted: true, isCompanyTemplate: false },
                 include: {
                     categories: {
-                        where: categoryWhereClause,
+                        where: {
+                            isDeleted: false,
+                            isCompanyCategory: true,
+                            questionnaireTemplateId: templateId,
+                            OR: [
+                                { ...linkFilter },
+                                {
+                                    questions: {
+                                        some: {
+                                            isDeleted: false,
+                                            ...linkFilter,
+                                        }
+                                    }
+                                }
+                            ]
+                        },
                         omit: { isDeleted: true, isCompanyCategory: false, companyId: true },
                         include: {
                             questions: {
-                                where: questionWhereClause,
+                                where: { isDeleted: false, ...linkFilter },
                                 orderBy: { [templateType === TemplateType.SELECTION_INITIAL ? 'initialQuestionOrder' : 'paintQuestionOrder']: 'asc' },
                             },
                         },
