@@ -609,10 +609,6 @@ export class AuthService {
             }
         });
 
-        const VALID_REFERRAL_CODES = (this.config.get('VALID_REFERRAL_CODES') || '')
-            .split(',')
-            .map((c: string) => c.trim().toUpperCase());
-        const isValidReferral = referralCode && VALID_REFERRAL_CODES.includes(referralCode.trim().toUpperCase());
 
         let templateData = {
             admin: "",
@@ -621,7 +617,7 @@ export class AuthService {
             address: user.company.address ?? " -- ",
             zipCode: user.company.zipcode ?? "",
             phoneNumber: user.company.phoneNumber ?? "",
-            ohbaReferral: isValidReferral ? 'Yes' : 'No',
+            ohbaReferral: referralCode ? referralCode : 'No',
         }
 
         if (admins.length > 0) {
