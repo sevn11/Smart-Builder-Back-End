@@ -1043,9 +1043,38 @@ export class SelectionTemplateService {
                 where: { id: categoryId, ...categoryWhereClause },
             });
 
-            const question = await this.databaseService.templateQuestion.findUniqueOrThrow({
+            let question = await this.databaseService.templateQuestion.findUniqueOrThrow({
                 where: { id: questionId, ...questionWhereClause },
             });
+
+            const allQuestions = await this.databaseService.templateQuestion.findMany({
+                where: questionWhereClause,
+                orderBy: [
+                    { [questionOrderField]: 'asc' },
+                    { id: 'asc' },
+                ],
+                select: { id: true, question: true, initialQuestionOrder: true, paintQuestionOrder: true },
+            });
+
+            const needsResequence = allQuestions.some(
+                (q, idx) => q[questionOrderField] !== idx + 1
+            );
+
+            if (needsResequence) {
+                await this.databaseService.$transaction(
+                    allQuestions.map((q, idx) =>
+                        this.databaseService.templateQuestion.update({
+                            where: { id: q.id },
+                            data: { [questionOrderField]: idx + 1 },
+                        })
+                    )
+                );
+
+                const movedIdx = allQuestions.findIndex(q => q.id === questionId);
+                if (movedIdx >= 0) {
+                    question = { ...question, [questionOrderField]: movedIdx + 1 };
+                }
+            }
 
             const currentOrder = question[questionOrderField];
 

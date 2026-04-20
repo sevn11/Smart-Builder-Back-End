@@ -571,14 +571,7 @@ export class QuestionnaireCategoryService {
             )
           );
 
-          allCategories.forEach((cat, idx) => {
-            const newOrder = idx + 1;
-            if (cat.questionnaireOrder !== newOrder) {
-              console.log(
-                `[changeCategoryOrder][resequence] category.id=${cat.id} name="${cat.name}" questionnaireOrder: ${cat.questionnaireOrder} -> ${newOrder}`
-              );
-            }
-          });
+          
 
           const movedIdx = allCategories.findIndex(c => c.id === categoryId);
           if (movedIdx >= 0) {
