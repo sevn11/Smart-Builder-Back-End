@@ -560,6 +560,40 @@ export class TemplateQuestionService {
                     }
                 })
 
+                const allQuestions = await this.databaseService.templateQuestion.findMany({
+                    where: {
+                        questionnaireTemplateId: template.id,
+                        categoryId: category.id,
+                        isDeleted: false,
+                        linkToQuestionnaire: true,
+                    },
+                    orderBy: [
+                        { questionOrder: 'asc' },
+                        { id: 'asc' },
+                    ],
+                    select: { id: true, question: true, questionOrder: true },
+                });
+
+                const needsResequence = allQuestions.some(
+                    (q, idx) => q.questionOrder !== idx + 1
+                );
+
+                if (needsResequence) {
+                    await this.databaseService.$transaction(
+                        allQuestions.map((q, idx) =>
+                            this.databaseService.templateQuestion.update({
+                                where: { id: q.id },
+                                data: { questionOrder: idx + 1 },
+                            })
+                        )
+                    );
+
+                    const movedIdx = allQuestions.findIndex(q => q.id === questionId);
+                    if (movedIdx >= 0) {
+                        question = { ...question, questionOrder: movedIdx + 1 };
+                    }
+                }
+
                 const currentQuesOrder = question.questionOrder
 
                 if (currentQuesOrder > body.questionOrder) {

@@ -414,7 +414,40 @@ import {
               isDeleted: false,
             },
           });
-  
+
+          const allCategories = await this.databaseService.masterTemplateCategory.findMany({
+            where: {
+              masterQuestionnaireTemplateId: templateId,
+              isDeleted: false,
+              linkToQuestionnaire: true,
+            },
+            orderBy: [
+              { questionnaireOrder: 'asc' },
+              { id: 'asc' },
+            ],
+            select: { id: true, name: true, questionnaireOrder: true },
+          });
+
+          const needsResequence = allCategories.some(
+            (cat, idx) => cat.questionnaireOrder !== idx + 1
+          );
+
+          if (needsResequence) {
+            await this.databaseService.$transaction(
+              allCategories.map((cat, idx) =>
+                this.databaseService.masterTemplateCategory.update({
+                  where: { id: cat.id },
+                  data: { questionnaireOrder: idx + 1 },
+                })
+              )
+            );
+
+            const movedIdx = allCategories.findIndex(c => c.id === categoryId);
+            if (movedIdx >= 0) {
+              category = { ...category, questionnaireOrder: movedIdx + 1 };
+            }
+          }
+
           let currentOrder = category.questionnaireOrder;
   
           if (currentOrder > body.questionnaireOrder) {
