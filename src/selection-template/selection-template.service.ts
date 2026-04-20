@@ -832,14 +832,7 @@ export class SelectionTemplateService {
                     )
                 );
 
-                allCategories.forEach((cat, idx) => {
-                    const newOrder = idx + 1;
-                    if (cat[orderField] !== newOrder) {
-                        console.log(
-                            `[changeCategoryOrder][resequence] category.id=${cat.id} name="${cat.name}" ${orderField}: ${cat[orderField]} -> ${newOrder}`
-                        );
-                    }
-                });
+               
 
                 const movedIdx = allCategories.findIndex(c => c.id === body.categoryId);
                 if (movedIdx >= 0) {
