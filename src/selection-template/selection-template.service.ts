@@ -804,9 +804,56 @@ export class SelectionTemplateService {
             const orderBy = {
                 [templateType === TemplateType.SELECTION_INITIAL ? 'initialOrder' : 'paintOrder']: 'asc',
             };
-            const currentOrder = templateType === TemplateType.SELECTION_INITIAL
-                ? category.initialOrder
-                : category.paintOrder;
+            const orderField = templateType === TemplateType.SELECTION_INITIAL ? 'initialOrder' : 'paintOrder';
+            const linkField = templateType === TemplateType.SELECTION_INITIAL ? 'linkToInitalSelection' : 'linkToPaintSelection';
+            const linkFilter = {
+                [linkField]: true,
+            };
+
+            const allCategories = await this.databaseService.category.findMany({
+                where: {
+                    isDeleted: false,
+                    isCompanyCategory: true,
+                    questionnaireTemplateId: templateId,
+                    OR: [
+                        { ...linkFilter },
+                        {
+                            questions: {
+                                some: {
+                                    isDeleted: false,
+                                    ...linkFilter,
+                                }
+                            }
+                        }
+                    ]
+                },
+                orderBy: [{ [orderField]: 'asc' }, { id: 'asc' }],
+                select: { id: true, name: true, initialOrder: true, paintOrder: true, linkToInitalSelection: true, linkToPaintSelection: true },
+            });
+
+            const needsResequence = allCategories.some(
+                (cat, idx) => cat[orderField] !== idx + 1 || !cat[linkField]
+            );
+
+            if (needsResequence) {
+                await this.databaseService.$transaction(
+                    allCategories.map((cat, idx) =>
+                        this.databaseService.category.update({
+                            where: { id: cat.id },
+                            data: { [orderField]: idx + 1, [linkField]: true },
+                        })
+                    )
+                );
+
+               
+
+                const movedIdx = allCategories.findIndex(c => c.id === body.categoryId);
+                if (movedIdx >= 0) {
+                    category = { ...category, [orderField]: movedIdx + 1, [linkField]: true };
+                }
+            }
+
+            const currentOrder = category[orderField];
 
             if (currentOrder !== body.questionnaireOrder) {
                 const isIncreasingOrder = currentOrder > body.questionnaireOrder;
@@ -836,11 +883,26 @@ export class SelectionTemplateService {
                 omit: { companyId: true, isDeleted: true, isCompanyTemplate: false },
                 include: {
                     categories: {
-                        where: categoryWhereClause,
+                        where: {
+                            isDeleted: false,
+                            isCompanyCategory: true,
+                            questionnaireTemplateId: templateId,
+                            OR: [
+                                { ...linkFilter },
+                                {
+                                    questions: {
+                                        some: {
+                                            isDeleted: false,
+                                            ...linkFilter,
+                                        }
+                                    }
+                                }
+                            ]
+                        },
                         omit: { isDeleted: true, isCompanyCategory: false, companyId: true },
                         include: {
                             questions: {
-                                where: questionWhereClause,
+                                where: { isDeleted: false, ...linkFilter },
                                 orderBy: { [templateType === TemplateType.SELECTION_INITIAL ? 'initialQuestionOrder' : 'paintQuestionOrder']: 'asc' },
                             },
                         },
@@ -994,9 +1056,38 @@ export class SelectionTemplateService {
                 where: { id: categoryId, ...categoryWhereClause },
             });
 
-            const question = await this.databaseService.templateQuestion.findUniqueOrThrow({
+            let question = await this.databaseService.templateQuestion.findUniqueOrThrow({
                 where: { id: questionId, ...questionWhereClause },
             });
+
+            const allQuestions = await this.databaseService.templateQuestion.findMany({
+                where: questionWhereClause,
+                orderBy: [
+                    { [questionOrderField]: 'asc' },
+                    { id: 'asc' },
+                ],
+                select: { id: true, question: true, initialQuestionOrder: true, paintQuestionOrder: true },
+            });
+
+            const needsResequence = allQuestions.some(
+                (q, idx) => q[questionOrderField] !== idx + 1
+            );
+
+            if (needsResequence) {
+                await this.databaseService.$transaction(
+                    allQuestions.map((q, idx) =>
+                        this.databaseService.templateQuestion.update({
+                            where: { id: q.id },
+                            data: { [questionOrderField]: idx + 1 },
+                        })
+                    )
+                );
+
+                const movedIdx = allQuestions.findIndex(q => q.id === questionId);
+                if (movedIdx >= 0) {
+                    question = { ...question, [questionOrderField]: movedIdx + 1 };
+                }
+            }
 
             const currentOrder = question[questionOrderField];
 
