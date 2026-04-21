@@ -76,7 +76,7 @@ export class StripeService {
                     end_behavior: { missing_payment_method: 'pause' },
                 },
             };
-            if (builderSubscription.trial_end > now) {
+            if (builderSubscription.trial_end && builderSubscription.trial_end > now) {
                 // Adding employee subscription within builder's trial period
                 subscriptionPayload.trial_end = builderSubscription.trial_end;
                 subscriptionPayload.proration_behavior = 'none';
@@ -96,7 +96,7 @@ export class StripeService {
             return { status: true, subscriptionId: subscription.id, productId: product.id, message: "Subscription added" };
         } catch (error) {
             console.error("Error creating subscription", error);
-            return { status: false, message: error.raw.message };
+            return { status: false, message: error.message };
         }
     }
 
@@ -239,7 +239,7 @@ export class StripeService {
             return { status: true, message: 'Payment successfull' }
         } catch (error) {
             console.log('error', error)
-            return { status: false, message: error.raw.message };
+            return { status: false, message: error.message };
         }
     }
 
@@ -289,7 +289,7 @@ export class StripeService {
             return { status: true, subscriptionId: subscription.id, message: 'Subscription renewed' }
         } catch (error) {
             console.log("error", error)
-            return { status: false, message: error.raw.message };
+            return { status: false, message: error.message };
         }
     }
 
@@ -362,7 +362,7 @@ export class StripeService {
                 // delete customer because payemnt failed
                 await this.StripeClient.customers.del(customer.id);
             }
-            return { status: false, message: error.raw.message ?? "Someting went wrong" };
+            return { status: false, message: error.message ?? "Someting went wrong" };
         }
     }
 
@@ -397,6 +397,7 @@ export class StripeService {
                 items: [{ price: price.id }],
                 payment_behavior: 'default_incomplete',
                 proration_behavior: 'none',
+                automatic_tax: { enabled: true },
                 trial_settings: {
                     end_behavior: {
                         missing_payment_method: 'pause',
@@ -406,6 +407,9 @@ export class StripeService {
 
             if (builderSubDetails.trial_end && builderSubDetails.trial_end > now) {
                 subscriptionPayload.trial_end = builderSubDetails.trial_end;
+            } else {
+                subscriptionPayload.billing_cycle_anchor = builderSubDetails.current_period_end;
+                subscriptionPayload.proration_behavior = 'create_prorations';
             }
 
             // Apply coupon for demo builders
@@ -505,7 +509,7 @@ export class StripeService {
                         end_behavior: { missing_payment_method: 'pause' },
                     },
                 };
-                if (builderSubscription.trial_end > now) {
+                if (builderSubscription.trial_end && builderSubscription.trial_end > now) {
                     // Adding signnow subscription within builder's trial period
                     subscriptionPayload.trial_end = builderSubscription.trial_end;
                     subscriptionPayload.proration_behavior = 'none';
@@ -668,6 +672,7 @@ export class StripeService {
                 items: [{ price: price.id }],
                 trial_end: trialEndDate,
                 coupon: couponId,
+                automatic_tax: { enabled: true },
                 // When trial ends, create a $0 invoice (covered by 100% coupon) and auto-pay it.
                 // This transitions the subscription to active without requiring a payment method.
                 trial_settings: {
@@ -790,7 +795,7 @@ export class StripeService {
             } else {
                 // Subscription paused via pause_collection
                 await this.StripeClient.subscriptions.update(subscriptionId, {
-                    pause_collection: '',
+                    pause_collection: null,
                     default_payment_method: paymentMethodId,
                 } as any);
             }
@@ -864,6 +869,7 @@ export class StripeService {
                 payment_settings: {
                     save_default_payment_method: 'on_subscription',
                 },
+                automatic_tax: { enabled: true },
                 trial_settings: {
                     end_behavior: {
                         missing_payment_method: 'pause',
@@ -923,6 +929,7 @@ export class StripeService {
                 payment_settings: {
                     save_default_payment_method: 'on_subscription',
                 },
+                automatic_tax: { enabled: true },
                 trial_settings: {
                     end_behavior: {
                         missing_payment_method: 'pause',
@@ -1243,6 +1250,8 @@ export class StripeService {
                     payment_settings: {
                         save_default_payment_method: 'on_subscription',
                     },
+                    proration_behavior: 'none',
+                    automatic_tax: { enabled: true },
                 };
 
                 if (promoCode) {
@@ -1291,6 +1300,7 @@ export class StripeService {
                             items: [{ price: signNowPrice.id }],
                             default_payment_method: paymentMethodId,
                             proration_behavior: 'none',
+                            automatic_tax: { enabled: true },
                         });
 
                         return {
@@ -1346,6 +1356,30 @@ export class StripeService {
                         });
                     } catch (error) {
                         console.error('Failed to update SignHere subscription payment method:', error);
+                    }
+                }
+
+                // Also update payment method on all active employee subscriptions
+                if (user.companyId) {
+                    const employees = await this.databaseService.user.findMany({
+                        where: {
+                            companyId: user.companyId,
+                            userType: UserTypes.EMPLOYEE,
+                            isDeleted: false,
+                        },
+                        select: { id: true, subscriptionId: true },
+                    });
+
+                    for (const employee of employees) {
+                        if (employee.subscriptionId) {
+                            try {
+                                await this.StripeClient.subscriptions.update(employee.subscriptionId, {
+                                    default_payment_method: paymentMethodId,
+                                });
+                            } catch (error) {
+                                console.error(`Failed to update employee subscription payment method ${employee.subscriptionId}:`, error);
+                            }
+                        }
                     }
                 }
             }
