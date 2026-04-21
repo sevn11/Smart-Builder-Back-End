@@ -1,4 +1,4 @@
-import { Inject, Injectable, InternalServerErrorException, LoggerService } from "@nestjs/common";
+import { Injectable, InternalServerErrorException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { User } from "@prisma/client";
 import { SignUpDTO } from "src/auth/validators";
@@ -9,7 +9,6 @@ import Stripe from "stripe";
 import { BuilderPlanTypes } from "../utils/builder-plan-types";
 import { UserTypes } from "../utils";
 import { DemoUserDTO } from "src/admin/validators/add-demo-user";
-import { WINSTON_MODULE_PROVIDER } from "nest-winston";
 import { PlanType } from "src/company/validators/activate-subscription";
 
 @Injectable()
@@ -20,7 +19,6 @@ export class StripeService {
     constructor(
         private readonly config: ConfigService,
         private databaseService: DatabaseService,
-        @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: LoggerService
     ) {
         this.StripeClient = new Stripe(config.get('STRIPE_API_KEY'))
         this.stripeTaxRateId = config.get('STRIPE_TAX_RATE_ID')
@@ -93,7 +91,6 @@ export class StripeService {
                 coupon = await this.createCoupon();
                 subscriptionPayload.coupon = coupon;
             }
-            console.log("Subscription payload :- ", subscriptionPayload)
             subscription = await this.StripeClient.subscriptions.create(subscriptionPayload);
 
             return { status: true, subscriptionId: subscription.id, productId: product.id, message: "Subscription added" };
@@ -301,7 +298,6 @@ export class StripeService {
         let customer: Stripe.Customer;
         try {
             const planType = body.planType == BuilderPlanTypes.MONTHLY ? 'month' : 'year'
-            console.log("body", body);
             // Create new customer in stripe
             customer = await this.StripeClient.customers.create({
                 name: body.name,
@@ -597,19 +593,17 @@ export class StripeService {
                 product: company.signNowStripeProductId,
             });
 
+            const newPlanStartDate = isTrialActive ? subscription.trial_end : subscription.current_period_end;
+
             // Updating SignHere subscription / plan
-            const signNowUpdatePayload: Stripe.SubscriptionUpdateParams = {
+            await this.StripeClient.subscriptions.update(company.signNowSubscriptionId, {
                 items: [{
                     id: subscription.items.data[0].id,
                     price: newPrice.id,
                 }],
+                trial_end: newPlanStartDate,
                 proration_behavior: 'none',
-            };
-            // Only preserve trial_end if subscription is still in an active trial
-            if (isTrialActive) {
-                signNowUpdatePayload.trial_end = subscription.trial_end;
-            }
-            await this.StripeClient.subscriptions.update(company.signNowSubscriptionId, signNowUpdatePayload);
+            });
             return { status: true };
         } catch (error) {
             console.log("change plan error :- ", error);
@@ -668,7 +662,6 @@ export class StripeService {
                 product: product.id,
             });
             const trialEndDate = Math.floor((new Date().getTime() + 30 * 24 * 60 * 60 * 1000) / 1000);
-            const trialEndDateObj = new Date(trialEndDate * 1000);
 
             const subscription = await this.StripeClient.subscriptions.create({
                 customer: customer.id,
@@ -705,8 +698,6 @@ export class StripeService {
             let subscription = await this.StripeClient.subscriptions.retrieve(employee ? employee.subscriptionId : user.subscriptionId);
             const isTrialActive = subscription.trial_end && subscription.trial_end > Math.floor(Date.now() / 1000);
 
-            let newProduct = employee ? employee.productId : user.productId;
-
             // Create new price in stripe
             let newPrice = await this.StripeClient.prices.create({
                 unit_amount: planAmount,
@@ -715,19 +706,17 @@ export class StripeService {
                 product: employee ? employee.productId : user.productId,
             });
 
+            const newPlanStartDate = isTrialActive ? subscription.trial_end : subscription.current_period_end;
+
             // Updating builder subscription / plan
-            const updatePayload: Stripe.SubscriptionUpdateParams = {
+            const updatedSub = await this.StripeClient.subscriptions.update(employee ? employee.subscriptionId : user.subscriptionId, {
                 items: [{
                     id: subscription.items.data[0].id,
                     price: newPrice.id,
                 }],
+                trial_end: newPlanStartDate,
                 proration_behavior: 'none',
-            };
-            // Only preserve trial_end if subscription is still in an active trial
-            if (isTrialActive) {
-                updatePayload.trial_end = subscription.trial_end;
-            }
-            const updatedSub = await this.StripeClient.subscriptions.update(employee ? employee.subscriptionId : user.subscriptionId, updatePayload);
+            });
             return { status: true, current_period_start: updatedSub.current_period_start, current_period_end: updatedSub.current_period_end };
         } catch (error) {
             console.log("change plan error", error)
@@ -1303,8 +1292,6 @@ export class StripeService {
                             default_payment_method: paymentMethodId,
                             proration_behavior: 'none',
                         });
-
-                        console.log('Created new SignHere subscription:', signNowSub.id);
 
                         return {
                             status: true,
