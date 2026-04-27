@@ -96,7 +96,7 @@ export class AuthService {
                             phoneNumber: body.phoneNumber,
                             planType: 'YEARLY',
                             planAmount: yearlyPlanAmount,
-                            additionalEmployeeFee: seoSettings.additionalEmployeeFee.toNumber(),
+                            extraFee: seoSettings.additionalEmployeeFee,
                             signNowSubscriptionId: signNowSubscriptionResponse.subscriptionId,
                             signNowStripeProductId: signNowSubscriptionResponse.productId,
                         }
