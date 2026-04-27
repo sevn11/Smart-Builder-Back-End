@@ -94,17 +94,17 @@ export class AdminUsersService {
             for (let builder of builders) {
                 if (builder.company) {
                     let signNowPlanStatus = false;
-            
+
                     if (builder.company.signNowSubscriptionId) {
                         const res = await this.stripeService.isSignNowCancelled(builder.company.signNowSubscriptionId);
                         signNowPlanStatus = res.status;
                     }
-            
+
                     const company = {
                         ...builder.company,
-                        signNowPlanStatus, 
+                        signNowPlanStatus,
                     };
-            
+
                     builder.company = company;
                 }
                 // Get builder plan status
@@ -124,7 +124,7 @@ export class AdminUsersService {
                 }));
                 builder.PaymentLog = updatedPaymentLog;
             }
-            
+
             return { builders, totalCount }
         } catch (error) {
             console.log(error);
@@ -215,12 +215,12 @@ export class AdminUsersService {
                 }
             });
             // Delete builder's and employees subscription from stripe
-            if(builder.subscriptionId) {
+            if (builder.subscriptionId) {
                 await this.stripeService.removeSubscription(builder.subscriptionId);
             }
             if (employees.length > 0) {
                 for (const employee of employees) {
-                    if(employee.subscriptionId) {
+                    if (employee.subscriptionId) {
                         await this.stripeService.removeSubscription(employee.subscriptionId);
                         await this.databaseService.user.update({
                             where: { id: employee.id },
@@ -230,7 +230,7 @@ export class AdminUsersService {
                 }
             }
             // Delete customer from stripe
-            if(builder.stripeCustomerId) {
+            if (builder.stripeCustomerId) {
                 await this.stripeService.deleteStripeCustomer(builder.stripeCustomerId);
             }
 
@@ -649,7 +649,7 @@ export class AdminUsersService {
     }
 
     // Copying all master templates to new builder (demo)
-    private async prepareBuilderTemplateData (user: any) {
+    private async prepareBuilderTemplateData(user: any) {
         // Get all master templates
         let masterTemplates = await this.databaseService.masterQuestionnaireTemplate.findMany({
             where: { isDeleted: false }
@@ -682,8 +682,8 @@ export class AdminUsersService {
 
             // Handle project estimator template
             if (
-                mTemplate.masterProjectEstimatorTemplateId && 
-                builderTemplate.id && 
+                mTemplate.masterProjectEstimatorTemplateId &&
+                builderTemplate.id &&
                 builderProjectEstimatorTemplate.id
             ) {
                 await this.handleBuilderEstimatorTemplate(mTemplate.id, builderProjectEstimatorTemplate.id, user);
@@ -693,14 +693,14 @@ export class AdminUsersService {
     }
 
     // Copy questionnaire template and selection template to builder from admin
-    private async handleBuilderQuestionnaireTemplate (mTemplateId: number, builderTemplateId: number, user: any) {
+    private async handleBuilderQuestionnaireTemplate(mTemplateId: number, builderTemplateId: number, user: any) {
         const mQuestionnaireTemplate = await this.databaseService.masterQuestionnaireTemplate.findUnique({
             where: { id: mTemplateId, isDeleted: false },
             include: {
                 masterTemplateCategories: {
                     where: { masterQuestionnaireTemplateId: mTemplateId, isDeleted: false },
                     orderBy: { id: "asc" },
-                    include: { masterQuestions: { where: { isDeleted: false}, orderBy: { id: "asc" } } }
+                    include: { masterQuestions: { where: { isDeleted: false }, orderBy: { id: "asc" } } }
                 }
             }
         });
@@ -721,10 +721,10 @@ export class AdminUsersService {
                         phaseId: mCategory.phaseId,
                         linkToQuestionnaire: mCategory.linkToQuestionnaire,
                         isCompanyCategory: true,
-                        companyId: user.company.id, 
+                        companyId: user.company.id,
                         questionnaireOrder: mCategory.questionnaireOrder,
                         initialOrder: mCategory.initialOrder,
-                        paintOrder: mCategory.paintOrder 
+                        paintOrder: mCategory.paintOrder
                     }
                 });
 
@@ -736,9 +736,9 @@ export class AdminUsersService {
         });
     }
 
-    private async createBuilderTemplateQuestions (
-        tx: Omit<PrismaClient<Prisma.PrismaClientOptions, never, DefaultArgs>, 
-        "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">,
+    private async createBuilderTemplateQuestions(
+        tx: Omit<PrismaClient<Prisma.PrismaClientOptions, never, DefaultArgs>,
+            "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">,
         mQuestions: any[],
         categoryId: number,
         builderTemplateId: number
@@ -760,11 +760,11 @@ export class AdminUsersService {
                 }
             })
         }))
-    }   
+    }
 
 
     // Copy project estimator template to builder from admin
-    private async handleBuilderEstimatorTemplate (mTemplateId: number, builderProjectEstimatorTemplateId: number, user: any) {
+    private async handleBuilderEstimatorTemplate(mTemplateId: number, builderProjectEstimatorTemplateId: number, user: any) {
         const template = await this.databaseService.masterProjectEstimatorTemplate.findUnique({
             where: { id: mTemplateId, isDeleted: false },
             include: {

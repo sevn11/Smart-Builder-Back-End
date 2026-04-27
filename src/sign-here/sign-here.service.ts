@@ -49,16 +49,16 @@ export class SignHereService {
             const timestamp = Date.now();
             const fileName = `${companyId}_${jobId}_${timestamp}_${file.originalname}`;
             const filePath = path.join(this.uploadPath, fileName);
-            const key = `sign-documents/${fileName}`; 
+            const key = `sign-documents/${fileName}`;
 
             const uploadedUrl = await this.awsService.uploadFileToS3(
-                                    key,
-                                    file.buffer,
-                                    file.mimetype || 'application/pdf'
-                                    );
+                key,
+                file.buffer,
+                file.mimetype || 'application/pdf'
+            );
 
             this.logger.log('signlog', 'File uploaded to S3 successfully. URL: ' + uploadedUrl);
-        
+
             const recipients = JSON.parse(body.recipients);
             let recipientsPayload = [];
 
@@ -73,8 +73,8 @@ export class SignHereService {
                         { userType: UserTypes.ADMIN }
                     ]
                 },
-                select: { email: true,company: true },
-                
+                select: { email: true, company: true },
+
             });
 
             const signHere = await this.databaseService.signHere.create({
@@ -171,7 +171,7 @@ export class SignHereService {
                     signUrl: `${this.config.get("FRONTEND_BASEURL")}/sign-here-document/${token}`
                 }
 
-                this.sendgridService.sendEmailWithTemplate(senderEmail, this.config.get('SIGNHERE_TEMPLATE_ID'), templateData , undefined, undefined, sendCC, builder.email)
+                this.sendgridService.sendEmailWithTemplate(senderEmail, this.config.get('SIGNHERE_TEMPLATE_ID'), templateData, undefined, undefined, sendCC, builder.email)
                 this.logger.log('signlog', 'Email sending to: ' + senderEmail);
 
             }
@@ -286,7 +286,7 @@ export class SignHereService {
                                 orderBy: { id: 'asc' },
                             },
                         },
-                        
+
                     },
                 },
             });
@@ -316,17 +316,17 @@ export class SignHereService {
             const fileBaseName = path.basename(originalFileName, fileExtension);
             const timestamp = Date.now();
 
-        
+
             newFileName = `${signer.id}_${fileBaseName}${fileExtension}`;
-    
-            const key = `sign-documents/${newFileName}`; 
+
+            const key = `sign-documents/${newFileName}`;
 
             const uploadedUrl = await this.awsService.uploadFileToS3(
-                                    key,
-                                    file.buffer,
-                                    file.mimetype || 'application/pdf'
-                                    );
-        
+                key,
+                file.buffer,
+                file.mimetype || 'application/pdf'
+            );
+
             this.logger.log('signlog', 'File uploaded to S3 successfully. URL: ' + uploadedUrl);
 
             // Update signer status to SIGNED
@@ -373,16 +373,16 @@ export class SignHereService {
 
             const companyId = (document as any).companyId;
 
-            let companyName = 'Builder'; 
+            let companyName = 'Builder';
 
             let sendCC = false;
-            let builder: { email: string } | null = null;   
+            let builder: { email: string } | null = null;
 
             if (companyId) {
                 const company = await this.databaseService.company.findFirst({
                     where: {
-                    id: companyId,
-                    isDeleted: false,
+                        id: companyId,
+                        isDeleted: false,
                     },
                     select: { name: true },
                 });
@@ -397,11 +397,11 @@ export class SignHereService {
                             { userType: UserTypes.ADMIN }
                         ]
                     },
-                    select: { email: true,company: true },
+                    select: { email: true, company: true },
                 });
 
                 sendCC = Boolean(document?.ccAdmin);
-            }     
+            }
             // If all signed, update document status (if you have such a field)
             if (allSigned) {
                 await this.databaseService.signHere.update({
@@ -429,9 +429,9 @@ export class SignHereService {
                                 signer.email,
                                 this.config.get('SIGNHERE_COMPLETED_TEMPLATE_ID'),
                                 templateData,
-                                undefined, 
-                                undefined, 
-                                sendCC, 
+                                undefined,
+                                undefined,
+                                sendCC,
                                 builder.email
                             );
                             this.logger.log('signlog', `Completion email sent to ${signer.type}: ${signer.email}`);
@@ -441,7 +441,7 @@ export class SignHereService {
                     })
                 );
 
-            }else {
+            } else {
                 // Find next unsigned signer for THIS document only
                 const nextSigner = updatedSigners.find(
                     (s) => s.status !== SignerStatus.SIGNED
@@ -455,7 +455,7 @@ export class SignHereService {
                         const owners = updatedSigners.filter((s) => s.type === 'OWNER');
                         ownerIndex = owners.findIndex((s) => s.id === nextSigner.id);
                         if (ownerIndex === -1) ownerIndex = 0;
-                    }               
+                    }
                     const builderSigner = updatedSigners.find((s) => s.type === 'BUILDER');
                     const senderName = builderSigner?.name || "Builder";
 
@@ -473,9 +473,9 @@ export class SignHereService {
                             nextSigner.email,
                             this.config.get('SIGNHERE_TEMPLATE_ID'),
                             templateData,
-                            undefined, 
-                            undefined, 
-                            sendCC, 
+                            undefined,
+                            undefined,
+                            sendCC,
                             builder.email
                         );
                         this.logger.log('signlog', 'Email sending to: ' + nextSigner.email);
@@ -493,7 +493,7 @@ export class SignHereService {
                 allSigned,
                 remainingSigners: updatedSigners.filter((s) => s.status !== SignerStatus.SIGNED).length,
             };
-        }catch (error) {
+        } catch (error) {
             this.logger.log('signlog', '========== ERROR in submitSignedDocument ==========');
             this.logger.log('signlog', 'Error for token: ' + token);
             this.logger.log('signlog', 'Error message: ' + error.message);
@@ -556,7 +556,7 @@ export class SignHereService {
                 totalSigners: document.signers.length,
                 signedCount: document.signers.filter((s) => s.status === SignerStatus.SIGNED).length,
             };
-        }catch (error) {
+        } catch (error) {
             this.logger.log('signlog', '========== ERROR in getDocumentStatus ==========');
             this.logger.log('signlog', 'Error for token: ' + token);
             this.logger.log('signlog', 'Error message: ' + error.message);
@@ -630,7 +630,7 @@ export class SignHereService {
                 isDocumentCompleted,
                 totalSigners,
                 signedCount,
-                documentType:document?.type,
+                documentType: document?.type,
                 isLastOwner: isLastOwner
             };
         } catch (error) {
@@ -705,6 +705,6 @@ export class SignHereService {
         }
 
     }
-    
+
 
 }

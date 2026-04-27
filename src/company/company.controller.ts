@@ -5,6 +5,7 @@ import { GetUser } from 'src/core/decorators';
 import { User } from '@prisma/client';
 import { AddUserDTO, UploadLogoDTO, UpdateCompanyDTO, UpdateUserDTO, ChangeEmailDTO } from './validators';
 import { PaymentMethodDTO } from './validators/payment-method';
+import { ActivateSubscriptionDTO } from './validators/activate-subscription';
 
 
 @UseGuards(JwtGuard)
@@ -88,9 +89,9 @@ export class CompanyController {
     @HttpCode(HttpStatus.OK)
     @Post(':id/renew-subscription/:employeeId')
     renewEmployeeSubscription(
-        @GetUser() user: User, 
-        @Param('id', ParseIntPipe) companyId: number, 
-        @Param('employeeId', ParseIntPipe) employeeId: number, 
+        @GetUser() user: User,
+        @Param('id', ParseIntPipe) companyId: number,
+        @Param('employeeId', ParseIntPipe) employeeId: number,
         @Body() body: PaymentMethodDTO
     ) {
         return this.companyService.renewEmployeeSubscription(user, employeeId, body);
@@ -114,12 +115,27 @@ export class CompanyController {
         return this.companyService.getSignNowPlanInfo(user, companyId);
     }
 
+    @HttpCode(HttpStatus.OK)
+    @Post(':id/activate-subscription')
+    activateSubscription(
+        @GetUser() user: User,
+        @Param('id', ParseIntPipe) companyId: number,
+        @Body() body: ActivateSubscriptionDTO
+    ) {
+        return this.companyService.activateSubscription(user, companyId, body);
+    }
+
     @Patch(':id/sales-tax-rate')
     updateCompanySalesTaxRate(
-        @GetUser() user: User, 
+        @GetUser() user: User,
         @Param('id', ParseIntPipe) companyId: number,
-        @Body() body: { salesTaxRate: number })
-    {
+        @Body() body: { salesTaxRate: number }) {
         return this.companyService.updateCompanySalesTaxRate(user, companyId, body)
+    }
+
+    // Get the referral code details is valid.
+    @Get(':id/referral-code')
+    getValidReferralCode(@GetUser() user: User, @Param('id', ParseIntPipe) companyId: number) {
+        return this.companyService.getValidReferralCode(user, companyId);
     }
 }

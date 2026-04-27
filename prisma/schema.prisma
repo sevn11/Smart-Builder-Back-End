@@ -30,9 +30,15 @@ model User {
   isDeleted     Boolean?       @default(false) @map("is_deleted")
   PermissionSet PermissionSet?
   stripeCustomerId   String?  @map("stripe_customer_id")
-  subscriptionId    String?  @map("subscription_id")
-  productId         String?  @map("product_id")
-  isDemoUser        Boolean? @default(false) @map("is_demo_user")
+  subscriptionId           String?  @map("subscription_id")
+  productId                String?  @map("product_id")
+  isDemoUser               Boolean? @default(false) @map("is_demo_user")
+
+  accountStatus       String?  @default("active") @map("account_status")
+  cardOnFile          Boolean? @default(false) @map("card_on_file")
+
+  referralCode        String?  @map("referral_code")
+  referralCodeApplied Boolean  @default(false) @map("referral_code_applied")
 
   passwordResetCode Int?    @map("password_reset_code")
   invitationToken   String? @map("invitation_token")
