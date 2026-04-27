@@ -995,6 +995,19 @@ export class CompanyService {
                     data: { accountStatus: 'inactive', subscriptionId: null, cardOnFile: false }
                 });
             }
+            // Immediately deactivate the builder in DB — don't wait for the
+            // customer.subscription.deleted webhook (which may be delayed or, in
+            // sandbox without a webhook tunnel, never arrive). Without this, the
+            // cancelled UI in CompanyInformationForm.tsx never renders because
+            // it requires both !card_on_file AND account_status === 'inactive'.
+            await this.databaseService.user.update({
+                where: { id: builder.id },
+                data: {
+                    accountStatus: 'inactive',
+                    subscriptionId: null,
+                    cardOnFile: false,
+                },
+            });
             if (company) {
                 await this.sendMailToAdmin(company, builder);
             }
