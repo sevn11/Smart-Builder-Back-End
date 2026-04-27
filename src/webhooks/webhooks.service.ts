@@ -189,6 +189,20 @@ export class WebhooksService {
                 });
             }
 
+            // Failed renewals / unrecoverable invoices — flip DB to inactive so the UI
+            // doesn't keep showing "active" while Stripe carries an open/unpaid invoice.
+            if (
+                user &&
+                (subscriptionStatus === 'past_due' ||
+                    subscriptionStatus === 'unpaid' ||
+                    subscriptionStatus === 'incomplete_expired')
+            ) {
+                await this.databaseService.user.update({
+                    where: { id: user.id },
+                    data: { accountStatus: 'inactive' },
+                });
+            }
+
 
             // Handle canceled status
             if (user && subscriptionStatus == "canceled") {
