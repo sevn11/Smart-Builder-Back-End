@@ -1115,6 +1115,25 @@ export class StripeService {
                     }
                 }
 
+                // Re-fetch and confirm the subscription is genuinely active before writing the DB.
+                // Catches: 3DS requires_action, async declines, and any state where invoices.pay
+                // resolved but the invoice did not actually settle (sub stays past_due / open).
+                const confirmedResume = await this.StripeClient.subscriptions.retrieve(user.subscriptionId);
+
+                const isResumeActive =
+                    confirmedResume.status === 'active' || confirmedResume.status === 'trialing';
+
+                if (!isResumeActive) {
+                    // Roll back: re-pause so Stripe and DB stay consistent, then surface the error.
+                    const t = await this.StripeClient.subscriptions.update(user.subscriptionId, {
+                        pause_collection: { behavior: 'mark_uncollectible' },
+                    });
+
+                    throw new InternalServerErrorException(
+                        'Payment did not complete — subscription is past_due. Please try again with a different card.'
+                    );
+                }
+
                 // Directly update DB — do not rely solely on webhook for cardOnFile/accountStatus
                 await this.databaseService.user.update({
                     where: { id: user.id },
@@ -1247,11 +1266,15 @@ export class StripeService {
                     items: [{
                         price: price.id,
                     }],
+                    default_payment_method: paymentMethodId,
+                    payment_behavior: 'default_incomplete',
                     payment_settings: {
                         save_default_payment_method: 'on_subscription',
+                        payment_method_types: ['card'],
                     },
                     proration_behavior: 'none',
                     automatic_tax: { enabled: true },
+                    expand: ['latest_invoice'],
                 };
 
                 if (promoCode) {
@@ -1263,6 +1286,37 @@ export class StripeService {
                 const newSubscription = await this.StripeClient.subscriptions.create(subscriptionPayload);
                 resultSubscriptionId = newSubscription.id;
                 resultProductId = product.id;
+
+                // Finalize and pay the first invoice — mirrors the resume branch above.
+                // Without this the subscription stays in `incomplete` and the open invoice is never charged,
+                // even though Stripe has the payment method on file.
+                try {
+                    let latestInvoice = newSubscription.latest_invoice as Stripe.Invoice;
+                    if (latestInvoice && latestInvoice.status === 'draft') {
+                        latestInvoice = await this.StripeClient.invoices.finalizeInvoice(latestInvoice.id);
+                    }
+                    if (latestInvoice && latestInvoice.status === 'open') {
+                        await this.StripeClient.invoices.pay(latestInvoice.id, {
+                            payment_method: paymentMethodId,
+                        });
+                    }
+                } catch (payError) {
+                    // Payment failed — cancel the orphaned Stripe subscription so a retry starts cleanly.
+                    await this.StripeClient.subscriptions.cancel(newSubscription.id);
+                    throw payError;
+                }
+
+                // Re-fetch to confirm Stripe moved the subscription to active before we trust the DB write.
+                const confirmedSub = await this.StripeClient.subscriptions.retrieve(newSubscription.id);
+                const isConfirmedActive =
+                    confirmedSub.status === 'active' || confirmedSub.status === 'trialing';
+
+                if (!isConfirmedActive) {
+                    await this.StripeClient.subscriptions.cancel(newSubscription.id);
+                    throw new InternalServerErrorException(
+                        'Payment did not complete — subscription is incomplete. Please try again with a different card.'
+                    );
+                }
 
                 try {
                     await this.databaseService.user.update({
@@ -1299,9 +1353,26 @@ export class StripeService {
                             customer: customerId,
                             items: [{ price: signNowPrice.id }],
                             default_payment_method: paymentMethodId,
+                            payment_behavior: 'default_incomplete',
+                            payment_settings: {
+                                save_default_payment_method: 'on_subscription',
+                                payment_method_types: ['card'],
+                            },
                             proration_behavior: 'none',
                             automatic_tax: { enabled: true },
+                            expand: ['latest_invoice'],
                         });
+
+                        // Pay the first SignHere invoice so the sub leaves `incomplete`.
+                        let signNowInvoice = signNowSub.latest_invoice as Stripe.Invoice;
+                        if (signNowInvoice && signNowInvoice.status === 'draft') {
+                            signNowInvoice = await this.StripeClient.invoices.finalizeInvoice(signNowInvoice.id);
+                        }
+                        if (signNowInvoice && signNowInvoice.status === 'open') {
+                            await this.StripeClient.invoices.pay(signNowInvoice.id, {
+                                payment_method: paymentMethodId,
+                            });
+                        }
 
                         return {
                             status: true,
