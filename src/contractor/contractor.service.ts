@@ -8,7 +8,7 @@ import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 @Injectable()
 export class ContractorService {
 
-    constructor(private databaseService: DatabaseService) {}
+    constructor(private databaseService: DatabaseService) { }
 
     // get all non-deleted contractors
     async getAllContractors(user: User, companyId: number) {
@@ -27,7 +27,7 @@ export class ContractorService {
                         phase: true
                     },
                     orderBy: {
-                        contractorOrder: 'asc' 
+                        contractorOrder: 'asc'
                     }
                 });
                 return { contractors }
@@ -65,7 +65,7 @@ export class ContractorService {
                     where: { companyId, isDeleted: false }
                 });
                 let order = maxOrder._max.contractorOrder ? maxOrder._max.contractorOrder + 1 : 1;
-                
+
                 let contractor = await this.databaseService.contractor.create({
                     data: {
                         companyId,
@@ -84,14 +84,14 @@ export class ContractorService {
             // Database Exceptions
             if (error instanceof PrismaClientKnownRequestError) {
                 if (error.code === PrismaErrorCodes.NOT_FOUND) {
-                  throw new BadRequestException(ResponseMessages.USER_NOT_FOUND);
+                    throw new BadRequestException(ResponseMessages.USER_NOT_FOUND);
                 } else {
-                  console.error(error.code);
+                    console.error(error.code);
                 }
             } else if (error instanceof ForbiddenException || error instanceof ConflictException) {
                 throw error;
             }
-        
+
             throw new InternalServerErrorException();
         }
     }
@@ -208,7 +208,7 @@ export class ContractorService {
                     }
 
                 })
-                
+
                 return { message: ResponseMessages.SUCCESSFUL }
             } else {
                 throw new ForbiddenException("Action Not Allowed");
@@ -264,7 +264,7 @@ export class ContractorService {
                     }
                 });
                 let contractorJobIds = []
-                if(jobContractor) {
+                if (jobContractor) {
                     contractorJobIds = jobContractor.map(item => item.jobId)
                 }
                 const categoryCondition: any = {
@@ -289,7 +289,7 @@ export class ContractorService {
                     ]
                 };
                 let templateInfo: any = null;
-                if(templateId) {
+                if (templateId) {
                     categoryCondition.questionnaireTemplateId = templateId;
                     templateInfo = await this.databaseService.questionnaireTemplate.findUnique({
                         where: { id: templateId }
@@ -299,7 +299,7 @@ export class ContractorService {
                 let [questionnaireDetails, initialSelectionDetails, paintSelectionDetails] = await Promise.all([
                     // Questionnaire details
                     this.databaseService.category.findMany({
-                        where: {...categoryCondition, linkToQuestionnaire: true},
+                        where: { ...categoryCondition, linkToQuestionnaire: true },
                         orderBy: { questionnaireOrder: 'asc' },
                         include: {
                             questions: {
@@ -307,7 +307,12 @@ export class ContractorService {
                                     isDeleted: false,
                                     phaseIds: {
                                         has: phaseId
-                                    }
+                                    },
+                                    OR: [
+                                        { linkToQuestionnaire: true },
+                                        { linkToInitalSelection: true },
+                                        { linkToPaintSelection: true }
+                                    ]
                                 },
                                 orderBy: { questionOrder: 'asc' },
                             }
@@ -327,7 +332,12 @@ export class ContractorService {
                                     isDeleted: false,
                                     phaseIds: {
                                         has: phaseId
-                                    }
+                                    },
+                                    OR: [
+                                        { linkToQuestionnaire: true },
+                                        { linkToInitalSelection: true },
+                                        { linkToPaintSelection: true }
+                                    ]
                                 },
                                 orderBy: { initialQuestionOrder: 'asc' },
                             }
@@ -347,7 +357,12 @@ export class ContractorService {
                                     isDeleted: false,
                                     phaseIds: {
                                         has: phaseId
-                                    }
+                                    },
+                                    OR: [
+                                        { linkToQuestionnaire: true },
+                                        { linkToInitalSelection: true },
+                                        { linkToPaintSelection: true }
+                                    ]
                                 },
                                 orderBy: { paintQuestionOrder: 'asc' },
                             }
@@ -360,32 +375,32 @@ export class ContractorService {
                     category.questions.sort((a, b) => {
                         // Assign priority values
                         const getPriority = (question) => {
-                            if (question.linkToQuestionnaire) return 3; 
+                            if (question.linkToQuestionnaire) return 3;
                             if (question.linkToInitalSelection) return 2;
                             if (question.linkToPaintSelection) return 1;
                             return 0;
                         };
-                        
+
                         const priorityA = getPriority(a);
                         const priorityB = getPriority(b);
-                        
+
                         // Sort by priority (linkToQuestionnaire > linkToInitalSelection > linkToPaintSelection)
                         if (priorityA !== priorityB) {
                             return priorityB - priorityA;
                         }
-                
+
                         // If both have the same priority, then sort based on their respective order
                         if (a.linkToInitalSelection && b.linkToInitalSelection) {
                             return a.initialQuestionOrder - b.initialQuestionOrder;
                         }
-                        
+
                         if (a.linkToPaintSelection && b.linkToPaintSelection) {
                             return a.paintQuestionOrder - b.paintQuestionOrder;
                         }
                         // If none of the above
                         return 0;
                     });
-                });   
+                });
 
                 const allItems = [
                     ...questionnaireDetails,
@@ -394,7 +409,7 @@ export class ContractorService {
                 ];
 
                 let formattedDetails = allItems.map(category => {
-                    
+
                     return {
                         category: category.id,
                         categoryName: category.name,
@@ -436,7 +451,7 @@ export class ContractorService {
         }
     }
 
-    async updateOrder(user: User, companyId: number, contractorId: number, body: {contractorOrder: number}) {
+    async updateOrder(user: User, companyId: number, contractorId: number, body: { contractorOrder: number }) {
         try {
 
             // Check if User is Admin of the Company.
@@ -507,7 +522,7 @@ export class ContractorService {
                             phase: true
                         },
                         orderBy: {
-                            contractorOrder: 'asc' 
+                            contractorOrder: 'asc'
                         }
                     })
 
@@ -556,7 +571,7 @@ export class ContractorService {
                             phase: true
                         },
                         orderBy: {
-                            contractorOrder: 'asc' 
+                            contractorOrder: 'asc'
                         }
                     })
 
