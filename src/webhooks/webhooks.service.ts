@@ -28,7 +28,7 @@ export class WebhooksService {
                 }
             });
             return { message: ResponseMessages.SUCCESSFUL }
-        } catch (error) {
+        } catch (error: any) {
             console.log(error);
             if (error instanceof PrismaClientKnownRequestError) {
                 if (error.code == PrismaErrorCodes.NOT_FOUND)
@@ -96,6 +96,69 @@ export class WebhooksService {
                 }
             }
         }
+
+        // invoice.payment_failed fires when a charge against the default payment method declines.
+        // Common cause: trial ends, Stripe finalizes the upcoming invoice, and the attached card
+        // (e.g. test card 4000000000000341 — attaches OK but declines at charge time) fails.
+        // The customer.subscription.updated → past_due block below also runs, but that fires on
+        // the subscription object; this block handles the invoice-side bookkeeping (payment log,
+        // cardOnFile clear, employee cascade) so the UI doesn't keep showing the user as active.
+        if (body.type === 'invoice.payment_failed') {
+            console.log('Handling invoice.payment_failed webhook');
+            const invoice = body.data.object;
+            const subscriptionId = invoice.subscription;
+
+            if (subscriptionId) {
+                let failedUser = await this.databaseService.user.findFirst({
+                    where: { subscriptionId }
+                });
+
+                if (!failedUser) {
+                    const company = await this.databaseService.company.findFirst({
+                        where: { signNowSubscriptionId: subscriptionId }
+                    });
+                    if (company) {
+                        failedUser = await this.databaseService.user.findFirst({
+                            where: { companyId: company.id, userType: UserTypes.BUILDER }
+                        });
+                    }
+                }
+
+                if (failedUser) {
+                    await this.databaseService.user.update({
+                        where: { id: failedUser.id },
+                        data: {
+                            accountStatus: 'inactive',
+                            cardOnFile: false,
+                        }
+                    });
+
+                    // Cascade to employees so a builder's bad card doesn't leave the team active.
+                    if (failedUser.userType === UserTypes.BUILDER && failedUser.companyId) {
+                        await this.databaseService.user.updateMany({
+                            where: {
+                                companyId: failedUser.companyId,
+                                userType: UserTypes.EMPLOYEE,
+                                isDeleted: false,
+                            },
+                            data: { accountStatus: 'inactive', cardOnFile: false }
+                        });
+                    }
+
+                    await this.databaseService.paymentLog.create({
+                        data: {
+                            userId: failedUser.id,
+                            paymentDate: new Date(),
+                            paymentId: invoice.id,
+                            amount: invoice.amount_due ?? 0,
+                            status: 'failed',
+                            response: invoice
+                        }
+                    });
+                }
+            }
+            return;
+        }
         // Handle subscription status changes (canceled, paused)
         if (body.type == 'customer.subscription.updated' || body.type == 'customer.subscription.deleted' || body.type == 'customer.subscription.paused') {
             let subscriptionId = body.data.object.id;
@@ -118,7 +181,7 @@ export class WebhooksService {
             // const isPaused = body.data.object.pause_collection !== null &&
             //     body.data.object.pause_collection !== undefined;
             const isPaused = body.data.object.status === 'paused' ||
-                                body.data.object.pause_collection != null;
+                body.data.object.pause_collection != null;
 
             const isResumed = body.data.previous_attributes?.pause_collection !== null &&
                 body.data.previous_attributes?.pause_collection !== undefined &&
@@ -191,6 +254,9 @@ export class WebhooksService {
 
             // Failed renewals / unrecoverable invoices — flip DB to inactive so the UI
             // doesn't keep showing "active" while Stripe carries an open/unpaid invoice.
+            // Also clears cardOnFile and cascades to employees so a builder's bad card
+            // (e.g. trial ending with test card 4000000000000341 attached) doesn't leave
+            // the team active in the UI while Stripe is past_due.
             if (
                 user &&
                 (subscriptionStatus === 'past_due' ||
@@ -199,8 +265,22 @@ export class WebhooksService {
             ) {
                 await this.databaseService.user.update({
                     where: { id: user.id },
-                    data: { accountStatus: 'inactive' },
+                    data: {
+                        accountStatus: 'inactive',
+                        cardOnFile: false,
+                    },
                 });
+
+                if (user.userType === UserTypes.BUILDER && user.companyId) {
+                    await this.databaseService.user.updateMany({
+                        where: {
+                            companyId: user.companyId,
+                            userType: UserTypes.EMPLOYEE,
+                            isDeleted: false,
+                        },
+                        data: { accountStatus: 'inactive' },
+                    });
+                }
             }
 
 
@@ -259,9 +339,24 @@ export class WebhooksService {
         }
 
 
+        // For invoice.* events body.data.object is an Invoice — its `id` is the invoice ID,
+        // not the subscription ID — so look up the user by the invoice's `subscription` field.
+        // For other event types fall back to the object's id (matches subscription events).
+        const isInvoiceEvent =
+            body.type === 'invoice.created' ||
+            body.type === 'invoice.paid' ||
+            body.type === 'invoice.payment_failed';
+        const lookupSubscriptionId = isInvoiceEvent
+            ? body.data.object.subscription
+            : body.data.object.id;
+
+        if (!lookupSubscriptionId) {
+            return;
+        }
+
         let paymentDate = new Date(body.data.object.created * 1000)
         let user = await this.databaseService.user.findFirst({
-            where: { subscriptionId: body.data.object.id }
+            where: { subscriptionId: lookupSubscriptionId }
         });
 
         if (user) {
